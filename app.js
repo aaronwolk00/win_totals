@@ -681,7 +681,24 @@ const state = {
     results: [], // computed per-team
     currentSort: { key: "projected", direction: "desc" },
     view: "schedule", // "schedule" or "projections"
-    showImpliedOdds: false // global toggle for showing American odds
+    showImpliedOdds: false, // global toggle for showing American odds
+    visibleColumns: {
+        team: true,
+        division: true,
+        current: true,
+        expected: true,
+        projected: true,
+        P0: true,
+        P1: true,
+        P2: true,
+        P3: true,
+        P4: true,
+        PA1: true,
+        PA2: true,
+        PA3: true,
+        PA4: true,
+        threshold: true
+      }
   };
   
   
@@ -699,6 +716,12 @@ function loadStateFromStorage() {
       if (typeof parsed.precision === "number") {
         state.precision = parsed.precision;
       }
+      if (parsed.visibleColumns && typeof parsed.visibleColumns === "object") {
+        state.visibleColumns = {
+          ...state.visibleColumns,
+          ...parsed.visibleColumns
+        };
+      }      
       if (typeof parsed.threshold === "number") {
         state.threshold = parsed.threshold;
       }
@@ -724,7 +747,8 @@ function saveStateToStorage() {
         threshold: state.threshold,
         spreads: state.spreads,
         view: state.view,
-        showImpliedOdds: state.showImpliedOdds
+        showImpliedOdds: state.showImpliedOdds,
+        visibleColumns: state.visibleColumns
     };
     try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
@@ -914,7 +938,7 @@ function renderSchedule() {
         const band = document.createElement("div");
         band.className = "spread-band";
   
-        for (const value of spreadBandValues) {
+        for (const value of [...spreadBandValues].reverse()) {
           const btn = document.createElement("button");
           btn.type = "button";
           btn.className = "spread-option";
@@ -1011,7 +1035,7 @@ function resetAllState() {
 
     // keep theme & view, reset all modeling inputs
     state.spreads = {};
-    state.precision = 4;
+    state.precision = 2;
     state.threshold = 10;
     state.showImpliedOdds = false;
 
@@ -1055,53 +1079,40 @@ function updateGameCardDisplay(gameId) {
     }
   
     if (selectedProbSpan) {
-      const homeProb = prob;
-      const awayProb = 1 - prob;
-      const decimals = state.precision;
-      const showOdds = state.showImpliedOdds;
-  
-      const homeOdds = probToAmerican(homeProb);
-      const awayOdds = probToAmerican(awayProb);
-  
-      // classify favorite/underdog from home spread sign
-      let homeExtra = "";
-      let awayExtra = "";
-  
-      if (spread !== null) {
-        if (spread < 0) {
-          // home favorite
-          homeExtra = "favorite";
-          awayExtra = "underdog";
-        } else if (spread > 0) {
-          // home underdog
-          homeExtra = "underdog";
-          awayExtra = "favorite";
-        }
+        const homeProb = prob;
+        const awayProb = 1 - prob;
+        const decimals = state.precision;
+        const showOdds = state.showImpliedOdds;
+      
+        const homeOdds = probToAmerican(homeProb);
+        const awayOdds = probToAmerican(awayProb);
+      
+        const homeIsFav = homeProb >= awayProb;
+      
+        selectedProbSpan.innerHTML = `
+          <div class="prob-box away ${homeIsFav ? "underdog" : "favorite"}">
+            <div class="prob-main">
+              ${
+                showOdds
+                  ? `<span class="prob-odds">${formatAmerican(awayOdds)}</span>`
+                  : ""
+              }
+              <span class="prob-value">${formatPercent(awayProb, decimals)}</span>
+            </div>
+          </div>
+          <div class="prob-box home ${homeIsFav ? "favorite" : "underdog"}">
+            <div class="prob-main">
+              <span class="prob-value">${formatPercent(homeProb, decimals)}</span>
+              ${
+                showOdds
+                  ? `<span class="prob-odds">${formatAmerican(homeOdds)}</span>`
+                  : ""
+              }
+            </div>
+          </div>
+        `;
       }
-  
-      selectedProbSpan.innerHTML = `
-        <div class="prob-box away ${awayExtra}">
-          <div class="prob-values">
-            <strong>${formatPercent(awayProb, decimals)}</strong>
-            ${
-              showOdds
-                ? `<span class="prob-odds">${formatAmerican(awayOdds)}</span>`
-                : ""
-            }
-          </div>
-        </div>
-        <div class="prob-box home ${homeExtra}">
-          <div class="prob-values">
-            <strong>${formatPercent(homeProb, decimals)}</strong>
-            ${
-              showOdds
-                ? `<span class="prob-odds">${formatAmerican(homeOdds)}</span>`
-                : ""
-            }
-          </div>
-        </div>
-      `;
-    }
+      
   
     // Update selection visuals for the spread buttons
     const buttons = card.querySelectorAll(".spread-option");
@@ -1248,7 +1259,6 @@ function renderTeamTable() {
     container.innerHTML = "";
   
     const resultsCopy = [...state.results];
-  
     const { key, direction } = state.currentSort;
     const dir = direction === "asc" ? 1 : -1;
   
@@ -1284,27 +1294,12 @@ function renderTeamTable() {
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
   
-    const headers = [
-      { key: "team", label: "Team" },
-      { key: "division", label: "Div" },
-      { key: "current", label: "Curr W" },
-      { key: "expected", label: "Exp add W" },
-      { key: "projected", label: "Proj W" },
-      { key: "P0", label: "P(0)" },
-      { key: "P1", label: "P(1)" },
-      { key: "P2", label: "P(2)" },
-      { key: "P3", label: "P(3)" },
-      { key: "P4", label: "P(4)" },
-      { key: "PA1", label: "P(≥1)" },
-      { key: "PA2", label: "P(≥2)" },
-      { key: "PA3", label: "P(≥3)" },
-      { key: "PA4", label: "P(≥4)" },
-      { key: "threshold", label: `P(total ≥ X)` }
-    ];
+    for (const h of TABLE_HEADERS) {
+      if (!state.visibleColumns[h.key]) continue;
   
-    for (const h of headers) {
       const th = document.createElement("th");
       th.textContent = h.label;
+  
       if (["team", "division", "projected", "current", "threshold"].includes(h.key)) {
         th.classList.add("sortable");
         const span = document.createElement("span");
@@ -1329,6 +1324,7 @@ function renderTeamTable() {
           renderTeamTable();
         });
       }
+  
       headerRow.appendChild(th);
     }
   
@@ -1341,57 +1337,65 @@ function renderTeamTable() {
       const tr = document.createElement("tr");
       tr.dataset.teamId = r.teamId;
   
-      // NEW: feed palette into CSS vars for table-row heat
       const palette = teamPalettes[r.teamId] || {};
-      tr.style.setProperty("--team-color-main", palette.primary || "#4b5563");
-      tr.style.setProperty("--team-color-alt", palette.secondary || "#9ca3af");
+      tr.style.setProperty("--team-color-main", palette.primary || "#334155");
+      tr.style.setProperty("--team-color-alt", palette.secondary || "#64748b");
   
       tr.addEventListener("click", () => {
         showTeamDetail(r.teamId);
       });
   
-      // Team cell with heat background
-      const tdTeam = document.createElement("td");
-      tdTeam.textContent = r.teamId;
-      tdTeam.className = "team-cell-heat";
-      tr.appendChild(tdTeam);
+      for (const h of TABLE_HEADERS) {
+        if (!state.visibleColumns[h.key]) continue;
   
-      const tdDiv = document.createElement("td");
-      tdDiv.innerHTML = `<span class="badge-division">${r.division}</span>`;
-      tr.appendChild(tdDiv);
-  
-      const tdCurr = document.createElement("td");
-      tdCurr.textContent = r.currentWins.toString();
-      tr.appendChild(tdCurr);
-  
-      const tdExp = document.createElement("td");
-      tdExp.textContent = formatNumber(r.expectedAdditionalWins, precision);
-      tr.appendChild(tdExp);
-  
-      const tdProj = document.createElement("td");
-      tdProj.textContent = formatNumber(r.projectedWins, precision);
-      tr.appendChild(tdProj);
-  
-      // P(0..4)
-      for (let k = 0; k <= 4; k++) {
         const td = document.createElement("td");
-        td.textContent = formatPercent(r.exact[k], precision);
+  
+        switch (h.key) {
+          case "team":
+            td.className = "team-cell";
+            td.textContent = r.teamId;
+            break;
+          case "division":
+            td.innerHTML = `<span class="badge-division">${r.division}</span>`;
+            break;
+          case "current":
+            td.textContent = r.currentWins.toString();
+            break;
+          case "expected":
+            td.textContent = formatNumber(r.expectedAdditionalWins, precision);
+            break;
+          case "projected":
+            td.textContent = formatNumber(r.projectedWins, precision);
+            break;
+          case "P0":
+          case "P1":
+          case "P2":
+          case "P3":
+          case "P4": {
+            const k = Number(h.key.slice(1));
+            td.textContent = formatPercent(r.exact[k], precision);
+            break;
+          }
+          case "PA1":
+          case "PA2":
+          case "PA3":
+          case "PA4": {
+            const k = Number(h.key.slice(2));
+            td.textContent = formatPercent(r.cumulative[k], precision);
+            break;
+          }
+          case "threshold":
+            td.textContent = formatPercent(r.pTotalAtLeastX, precision);
+            if (r.pTotalAtLeastX >= 0.5) {
+              td.classList.add("highlight-threshold");
+            }
+            break;
+          default:
+            break;
+        }
+  
         tr.appendChild(td);
       }
-  
-      // P(>=1..>=4)
-      for (let k = 1; k <= 4; k++) {
-        const td = document.createElement("td");
-        td.textContent = formatPercent(r.cumulative[k], precision);
-        tr.appendChild(td);
-      }
-  
-      const tdThreshold = document.createElement("td");
-      tdThreshold.textContent = formatPercent(r.pTotalAtLeastX, precision);
-      if (r.pTotalAtLeastX >= 0.5) {
-        tdThreshold.classList.add("highlight-threshold");
-      }
-      tr.appendChild(tdThreshold);
   
       tbody.appendChild(tr);
     }
@@ -1400,6 +1404,46 @@ function renderTeamTable() {
     container.appendChild(table);
   }
   
+  
+  function renderColumnPicker() {
+    const picker = document.getElementById("columnPicker");
+    if (!picker) return;
+  
+    picker.innerHTML = "";
+  
+    const grid = document.createElement("div");
+    grid.className = "column-picker-grid";
+  
+    TABLE_HEADERS.forEach((h) => {
+      // If you want 'team' & 'division' always on, skip them here:
+      // if (h.key === "team" || h.key === "division") return;
+  
+      const wrap = document.createElement("label");
+      wrap.className = "column-toggle";
+  
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = state.visibleColumns[h.key] !== false;
+  
+      input.addEventListener("change", () => {
+        state.visibleColumns[h.key] = input.checked;
+        saveStateToStorage();
+        renderTeamTable();
+      });
+  
+      const span = document.createElement("span");
+      span.textContent = h.label;
+  
+      wrap.appendChild(input);
+      wrap.appendChild(span);
+      grid.appendChild(wrap);
+    });
+  
+    picker.appendChild(grid);
+  }
+  
+
+
 
 // Division summaries + tie note
 function renderDivisionSummary() {
@@ -1678,6 +1722,15 @@ function attachEventListeners() {
       applyViewMode();
     });
   }
+  const colBtn = document.getElementById("toggleColumnPicker");
+  if (colBtn) {
+    colBtn.addEventListener("click", () => {
+        const picker = document.getElementById("columnPicker");
+        if (!picker) return;
+        picker.classList.toggle("hidden");
+    });
+    }
+
 
   const oddsBtn = document.getElementById("toggleOddsBtn");
   if (oddsBtn) {

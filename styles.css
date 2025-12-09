@@ -267,50 +267,42 @@
   }
   
   /* -------------------------
-     Game card + team heat
+     Game card
   ------------------------- */
   
   .game-card {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 2fr);
+    gap: 1rem;
     padding: 1rem 1.4rem;
     border-radius: 1rem;
     border: 1px solid rgba(148, 163, 184, 0.45);
+    align-items: center;
     font-size: 1.05rem;
     overflow: hidden;
   }
   
-  /* neutral base; color overlays come from ::before */
+  /* team color heat both sides, neutral middle */
   
   body.theme-dark .game-card {
-    background: radial-gradient(circle at top left, #111827 0, #020617 55%);
+    background: linear-gradient(
+      90deg,
+      var(--away-color-main, #111827) 0%,
+      rgba(15, 23, 42, 0.98) 44%,
+      rgba(15, 23, 42, 0.98) 56%,
+      var(--home-color-main, #16a34a) 100%
+    );
   }
   
   body.theme-light .game-card {
-    background: radial-gradient(circle at top left, #e5e7eb 0, #ffffff 55%);
-  }
-  
-  /* left/right team color heat overlay */
-  
-  .game-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      linear-gradient(
-        to right,
-        var(--away-color-main, #1f2937) 0%,
-        transparent 45%
-      ),
-      linear-gradient(
-        to left,
-        var(--home-color-main, #1f2937) 0%,
-        transparent 45%
-      );
-    opacity: 0.55;
+    background: linear-gradient(
+      90deg,
+      var(--away-color-main, #9ca3af) 0%,
+      rgba(249, 250, 251, 0.98) 44%,
+      rgba(249, 250, 251, 0.98) 56%,
+      var(--home-color-main, #16a34a) 100%
+    );
   }
   
   /* Edge bar: home -> away vertically */
@@ -329,7 +321,7 @@
     );
   }
   
-  /* Ensure card contents sit above overlays */
+  /* contents above background */
   
   .game-card > * {
     position: relative;
@@ -366,7 +358,7 @@
     grid-template-columns: 1.3fr auto 1.3fr;
     align-items: center;
     column-gap: 0.75rem;
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 600;
   }
   
@@ -405,10 +397,10 @@
     text-align: center;
   }
   
-  /* Meta row (line + probabilities) */
+  /* Meta row */
   
   .game-info-meta {
-    margin-top: 0.45rem;
+    margin-top: 0.55rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -416,27 +408,17 @@
   }
   
   /* -------------------------
-     Spread line row + centered bar
+     Spread pill
   ------------------------- */
-  
-  /* Grid: [LINE pill] [full-width spread bar] */
-  
-  .line-row {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    column-gap: 0.75rem;
-    align-items: center;
-  }
-  
-  /* LINE pill */
   
   .selected-spread {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.4rem;
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     font-weight: 600;
-    padding: 0.25rem 0.75rem;
+    padding: 0.25rem 0.9rem;
     border-radius: 999px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -463,178 +445,70 @@
     background: rgba(148, 163, 184, 0.18);
   }
   
-  /* Spread bar wrapper that stretches across row */
-  
-  .spread-band-wrapper {
-    position: relative;
-    width: 100%;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.6);
-    padding: 0.2rem 0.4rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    max-width: 100%;
-  }
-  
-  body.theme-dark .spread-band-wrapper {
-    background: rgba(10, 18, 40, 0.96);
-  }
-  
-  body.theme-light .spread-band-wrapper {
-    background: rgba(255, 255, 255, 0.96);
-  }
-  
-  /* Centered spread band */
-  
-  .spread-band {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    gap: 0.35rem;
-  }
-  
-  /* Slim scrollbar */
-  
-  .spread-band-wrapper::-webkit-scrollbar {
-    height: 4px;
-  }
-  
-  .spread-band-wrapper::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.7);
-    border-radius: 999px;
-  }
-  
-  .spread-band-wrapper::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  /* Spread buttons */
-  
-  .spread-option {
-    flex: 0 0 auto;
-    font-size: 0.9rem;
-    padding: 0.35rem 0.7rem;
-    border-radius: 999px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    white-space: nowrap;
-    background: transparent;
-    transition: background 0.12s ease, border-color 0.12s ease,
-      color 0.12s ease, transform 0.05s ease;
-  }
-  
-  body.theme-dark .spread-option {
-    color: var(--text-soft-dark);
-  }
-  
-  body.theme-light .spread-option {
-    color: var(--text-soft-light);
-  }
-  
-  .spread-option.neutral {
-    border-color: var(--spread-neutral);
-  }
-  
-  .spread-option.favorite {
-    border-color: var(--spread-favorite);
-  }
-  
-  .spread-option.underdog {
-    border-color: var(--spread-dog);
-  }
-  
-  .spread-option:hover {
-    transform: translateY(-1px);
-  }
-  
-  /* Selected spread */
-  
-  .spread-option.selected {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #022c22;
-    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.35);
-  }
-  
-  /* Hide extra wide spreads unless expanded */
-  
-  .spread-option.extra {
-    display: none;
-  }
-  
-  .game-card.expanded .spread-option.extra {
-    display: inline-flex;
-  }
-  
-  /* Expand / collapse button */
-  
-  .spread-expand-btn {
-    margin-top: 0.35rem;
-    align-self: flex-end;
-    font-size: 0.8rem;
-    padding: 0.25rem 0.75rem;
-  }
-  
   /* -------------------------
-     Probabilities – centered
+     Probability boxes
   ------------------------- */
   
   .selected-prob {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 1.25rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
     width: 100%;
-    justify-content: center;
+    margin-top: 0.2rem;
   }
   
   .prob-box {
-    flex: 0 0 180px;
-    min-width: 150px;
-    padding: 0.45rem 0.85rem;
+    min-width: 130px;
+    padding: 0.45rem 0.9rem;
     border-radius: 0.7rem;
     border: 1px solid transparent;
     font-size: 0.95rem;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    gap: 0.15rem;
   }
   
-  .prob-label {
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    opacity: 0.9;
+  .prob-main {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
   }
   
-  .prob-values {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.05rem;
-  }
-  
-  .prob-box strong {
+  .prob-value {
     font-variant-numeric: tabular-nums;
-    font-size: 1.02rem;
+    font-size: 1.22rem;
+    font-weight: 700;
   }
   
   .prob-odds {
-    font-size: 0.78rem;
-    opacity: 0.9;
+    font-size: 0.86rem;
+    opacity: 0.95;
   }
   
-  /* tie labels to team colors */
+  /* odds position: away (left of %) / home (right of %) */
   
-  .prob-box.home .prob-label {
-    color: var(--home-color-main, #22c55e);
+  .prob-box.away .prob-main {
+    flex-direction: row; /* odds, then percent */
   }
   
-  .prob-box.away .prob-label {
-    color: var(--away-color-main, #f97316);
+  .prob-box.home .prob-main {
+    flex-direction: row; /* percent then odds */
+  }
+  
+  .prob-box.home .prob-value {
+    order: 1;
+  }
+  
+  .prob-box.home .prob-odds {
+    order: 2;
+  }
+  
+  .prob-box.away .prob-value {
+    order: 2;
+  }
+  
+  .prob-box.away .prob-odds {
+    order: 1;
   }
   
   /* neutral base */
@@ -651,7 +525,7 @@
     color: var(--text-main-light);
   }
   
-  /* favorite / underdog variants if you add classes in JS */
+  /* favorite / underdog variations (classes added in JS) */
   
   body.theme-dark .prob-box.favorite {
     background: linear-gradient(
@@ -694,8 +568,96 @@
   }
   
   /* -------------------------
-     Results table + team heat
+     Spread band
   ------------------------- */
+  
+  .spread-band {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem;
+    padding-bottom: 0.2rem;
+  }
+  
+  .spread-option {
+    flex: 0 0 auto;
+    font-size: 1rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    background: transparent;
+    transition: background 0.12s ease, border-color 0.12s ease,
+      color 0.12s ease, transform 0.05s ease;
+  }
+  
+  body.theme-dark .spread-option {
+    color: var(--text-soft-dark);
+  }
+  
+  body.theme-light .spread-option {
+    color: var(--text-soft-light);
+  }
+  
+  .spread-option.neutral {
+    border-color: var(--spread-neutral);
+  }
+  
+  .spread-option.favorite {
+    border-color: var(--spread-favorite);
+  }
+  
+  .spread-option.underdog {
+    border-color: var(--spread-dog);
+  }
+  
+  .spread-option:hover {
+    transform: translateY(-1px);
+  }
+  
+  /* selected spread */
+  
+  .spread-option.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #022c22;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.35);
+  }
+  
+  /* hide extra wide spreads unless expanded */
+  
+  .spread-option.extra {
+    display: none;
+  }
+  
+  .game-card.expanded .spread-option.extra {
+    display: inline-flex;
+  }
+  
+  /* expand / collapse button */
+  
+  .spread-expand-btn {
+    margin-top: 0.4rem;
+    align-self: flex-start;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.75rem;
+  }
+  
+  /* -------------------------
+     Results table
+  ------------------------- */
+  
+  .results-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  
+  .results-columns-btn {
+    white-space: nowrap;
+  }
   
   .table-container {
     margin-top: 0.6rem;
@@ -760,21 +722,17 @@
     margin-left: 0.15rem;
   }
   
-  /* row default vars for heat */
+  /* full-row team color heat */
   
   .table tbody tr {
-    --team-color-main: #4b5563;
-    --team-color-alt: #9ca3af;
-  }
-
-  .table tbody tr {
-    position: relative;
+    --team-color-main: #334155;
+    --team-color-alt: #64748b;
     background-image: linear-gradient(
       90deg,
-      rgba(15, 23, 42, 0.85) 0%,
-      var(--team-color-main, #111827) 18%,
-      var(--team-color-alt, #4b5563) 55%,
-      rgba(15, 23, 42, 0.85) 100%
+      rgba(15, 23, 42, 0.98) 0%,
+      var(--team-color-main) 18%,
+      var(--team-color-alt) 55%,
+      rgba(15, 23, 42, 0.98) 100%
     );
     background-size: 100% 100%;
     background-repeat: no-repeat;
@@ -783,57 +741,30 @@
   body.theme-light .table tbody tr {
     background-image: linear-gradient(
       90deg,
-      rgba(249, 250, 251, 0.95) 0%,
-      var(--team-color-main, #9ca3af) 18%,
-      var(--team-color-alt, #6b7280) 55%,
-      rgba(249, 250, 251, 0.95) 100%
+      rgba(249, 250, 251, 0.98) 0%,
+      var(--team-color-main) 18%,
+      var(--team-color-alt) 55%,
+      rgba(249, 250, 251, 0.98) 100%
     );
   }
   
+  .table tbody tr:hover {
+    filter: brightness(1.05);
+    cursor: pointer;
+  }
   
-  /* team code cell with heat background (add .team-cell-heat in JS) */
+  /* first column – team code pill */
   
-  .team-cell-heat {
+  .team-cell {
     position: relative;
-    padding: 0.35rem 0.55rem;
+    padding: 0.35rem 0.6rem;
     border-radius: 0.45rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    overflow: hidden;
   }
   
-  .team-cell-heat::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(
-      90deg,
-      rgba(15, 23, 42, 0.0) 0%,
-      var(--team-color-main) 18%,
-      var(--team-color-alt) 55%,
-      transparent 100%
-    );
-    opacity: 0.45;
-    pointer-events: none;
-  }
-  
-  body.theme-light .team-cell-heat::before {
-    background: linear-gradient(
-      90deg,
-      rgba(243, 244, 246, 0.4) 0%,
-      var(--team-color-main) 20%,
-      var(--team-color-alt) 60%,
-      transparent 100%
-    );
-    opacity: 0.35;
-  }
-  
-  .table tbody tr:hover {
-    background: rgba(148, 163, 184, 0.12);
-    cursor: pointer;
-  }
+  /* division badge */
   
   .badge-division {
     font-size: 0.8rem;
@@ -842,9 +773,13 @@
     border: 1px solid rgba(148, 163, 184, 0.8);
   }
   
+  /* threshold cell highlight */
+  
   .highlight-threshold {
     background: rgba(34, 197, 94, 0.12);
   }
+  
+  /* division note */
   
   .division-note {
     font-size: 0.9rem;
@@ -854,7 +789,46 @@
   }
   
   /* -------------------------
-     Division summary – big cards + team heat
+     Column picker
+  ------------------------- */
+  
+  .column-picker {
+    margin-top: 0.6rem;
+    margin-bottom: 0.4rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 0.75rem;
+    border: 1px dashed;
+  }
+  
+  body.theme-dark .column-picker {
+    border-color: var(--border-subtle-dark);
+    background: rgba(15, 23, 42, 0.95);
+  }
+  
+  body.theme-light .column-picker {
+    border-color: var(--border-subtle-light);
+    background: rgba(249, 250, 251, 0.95);
+  }
+  
+  .column-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.4rem 0.8rem;
+  }
+  
+  .column-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.86rem;
+  }
+  
+  .column-toggle input {
+    accent-color: var(--accent);
+  }
+  
+  /* -------------------------
+     Division summary cards
   ------------------------- */
   
   .division-summary-container {
@@ -899,7 +873,7 @@
     opacity: 0.75;
   }
   
-  /* team rows inside division card */
+  /* team rows */
   
   .team-row-heat {
     --team-color-main: #4b5563;
@@ -1032,24 +1006,18 @@
       padding: 0.9rem 1rem 1.6rem;
     }
   
+    .game-card {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  
     .game-info-main {
       grid-template-columns: 1fr;
       row-gap: 0.25rem;
-      text-align: left;
     }
   
     .team-home {
       justify-content: flex-start;
       text-align: left;
-    }
-  
-    .selected-prob {
-      flex-direction: column;
-      align-items: stretch;
-    }
-  
-    .prob-box {
-      width: 100%;
     }
   }
   
