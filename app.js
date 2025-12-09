@@ -851,71 +851,66 @@ function renderSchedule() {
         const card = document.createElement("div");
         card.className = "game-card";
         card.dataset.gameId = String(game.id);
-
+  
         // Attach team colors as CSS custom properties for this card
         const homePalette = teamPalettes[game.home] || {};
         const awayPalette = teamPalettes[game.away] || {};
-
+  
         card.style.setProperty(
-            "--home-color-main",
-            homePalette.primary || "#22c55e"
+          "--home-color-main",
+          homePalette.primary || "#22c55e"
         );
         card.style.setProperty(
-            "--home-color-alt",
-            homePalette.secondary || "#16a34a"
+          "--home-color-alt",
+          homePalette.secondary || "#16a34a"
         );
         card.style.setProperty(
-            "--away-color-main",
-            awayPalette.primary || "#f97316"
+          "--away-color-main",
+          awayPalette.primary || "#f97316"
         );
         card.style.setProperty(
-            "--away-color-alt",
-            awayPalette.secondary || "#ea580c"
+          "--away-color-alt",
+          awayPalette.secondary || "#ea580c"
         );
   
-        // --- Left side: info ---
         const info = document.createElement("div");
+  
+        // Top row: week / day
         const infoTop = document.createElement("div");
         infoTop.className = "game-info-top";
         infoTop.textContent = `Week ${game.week} · ${game.day}`;
+  
+        // Matchup row – away left, home right
         const infoMain = document.createElement("div");
         infoMain.className = "game-info-main";
-        
         const awayTeam = teams[game.away];
         const homeTeam = teams[game.home];
-        
+  
         infoMain.innerHTML = `
           <div class="team-slot team-away">
             <span class="team-code">${game.away}</span>
             <span class="team-name">${awayTeam.name}</span>
           </div>
-          <div class="game-center">
-            <span class="at-label">at</span>
-          </div>
+          <div class="game-center">AT</div>
           <div class="team-slot team-home">
             <span class="team-code">${game.home}</span>
             <span class="team-name">${homeTeam.name}</span>
           </div>
         `;
-        
   
         const infoMeta = document.createElement("div");
         infoMeta.className = "game-info-meta";
   
+        // LINE pill + spread bar row
+        const lineRow = document.createElement("div");
+        lineRow.className = "line-row";
+  
         const selectedSpreadSpan = document.createElement("span");
         selectedSpreadSpan.className = "selected-spread";
   
-        const selectedProbSpan = document.createElement("span");
-        selectedProbSpan.className = "selected-prob";
+        const bandWrapper = document.createElement("div");
+        bandWrapper.className = "spread-band-wrapper";
   
-        infoMeta.appendChild(selectedSpreadSpan);
-        infoMeta.appendChild(selectedProbSpan);
-  
-        info.appendChild(infoTop);
-        info.appendChild(infoMain);
-        info.appendChild(infoMeta);
-  
-        // --- Right side: spread band + expand control ---
         const band = document.createElement("div");
         band.className = "spread-band";
   
@@ -929,7 +924,6 @@ function renderSchedule() {
             (value > 0 ? "+" : "") + value.toFixed(1).replace(/\.0$/, ".0");
           btn.textContent = label;
   
-          // Style by sign
           if (Math.abs(value - NEUTRAL_SPREAD) < 1e-6) {
             btn.classList.add("neutral");
           } else if (value < 0) {
@@ -938,7 +932,6 @@ function renderSchedule() {
             btn.classList.add("underdog");
           }
   
-          // Hide by default outside ±10.5 – mark as extra
           if (Math.abs(value) > 10.5) {
             btn.classList.add("extra");
           }
@@ -950,8 +943,16 @@ function renderSchedule() {
           band.appendChild(btn);
         }
   
-        card.appendChild(info);
-        card.appendChild(band);
+        bandWrapper.appendChild(band);
+        lineRow.appendChild(selectedSpreadSpan);
+        lineRow.appendChild(bandWrapper);
+  
+        // Probabilities row
+        const selectedProbSpan = document.createElement("div");
+        selectedProbSpan.className = "selected-prob";
+  
+        infoMeta.appendChild(lineRow);
+        infoMeta.appendChild(selectedProbSpan);
   
         // Expand / collapse spreads beyond ±10.5
         const expandBtn = document.createElement("button");
@@ -966,8 +967,13 @@ function renderSchedule() {
             : "Expand spreads";
         });
   
-        card.appendChild(expandBtn);
+        infoMeta.appendChild(expandBtn);
   
+        info.appendChild(infoTop);
+        info.appendChild(infoMain);
+        info.appendChild(infoMeta);
+  
+        card.appendChild(info);
         list.appendChild(card);
   
         // Initialize display with stored spread, if any
@@ -978,6 +984,7 @@ function renderSchedule() {
       container.appendChild(weekBlock);
     }
   }
+  
   
 
 // Set spread for a game and recompute
