@@ -300,7 +300,7 @@
       radial-gradient(circle at top left, #111827 0, #020617 55%);
   }
   
-  /* Light: same idea, on a light shell */
+  /* Light */
   
   body.theme-light .game-card {
     background:
@@ -362,10 +362,7 @@
     border: 1px solid rgba(148, 163, 184, 0.8);
   }
   
-  /* -------------------------
-     Matchup layout
-     (Away left, Home right, center "at")
-  ------------------------- */
+  /* Matchup layout – away left / home right */
   
   .game-info-main {
     margin-top: 0.35rem;
@@ -412,7 +409,7 @@
     text-align: center;
   }
   
-  /* Meta row below matchup */
+  /* Meta row */
   
   .game-info-meta {
     margin-top: 0.55rem;
@@ -531,7 +528,7 @@
     color: var(--text-main-light);
   }
   
-  /* favorite / underdog states (JS adds .favorite / .underdog) */
+  /* optional favorite / underdog styling if you add those classes in JS */
   
   body.theme-dark .prob-box.favorite {
     background: linear-gradient(
@@ -650,7 +647,7 @@
   }
   
   /* -------------------------
-     Results table / summary
+     Results table
   ------------------------- */
   
   .table-container {
@@ -703,6 +700,8 @@
     text-align: left;
   }
   
+  /* sortable headers */
+  
   .table th.sortable {
     cursor: pointer;
     user-select: none;
@@ -712,6 +711,50 @@
   .table th.sortable .sort-indicator {
     opacity: 0.5;
     margin-left: 0.15rem;
+  }
+  
+  /* TEAM HEAT COLUMN */
+  
+  .table tbody tr {
+    --team-color-main: #4b5563;
+    --team-color-alt: #9ca3af;
+  }
+  
+  .team-cell-heat {
+    position: relative;
+    padding: 0.35rem 0.55rem;
+    border-radius: 0.45rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    overflow: hidden;
+  }
+  
+  .team-cell-heat::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      90deg,
+      rgba(15, 23, 42, 0.0) 0%,
+      var(--team-color-main) 18%,
+      var(--team-color-alt) 55%,
+      transparent 100%
+    );
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  
+  body.theme-light .team-cell-heat::before {
+    background: linear-gradient(
+      90deg,
+      rgba(243, 244, 246, 0.4) 0%,
+      var(--team-color-main) 20%,
+      var(--team-color-alt) 60%,
+      transparent 100%
+    );
+    opacity: 0.35;
   }
   
   .table tbody tr:hover {
@@ -737,37 +780,45 @@
     opacity: 0.85;
   }
   
-  /* Division summary cards */
+  /* -------------------------
+     Division summary – big cards + team heat
+  ------------------------- */
   
   .division-summary-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 0.75rem;
-    margin-top: 0.9rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+    margin-top: 1.1rem;
   }
   
   .division-card {
-    border-radius: 0.9rem;
+    border-radius: 1rem;
     border: 1px solid;
-    padding: 0.6rem 0.8rem;
+    padding: 0.8rem 1rem 0.9rem;
     font-size: 0.9rem;
   }
   
   body.theme-dark .division-card {
     border-color: var(--border-subtle-dark);
-    background: rgba(15, 23, 42, 0.95);
+    background: radial-gradient(circle at top left, #020617 0, #020617 70%);
   }
   
   body.theme-light .division-card {
     border-color: var(--border-subtle-light);
-    background: rgba(255, 255, 255, 1);
+    background: radial-gradient(circle at top left, #f3f4f6 0, #ffffff 70%);
   }
   
   .division-card-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.45rem;
+  }
+  
+  .division-card-header strong {
+    font-size: 0.95rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
   
   .division-card-header span {
@@ -775,14 +826,66 @@
     opacity: 0.75;
   }
   
-  .division-team-row {
+  /* team rows inside division card */
+  
+  .team-row-heat {
+    --team-color-main: #4b5563;
+    --team-color-alt: #9ca3af;
+    position: relative;
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0.15rem;
+    align-items: center;
+    margin-bottom: 0.2rem;
+    padding: 0.28rem 0.55rem;
+    border-radius: 0.55rem;
+    overflow: hidden;
   }
   
-  .division-team-row strong {
-    font-size: 0.9rem;
+  .team-row-heat::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      90deg,
+      var(--team-color-main) 0%,
+      var(--team-color-alt) 38%,
+      transparent 100%
+    );
+    opacity: 0.32;
+    pointer-events: none;
+  }
+  
+  body.theme-light .team-row-heat::before {
+    background: linear-gradient(
+      90deg,
+      rgba(243, 244, 246, 0.7) 0%,
+      var(--team-color-main) 18%,
+      var(--team-color-alt) 55%,
+      transparent 100%
+    );
+    opacity: 0.26;
+  }
+  
+  .team-row-heat > * {
+    position: relative;
+    z-index: 1;
+  }
+  
+  .division-rank {
+    margin-right: 0.25rem;
+    opacity: 0.85;
+  }
+  
+  .division-team-code {
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  
+  .division-team-proj {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
   }
   
   /* -------------------------

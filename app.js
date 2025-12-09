@@ -1239,217 +1239,230 @@ function computeTotalAtLeastX(currentWins, exact, threshold) {
 
 // Render main team projections table
 function renderTeamTable() {
-  const container = document.getElementById("teamTableContainer");
-  container.innerHTML = "";
-
-  const resultsCopy = [...state.results];
-
-  const { key, direction } = state.currentSort;
-  const dir = direction === "asc" ? 1 : -1;
-
-  const valueForKey = (r) => {
-    switch (key) {
-      case "team":
-        return r.teamId;
-      case "division":
-        return r.division;
-      case "projected":
-        return r.projectedWins;
-      case "current":
-        return r.currentWins;
-      case "threshold":
-        return r.pTotalAtLeastX;
-      default:
-        return r.projectedWins;
-    }
-  };
-
-  resultsCopy.sort((a, b) => {
-    const va = valueForKey(a);
-    const vb = valueForKey(b);
-    if (va < vb) return -1 * dir;
-    if (va > vb) return 1 * dir;
-    return 0;
-  });
-
-  const precision = state.precision;
-  const table = document.createElement("table");
-  table.className = "table";
-
-  const thead = document.createElement("thead");
-  const headerRow = document.createElement("tr");
-
-  const headers = [
-    { key: "team", label: "Team" },
-    { key: "division", label: "Div" },
-    { key: "current", label: "Curr W" },
-    { key: "expected", label: "Exp add W" },
-    { key: "projected", label: "Proj W" },
-    { key: "P0", label: "P(0)" },
-    { key: "P1", label: "P(1)" },
-    { key: "P2", label: "P(2)" },
-    { key: "P3", label: "P(3)" },
-    { key: "P4", label: "P(4)" },
-    { key: "PA1", label: "P(≥1)" },
-    { key: "PA2", label: "P(≥2)" },
-    { key: "PA3", label: "P(≥3)" },
-    { key: "PA4", label: "P(≥4)" },
-    { key: "threshold", label: `P(total ≥ X)` }
-  ];
-
-  for (const h of headers) {
-    const th = document.createElement("th");
-    th.textContent = h.label;
-    if (
-      ["team", "division", "projected", "current", "threshold"].includes(h.key)
-    ) {
-      th.classList.add("sortable");
-      const span = document.createElement("span");
-      span.className = "sort-indicator";
-      span.textContent =
-        state.currentSort.key === h.key
-          ? state.currentSort.direction === "asc"
-            ? "▲"
-            : "▼"
-          : "◆";
-      th.appendChild(span);
-
-      th.addEventListener("click", () => {
-        if (state.currentSort.key === h.key) {
-          state.currentSort.direction =
-            state.currentSort.direction === "asc" ? "desc" : "asc";
-        } else {
-          state.currentSort.key = h.key;
-          state.currentSort.direction =
-            h.key === "team" || h.key === "division" ? "asc" : "desc";
-        }
-        renderTeamTable();
-      });
-    }
-    headerRow.appendChild(th);
-  }
-
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-
-  for (const r of resultsCopy) {
-    const tr = document.createElement("tr");
-    tr.dataset.teamId = r.teamId;
-
-    tr.addEventListener("click", () => {
-      showTeamDetail(r.teamId);
+    const container = document.getElementById("teamTableContainer");
+    container.innerHTML = "";
+  
+    const resultsCopy = [...state.results];
+  
+    const { key, direction } = state.currentSort;
+    const dir = direction === "asc" ? 1 : -1;
+  
+    const valueForKey = (r) => {
+      switch (key) {
+        case "team":
+          return r.teamId;
+        case "division":
+          return r.division;
+        case "projected":
+          return r.projectedWins;
+        case "current":
+          return r.currentWins;
+        case "threshold":
+          return r.pTotalAtLeastX;
+        default:
+          return r.projectedWins;
+      }
+    };
+  
+    resultsCopy.sort((a, b) => {
+      const va = valueForKey(a);
+      const vb = valueForKey(b);
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
     });
-
-    const tdTeam = document.createElement("td");
-    tdTeam.textContent = r.teamId;
-    tr.appendChild(tdTeam);
-
-    const tdDiv = document.createElement("td");
-    tdDiv.innerHTML = `<span class="badge-division">${r.division}</span>`;
-    tr.appendChild(tdDiv);
-
-    const tdCurr = document.createElement("td");
-    tdCurr.textContent = r.currentWins.toString();
-    tr.appendChild(tdCurr);
-
-    const tdExp = document.createElement("td");
-    tdExp.textContent = formatNumber(r.expectedAdditionalWins, precision);
-    tr.appendChild(tdExp);
-
-    const tdProj = document.createElement("td");
-    tdProj.textContent = formatNumber(r.projectedWins, precision);
-    tr.appendChild(tdProj);
-
-    // P(0..4)
-    for (let k = 0; k <= 4; k++) {
-      const td = document.createElement("td");
-      td.textContent = formatPercent(r.exact[k], precision);
-      tr.appendChild(td);
+  
+    const precision = state.precision;
+    const table = document.createElement("table");
+    table.className = "table";
+  
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+  
+    const headers = [
+      { key: "team", label: "Team" },
+      { key: "division", label: "Div" },
+      { key: "current", label: "Curr W" },
+      { key: "expected", label: "Exp add W" },
+      { key: "projected", label: "Proj W" },
+      { key: "P0", label: "P(0)" },
+      { key: "P1", label: "P(1)" },
+      { key: "P2", label: "P(2)" },
+      { key: "P3", label: "P(3)" },
+      { key: "P4", label: "P(4)" },
+      { key: "PA1", label: "P(≥1)" },
+      { key: "PA2", label: "P(≥2)" },
+      { key: "PA3", label: "P(≥3)" },
+      { key: "PA4", label: "P(≥4)" },
+      { key: "threshold", label: `P(total ≥ X)` }
+    ];
+  
+    for (const h of headers) {
+      const th = document.createElement("th");
+      th.textContent = h.label;
+      if (["team", "division", "projected", "current", "threshold"].includes(h.key)) {
+        th.classList.add("sortable");
+        const span = document.createElement("span");
+        span.className = "sort-indicator";
+        span.textContent =
+          state.currentSort.key === h.key
+            ? state.currentSort.direction === "asc"
+              ? "▲"
+              : "▼"
+            : "◆";
+        th.appendChild(span);
+  
+        th.addEventListener("click", () => {
+          if (state.currentSort.key === h.key) {
+            state.currentSort.direction =
+              state.currentSort.direction === "asc" ? "desc" : "asc";
+          } else {
+            state.currentSort.key = h.key;
+            state.currentSort.direction =
+              h.key === "team" || h.key === "division" ? "asc" : "desc";
+          }
+          renderTeamTable();
+        });
+      }
+      headerRow.appendChild(th);
     }
-
-    // P(>=1..>=4)
-    for (let k = 1; k <= 4; k++) {
-      const td = document.createElement("td");
-      td.textContent = formatPercent(r.cumulative[k], precision);
-      tr.appendChild(td);
+  
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+  
+    const tbody = document.createElement("tbody");
+  
+    for (const r of resultsCopy) {
+      const tr = document.createElement("tr");
+      tr.dataset.teamId = r.teamId;
+  
+      // NEW: feed palette into CSS vars for table-row heat
+      const palette = teamPalettes[r.teamId] || {};
+      tr.style.setProperty("--team-color-main", palette.primary || "#4b5563");
+      tr.style.setProperty("--team-color-alt", palette.secondary || "#9ca3af");
+  
+      tr.addEventListener("click", () => {
+        showTeamDetail(r.teamId);
+      });
+  
+      // Team cell with heat background
+      const tdTeam = document.createElement("td");
+      tdTeam.textContent = r.teamId;
+      tdTeam.className = "team-cell-heat";
+      tr.appendChild(tdTeam);
+  
+      const tdDiv = document.createElement("td");
+      tdDiv.innerHTML = `<span class="badge-division">${r.division}</span>`;
+      tr.appendChild(tdDiv);
+  
+      const tdCurr = document.createElement("td");
+      tdCurr.textContent = r.currentWins.toString();
+      tr.appendChild(tdCurr);
+  
+      const tdExp = document.createElement("td");
+      tdExp.textContent = formatNumber(r.expectedAdditionalWins, precision);
+      tr.appendChild(tdExp);
+  
+      const tdProj = document.createElement("td");
+      tdProj.textContent = formatNumber(r.projectedWins, precision);
+      tr.appendChild(tdProj);
+  
+      // P(0..4)
+      for (let k = 0; k <= 4; k++) {
+        const td = document.createElement("td");
+        td.textContent = formatPercent(r.exact[k], precision);
+        tr.appendChild(td);
+      }
+  
+      // P(>=1..>=4)
+      for (let k = 1; k <= 4; k++) {
+        const td = document.createElement("td");
+        td.textContent = formatPercent(r.cumulative[k], precision);
+        tr.appendChild(td);
+      }
+  
+      const tdThreshold = document.createElement("td");
+      tdThreshold.textContent = formatPercent(r.pTotalAtLeastX, precision);
+      if (r.pTotalAtLeastX >= 0.5) {
+        tdThreshold.classList.add("highlight-threshold");
+      }
+      tr.appendChild(tdThreshold);
+  
+      tbody.appendChild(tr);
     }
-
-    const tdThreshold = document.createElement("td");
-    tdThreshold.textContent = formatPercent(r.pTotalAtLeastX, precision);
-    if (r.pTotalAtLeastX >= 0.5) {
-      tdThreshold.classList.add("highlight-threshold");
-    }
-    tr.appendChild(tdThreshold);
-
-    tbody.appendChild(tr);
+  
+    table.appendChild(tbody);
+    container.appendChild(table);
   }
-
-  table.appendChild(tbody);
-  container.appendChild(table);
-}
+  
 
 // Division summaries + tie note
 function renderDivisionSummary() {
-  const container = document.getElementById("divisionSummaryContainer");
-  container.innerHTML = "";
-
-  const resultsByDiv = {};
-  for (const r of state.results) {
-    if (!resultsByDiv[r.division]) resultsByDiv[r.division] = [];
-    resultsByDiv[r.division].push(r);
-  }
-
-  const divisionNote = document.getElementById("divisionNote");
-  divisionNote.textContent = "";
-
-  const divisionCodes = Object.keys(resultsByDiv).sort();
-  for (const division of divisionCodes) {
-    const arr = resultsByDiv[division].slice();
-    arr.sort((a, b) => b.projectedWins - a.projectedWins);
-
-    let hasTie = false;
-    for (let i = 1; i < arr.length; i++) {
-      if (Math.abs(arr[i].projectedWins - arr[i - 1].projectedWins) < 1e-4) {
-        hasTie = true;
-        break;
+    const container = document.getElementById("divisionSummaryContainer");
+    container.innerHTML = "";
+  
+    const resultsByDiv = {};
+    for (const r of state.results) {
+      if (!resultsByDiv[r.division]) resultsByDiv[r.division] = [];
+      resultsByDiv[r.division].push(r);
+    }
+  
+    const divisionNote = document.getElementById("divisionNote");
+    divisionNote.textContent = "";
+  
+    const divisionCodes = Object.keys(resultsByDiv).sort();
+    for (const division of divisionCodes) {
+      const arr = resultsByDiv[division].slice();
+      arr.sort((a, b) => b.projectedWins - a.projectedWins);
+  
+      let hasTie = false;
+      for (let i = 1; i < arr.length; i++) {
+        if (Math.abs(arr[i].projectedWins - arr[i - 1].projectedWins) < 1e-4) {
+          hasTie = true;
+          break;
+        }
       }
+  
+      if (hasTie) {
+        divisionNote.textContent =
+          "Note: One or more divisions have projected win ties; tiebreakers are not implemented, so rankings there are approximate.";
+      }
+  
+      const card = document.createElement("div");
+      card.className = "division-card";
+  
+      const header = document.createElement("div");
+      header.className = "division-card-header";
+      const title = document.createElement("strong");
+      title.textContent = division;
+      const subt = document.createElement("span");
+      subt.textContent = hasTie ? "tie detected" : "ordering by projected wins";
+      header.appendChild(title);
+      header.appendChild(subt);
+      card.appendChild(header);
+  
+      arr.forEach((r, idx) => {
+        const row = document.createElement("div");
+        row.className = "division-team-row team-row-heat";
+  
+        const palette = teamPalettes[r.teamId] || {};
+        row.style.setProperty("--team-color-main", palette.primary || "#4b5563");
+        row.style.setProperty("--team-color-alt", palette.secondary || "#9ca3af");
+  
+        const left = document.createElement("div");
+        left.innerHTML = `<span class="division-rank">${idx + 1}.</span> <span class="division-team-code">${r.teamId}</span>`;
+        const right = document.createElement("div");
+        right.className = "division-team-proj";
+        right.textContent = formatNumber(r.projectedWins, state.precision);
+        row.appendChild(left);
+        row.appendChild(right);
+        card.appendChild(row);
+      });
+  
+      container.appendChild(card);
     }
-
-    if (hasTie) {
-      divisionNote.textContent =
-        "Note: One or more divisions have projected win ties; tiebreakers are not implemented, so rankings there are approximate.";
-    }
-
-    const card = document.createElement("div");
-    card.className = "division-card";
-
-    const header = document.createElement("div");
-    header.className = "division-card-header";
-    const title = document.createElement("strong");
-    title.textContent = division;
-    const subt = document.createElement("span");
-    subt.textContent = hasTie ? "tie detected" : "ordering by projected wins";
-    header.appendChild(title);
-    header.appendChild(subt);
-    card.appendChild(header);
-
-    arr.forEach((r, idx) => {
-      const row = document.createElement("div");
-      row.className = "division-team-row";
-      const left = document.createElement("div");
-      left.innerHTML = `<strong>${idx + 1}. ${r.teamId}</strong>`;
-      const right = document.createElement("div");
-      right.textContent = formatNumber(r.projectedWins, state.precision);
-      row.appendChild(left);
-      row.appendChild(right);
-      card.appendChild(row);
-    });
-
-    container.appendChild(card);
   }
-}
+  
 
 // Team detail overlay
 function showTeamDetail(teamId) {
