@@ -61,14 +61,28 @@
 
     <!-- Hidden by default; shown via view toggle -->
     <section id="resultsSection" class="results-section hidden">
-      <h2>Team Projections</h2>
-      <div id="divisionNote" class="division-note"></div>
-
-      <div id="teamTableContainer" class="table-container"></div>
-
-      <h3>Division Summaries</h3>
-      <div id="divisionSummaryContainer" class="division-summary-container"></div>
-    </section>
+        <div class="results-header-row">
+          <h2>Team Projections</h2>
+          <button
+            id="toggleColumnPicker"
+            type="button"
+            class="btn secondary results-columns-btn"
+          >
+            Columns
+          </button>
+        </div>
+      
+        <div id="divisionNote" class="division-note"></div>
+      
+        <!-- Column selection panel (populated by JS) -->
+        <div id="columnPicker" class="column-picker hidden"></div>
+      
+        <div id="teamTableContainer" class="table-container"></div>
+      
+        <h3>Division Summaries</h3>
+        <div id="divisionSummaryContainer" class="division-summary-container"></div>
+      </section>
+      
   </main>
 
   <div id="teamDetailOverlay" class="team-detail-overlay hidden">
