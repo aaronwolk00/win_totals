@@ -880,13 +880,24 @@ function renderSchedule() {
         infoTop.textContent = `Week ${game.week} · ${game.day}`;
         const infoMain = document.createElement("div");
         infoMain.className = "game-info-main";
+        
         const awayTeam = teams[game.away];
         const homeTeam = teams[game.home];
+        
         infoMain.innerHTML = `
-          <span class="team away">${game.away} ${awayTeam.name}</span>
-          <span class="at-separator">at</span>
-          <span class="team home">${game.home} ${homeTeam.name}</span>
+          <div class="team-slot team-away">
+            <span class="team-code">${game.away}</span>
+            <span class="team-name">${awayTeam.name}</span>
+          </div>
+          <div class="game-center">
+            <span class="at-label">at</span>
+          </div>
+          <div class="team-slot team-home">
+            <span class="team-code">${game.home}</span>
+            <span class="team-name">${homeTeam.name}</span>
+          </div>
         `;
+        
   
         const infoMeta = document.createElement("div");
         infoMeta.className = "game-info-meta";
@@ -984,6 +995,28 @@ function updateOddsToggleButton() {
       ? "Hide Implied Odds"
       : "Show Implied Odds";
   }
+
+function resetAllState() {
+    const confirmed = window.confirm(
+        "Are you sure you want to reset all spreads and projections?\n\nThis will clear all custom spreads and revert controls to defaults."
+    );
+    if (!confirmed) return;
+
+    // keep theme & view, reset all modeling inputs
+    state.spreads = {};
+    state.precision = 4;
+    state.threshold = 10;
+    state.showImpliedOdds = false;
+
+    // clear stored spreads / controls but keep theme/view
+    saveStateToStorage();
+    updateControlsFromState();
+
+    // re-render UI
+    renderSchedule();
+    computeAndRenderResults();
+}
+
   
 
 // Update one game card (selected spread, prob)
@@ -998,25 +1031,9 @@ function updateGameCardDisplay(gameId) {
     let spreadText = "Spread: — (treated as neutral for now)";
   
     const game = games.find((g) => g.id === Number(gameId));
-
-    // Classes for favorite / underdog coloring
-    let homeClass = "prob-box home";
-    let awayClass = "prob-box away";
-
   
     if (spread !== null && game) {
       prob = homeWinProbFromSpread(spread);
-        // home favorite (negative spread) vs home underdog (positive spread)
-        if (spread < 0) {
-            // home favorite, away underdog
-            homeClass += " favorite";
-            awayClass += " underdog";
-            } else if (spread > 0) {
-            // home underdog, away favorite
-            homeClass += " underdog";
-            awayClass += " favorite";
-        }
-
       const label =
         (spread > 0 ? "+" : spread < 0 ? "" : "") +
         spread.toFixed(1).replace(/\.0$/, ".0");
@@ -1031,42 +1048,57 @@ function updateGameCardDisplay(gameId) {
     }
   
     if (selectedProbSpan) {
-        const homeProb = prob;
-        const awayProb = 1 - prob;
-        const decimals = state.precision;
-        const showOdds = state.showImpliedOdds;
+      const homeProb = prob;
+      const awayProb = 1 - prob;
+      const decimals = state.precision;
+      const showOdds = state.showImpliedOdds;
   
-        const homeOdds = probToAmerican(homeProb);
-        const awayOdds = probToAmerican(awayProb);
+      const homeOdds = probToAmerican(homeProb);
+      const awayOdds = probToAmerican(awayProb);
   
-        selectedProbSpan.innerHTML = `
-          <div class="${awayClass}">
-            <span class="prob-label">Away</span>
-            <div class="prob-values">
-              <strong>${formatPercent(awayProb, decimals)}</strong>
-              ${
-                showOdds
-                  ? `<span class="prob-odds">${formatAmerican(awayOdds)}</span>`
-                  : ""
-              }
-            </div>
-          </div>
-          <div class="${homeClass}">
-            <span class="prob-label">Home</span>
-            <div class="prob-values">
-              <strong>${formatPercent(homeProb, decimals)}</strong>
-              ${
-                showOdds
-                  ? `<span class="prob-odds">${formatAmerican(homeOdds)}</span>`
-                  : ""
-              }
-            </div>
-          </div>
-        `;
+      // classify favorite/underdog from home spread sign
+      let homeExtra = "";
+      let awayExtra = "";
+  
+      if (spread !== null) {
+        if (spread < 0) {
+          // home favorite
+          homeExtra = "favorite";
+          awayExtra = "underdog";
+        } else if (spread > 0) {
+          // home underdog
+          homeExtra = "underdog";
+          awayExtra = "favorite";
+        }
       }
   
+      selectedProbSpan.innerHTML = `
+        <div class="prob-box away ${awayExtra}">
+          <span class="prob-label">Away</span>
+          <div class="prob-values">
+            <strong>${formatPercent(awayProb, decimals)}</strong>
+            ${
+              showOdds
+                ? `<span class="prob-odds">${formatAmerican(awayOdds)}</span>`
+                : ""
+            }
+          </div>
+        </div>
+        <div class="prob-box home ${homeExtra}">
+          <span class="prob-label">Home</span>
+          <div class="prob-values">
+            <strong>${formatPercent(homeProb, decimals)}</strong>
+            ${
+              showOdds
+                ? `<span class="prob-odds">${formatAmerican(homeOdds)}</span>`
+                : ""
+            }
+          </div>
+        </div>
+      `;
+    }
   
-    // Update selection visuals
+    // Update selection visuals for the spread buttons
     const buttons = card.querySelectorAll(".spread-option");
     buttons.forEach((btn) => {
       btn.classList.remove("selected");
@@ -1077,7 +1109,8 @@ function updateGameCardDisplay(gameId) {
         }
       }
     });
-}
+  }
+  
   
   
 
@@ -1610,81 +1643,87 @@ function handleThresholdChange(value) {
 }
 
 function attachEventListeners() {
-    const themeToggle = document.getElementById("themeToggle");
-    if (themeToggle) {
-      themeToggle.addEventListener("click", () => {
-        state.theme = state.theme === "dark" ? "light" : "dark";
-        saveStateToStorage();
-        applyTheme();
-      });
-    }
-  
-    const viewToggleBtn = document.getElementById("viewToggleBtn");
-    if (viewToggleBtn) {
-      viewToggleBtn.addEventListener("click", () => {
-        state.view = state.view === "schedule" ? "projections" : "schedule";
-        saveStateToStorage();
-        applyViewMode();
-      });
-    }
-  
-    const precisionSelect = document.getElementById("precisionSelect");
-    if (precisionSelect) {
-      precisionSelect.addEventListener("change", (e) => {
-        handlePrecisionChange(e.target.value);
-      });
-    }
-  
-    const thresholdInput = document.getElementById("thresholdInput");
-    if (thresholdInput) {
-      thresholdInput.addEventListener("change", (e) => {
-        handleThresholdChange(e.target.value);
-      });
-    }
-  
-    const fillEvenBtn = document.getElementById("fillEvenBtn");
-    if (fillEvenBtn) {
-      fillEvenBtn.addEventListener("click", () => {
-        fillNeutralSpreads();
-      });
-    }
-  
-    const exportBtn = document.getElementById("exportCSV");
-    if (exportBtn) {
-      exportBtn.addEventListener("click", () => {
-        exportCsv();
-      });
-    }
-
-    const oddsBtn = document.getElementById("toggleOddsBtn");
-    if (oddsBtn) {
-      oddsBtn.addEventListener("click", () => {
-        state.showImpliedOdds = !state.showImpliedOdds;
-        saveStateToStorage();
-        updateOddsToggleButton();
-        // Re-render all game cards so odds appear/disappear
-        for (const game of games) {
-          updateGameCardDisplay(game.id);
-        }
-      });
-    }  
-  
-    const overlay = document.getElementById("teamDetailOverlay");
-    const closeBtn = document.getElementById("teamDetailClose");
-    if (overlay) {
-      overlay.addEventListener("click", (e) => {
-        // click outside content closes overlay
-        if (e.target === overlay) {
-          overlay.classList.add("hidden");
-        }
-      });
-    }
-    if (closeBtn) {
-      closeBtn.addEventListener("click", () => {
-        if (overlay) overlay.classList.add("hidden");
-      });
-    }
+  const themeToggle = document.getElementById("themeToggle");
+  if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+      state.theme = state.theme === "dark" ? "light" : "dark";
+      saveStateToStorage();
+      applyTheme();
+    });
   }
+
+  const viewToggleBtn = document.getElementById("viewToggleBtn");
+  if (viewToggleBtn) {
+    viewToggleBtn.addEventListener("click", () => {
+      state.view = state.view === "schedule" ? "projections" : "schedule";
+      saveStateToStorage();
+      applyViewMode();
+    });
+  }
+
+  const oddsBtn = document.getElementById("toggleOddsBtn");
+  if (oddsBtn) {
+    oddsBtn.addEventListener("click", () => {
+      state.showImpliedOdds = !state.showImpliedOdds;
+      saveStateToStorage();
+      updateOddsToggleButton();
+      for (const game of games) {
+        updateGameCardDisplay(game.id);
+      }
+    });
+  }
+
+  const precisionSelect = document.getElementById("precisionSelect");
+  if (precisionSelect) {
+    precisionSelect.addEventListener("change", (e) => {
+      handlePrecisionChange(e.target.value);
+    });
+  }
+
+  const thresholdInput = document.getElementById("thresholdInput");
+  if (thresholdInput) {
+    thresholdInput.addEventListener("change", (e) => {
+      handleThresholdChange(e.target.value);
+    });
+  }
+
+  const fillEvenBtn = document.getElementById("fillEvenBtn");
+  if (fillEvenBtn) {
+    fillEvenBtn.addEventListener("click", () => {
+      fillNeutralSpreads();
+    });
+  }
+
+  const resetBtn = document.getElementById("resetStateBtn");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      resetAllState();
+    });
+  }
+
+  const exportBtn = document.getElementById("exportCSV");
+  if (exportBtn) {
+    exportBtn.addEventListener("click", () => {
+      exportCsv();
+    });
+  }
+
+  const overlay = document.getElementById("teamDetailOverlay");
+  const closeBtn = document.getElementById("teamDetailClose");
+  if (overlay) {
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        overlay.classList.add("hidden");
+      }
+    });
+  }
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      if (overlay) overlay.classList.add("hidden");
+    });
+  }
+}
+
   
 
 // ---------------------------
