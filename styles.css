@@ -259,31 +259,38 @@
     overflow: hidden;
   }
   
-  /* base background */
+  /* Dark: team heat from edges into neutral center */
   
   body.theme-dark .game-card {
-    background: radial-gradient(circle at top left, #111827 0, #020617 55%);
+    background:
+      linear-gradient(
+        to right,
+        var(--away-color-main, #1f2937) 0%,
+        rgba(2, 6, 23, 0.98) 52%
+      ),
+      linear-gradient(
+        to left,
+        var(--home-color-main, #1f2937) 0%,
+        rgba(2, 6, 23, 0.98) 52%
+      ),
+      radial-gradient(circle at top left, #111827 0, #020617 55%);
   }
+  
+  /* Light: same concept on light base */
   
   body.theme-light .game-card {
-    background: radial-gradient(circle at top left, #e5e7eb 0, #ffffff 55%);
-  }
-  
-  /* overlay gradient using team colors */
-  
-  .game-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(
-      120deg,
-      var(--home-color-main, #22c55e),
-      transparent 38%,
-      transparent 62%,
-      var(--away-color-main, #f97316)
-    );
-    opacity: 0.22;
+    background:
+      linear-gradient(
+        to right,
+        var(--away-color-main, #9ca3af) 0%,
+        rgba(249, 250, 251, 0.98) 52%
+      ),
+      linear-gradient(
+        to left,
+        var(--home-color-main, #9ca3af) 0%,
+        rgba(249, 250, 251, 0.98) 52%
+      ),
+      radial-gradient(circle at top left, #e5e7eb 0, #ffffff 55%);
   }
   
   /* edge bar – vertical gradient home -> away */
@@ -302,7 +309,7 @@
     );
   }
   
-  /* make children sit above overlays */
+  /* children above gradients */
   
   .game-card > * {
     position: relative;
@@ -403,9 +410,12 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    width: 100%;
+    justify-content: space-between;
   }
   
   .prob-box {
+    flex: 1 1 150px;
     min-width: 130px;
     padding: 0.35rem 0.85rem;
     border-radius: 0.7rem;
@@ -450,45 +460,59 @@
     color: var(--away-color-main, #f97316);
   }
   
-  /* Themed boxes */
+  /* Neutral base for any prob box */
   
-  body.theme-dark .prob-box.home {
+  body.theme-dark .prob-box {
+    background: rgba(15, 23, 42, 0.9);
+    border-color: rgba(148, 163, 184, 0.7);
+    color: var(--text-main-dark);
+  }
+  
+  body.theme-light .prob-box {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(148, 163, 184, 0.7);
+    color: var(--text-main-light);
+  }
+  
+  /* Favorite = green, Underdog = orange/red */
+  
+  body.theme-dark .prob-box.favorite {
     background: linear-gradient(
       135deg,
       rgba(34, 197, 94, 0.24),
-      rgba(5, 46, 22, 0.8)
+      rgba(5, 46, 22, 0.9)
     );
-    border-color: rgba(34, 197, 94, 0.9);
+    border-color: rgba(34, 197, 94, 0.95);
     color: #bbf7d0;
   }
   
-  body.theme-light .prob-box.home {
+  body.theme-light .prob-box.favorite {
     background: linear-gradient(
       135deg,
       rgba(34, 197, 94, 0.14),
-      rgba(220, 252, 231, 0.9)
+      rgba(220, 252, 231, 0.95)
     );
-    border-color: rgba(22, 163, 74, 0.8);
+    border-color: rgba(22, 163, 74, 0.9);
     color: #064e3b;
   }
   
-  body.theme-dark .prob-box.away {
+  body.theme-dark .prob-box.underdog {
     background: linear-gradient(
       135deg,
       rgba(248, 113, 22, 0.24),
-      rgba(124, 45, 18, 0.8)
+      rgba(124, 45, 18, 0.9)
     );
-    border-color: rgba(248, 113, 22, 0.9);
+    border-color: rgba(248, 113, 22, 0.95);
     color: #ffedd5;
   }
   
-  body.theme-light .prob-box.away {
+  body.theme-light .prob-box.underdog {
     background: linear-gradient(
       135deg,
       rgba(248, 113, 22, 0.18),
-      rgba(254, 243, 199, 0.95)
+      rgba(254, 243, 199, 0.98)
     );
-    border-color: rgba(248, 113, 22, 0.85);
+    border-color: rgba(248, 113, 22, 0.9);
     color: #7c2d12;
   }
   

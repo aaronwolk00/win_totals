@@ -998,9 +998,25 @@ function updateGameCardDisplay(gameId) {
     let spreadText = "Spread: — (treated as neutral for now)";
   
     const game = games.find((g) => g.id === Number(gameId));
+
+    // Classes for favorite / underdog coloring
+    let homeClass = "prob-box home";
+    let awayClass = "prob-box away";
+
   
     if (spread !== null && game) {
       prob = homeWinProbFromSpread(spread);
+        // home favorite (negative spread) vs home underdog (positive spread)
+        if (spread < 0) {
+            // home favorite, away underdog
+            homeClass += " favorite";
+            awayClass += " underdog";
+            } else if (spread > 0) {
+            // home underdog, away favorite
+            homeClass += " underdog";
+            awayClass += " favorite";
+        }
+
       const label =
         (spread > 0 ? "+" : spread < 0 ? "" : "") +
         spread.toFixed(1).replace(/\.0$/, ".0");
@@ -1015,39 +1031,40 @@ function updateGameCardDisplay(gameId) {
     }
   
     if (selectedProbSpan) {
-      const homeProb = prob;
-      const awayProb = 1 - prob;
-      const decimals = state.precision;
-      const showOdds = state.showImpliedOdds;
+        const homeProb = prob;
+        const awayProb = 1 - prob;
+        const decimals = state.precision;
+        const showOdds = state.showImpliedOdds;
   
-      const homeOdds = probToAmerican(homeProb);
-      const awayOdds = probToAmerican(awayProb);
+        const homeOdds = probToAmerican(homeProb);
+        const awayOdds = probToAmerican(awayProb);
   
-      selectedProbSpan.innerHTML = `
-        <div class="prob-box home">
-          <span class="prob-label">Home</span>
-          <div class="prob-values">
-            <strong>${formatPercent(homeProb, decimals)}</strong>
-            ${
-              showOdds
-                ? `<span class="prob-odds">${formatAmerican(homeOdds)}</span>`
-                : ""
-            }
+        selectedProbSpan.innerHTML = `
+          <div class="${awayClass}">
+            <span class="prob-label">Away</span>
+            <div class="prob-values">
+              <strong>${formatPercent(awayProb, decimals)}</strong>
+              ${
+                showOdds
+                  ? `<span class="prob-odds">${formatAmerican(awayOdds)}</span>`
+                  : ""
+              }
+            </div>
           </div>
-        </div>
-        <div class="prob-box away">
-          <span class="prob-label">Away</span>
-          <div class="prob-values">
-            <strong>${formatPercent(awayProb, decimals)}</strong>
-            ${
-              showOdds
-                ? `<span class="prob-odds">${formatAmerican(awayOdds)}</span>`
-                : ""
-            }
+          <div class="${homeClass}">
+            <span class="prob-label">Home</span>
+            <div class="prob-values">
+              <strong>${formatPercent(homeProb, decimals)}</strong>
+              ${
+                showOdds
+                  ? `<span class="prob-odds">${formatAmerican(homeOdds)}</span>`
+                  : ""
+              }
+            </div>
           </div>
-        </div>
-      `;
-    }
+        `;
+      }
+  
   
     // Update selection visuals
     const buttons = card.querySelectorAll(".spread-option");
