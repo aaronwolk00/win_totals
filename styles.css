@@ -766,6 +766,30 @@
     --team-color-main: #4b5563;
     --team-color-alt: #9ca3af;
   }
+
+  .table tbody tr {
+    position: relative;
+    background-image: linear-gradient(
+      90deg,
+      rgba(15, 23, 42, 0.85) 0%,
+      var(--team-color-main, #111827) 18%,
+      var(--team-color-alt, #4b5563) 55%,
+      rgba(15, 23, 42, 0.85) 100%
+    );
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+  }
+  
+  body.theme-light .table tbody tr {
+    background-image: linear-gradient(
+      90deg,
+      rgba(249, 250, 251, 0.95) 0%,
+      var(--team-color-main, #9ca3af) 18%,
+      var(--team-color-alt, #6b7280) 55%,
+      rgba(249, 250, 251, 0.95) 100%
+    );
+  }
+  
   
   /* team code cell with heat background (add .team-cell-heat in JS) */
   
