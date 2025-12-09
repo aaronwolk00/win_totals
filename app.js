@@ -675,7 +675,7 @@ const spreadBandValues = (() => {
 // App state
 const state = {
     theme: "dark",
-    precision: 4,
+    precision: 2,
     threshold: 10,
     spreads: {}, // gameId -> spread number
     results: [], // computed per-team
