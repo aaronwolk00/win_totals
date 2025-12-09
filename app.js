@@ -739,104 +739,135 @@ function formatPercent(prob, decimals) {
 
 // Build schedule UI
 function renderSchedule() {
-  const container = document.getElementById("scheduleContainer");
-  container.innerHTML = "";
-
-  const byWeek = new Map();
-  for (const game of games) {
-    if (!byWeek.has(game.week)) byWeek.set(game.week, []);
-    byWeek.get(game.week).push(game);
-  }
-
-  const sortedWeeks = Array.from(byWeek.keys()).sort((a, b) => a - b);
-
-  for (const week of sortedWeeks) {
-    const weekGames = byWeek.get(week);
-    const weekBlock = document.createElement("div");
-    weekBlock.className = "week-block";
-
-    const header = document.createElement("div");
-    header.className = "week-header";
-    const h3 = document.createElement("h3");
-    h3.textContent = `Week ${week}`;
-    const span = document.createElement("span");
-    span.textContent = `${weekGames.length} games`;
-    header.appendChild(h3);
-    header.appendChild(span);
-    weekBlock.appendChild(header);
-
-    const list = document.createElement("div");
-    list.className = "games-list";
-
-    for (const game of weekGames) {
-      const card = document.createElement("div");
-      card.className = "game-card";
-      card.dataset.gameId = String(game.id);
-
-      const info = document.createElement("div");
-      const infoTop = document.createElement("div");
-      infoTop.className = "game-info-top";
-      infoTop.textContent = `Week ${game.week} · ${game.day}`;
-      const infoMain = document.createElement("div");
-      infoMain.className = "game-info-main";
-      const awayTeam = teams[game.away];
-      const homeTeam = teams[game.home];
-      infoMain.innerHTML = `<span class="team away">${game.away} ${awayTeam.name}</span> at <span class="team home">${game.home} ${homeTeam.name}</span>`;
-      const infoMeta = document.createElement("div");
-      infoMeta.className = "game-info-meta";
-
-      const selectedSpreadSpan = document.createElement("span");
-      selectedSpreadSpan.className = "selected-spread";
-      const selectedProbSpan = document.createElement("span");
-      selectedProbSpan.className = "selected-prob";
-
-      infoMeta.appendChild(selectedSpreadSpan);
-      infoMeta.appendChild(selectedProbSpan);
-
-      info.appendChild(infoTop);
-      info.appendChild(infoMain);
-      info.appendChild(infoMeta);
-
-      const band = document.createElement("div");
-      band.className = "spread-band";
-
-      for (const value of spreadBandValues) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "spread-option";
-        btn.dataset.value = String(value);
-        const label =
-          (value > 0 ? "+" : "") + value.toFixed(1).replace(/\.0$/, ".0");
-        btn.textContent = label;
-
-        // Style by sign
-        if (Math.abs(value - NEUTRAL_SPREAD) < 1e-6) {
-          btn.classList.add("neutral");
-        } else if (value < 0) {
-          btn.classList.add("favorite");
-        } else {
-          btn.classList.add("underdog");
-        }
-
-        btn.addEventListener("click", () => {
-          setSpreadForGame(game.id, value);
-        });
-
-        band.appendChild(btn);
-      }
-
-      card.appendChild(info);
-      card.appendChild(band);
-      list.appendChild(card);
-
-      // Initialize display with stored spread, if any
-      updateGameCardDisplay(game.id);
+    const container = document.getElementById("scheduleContainer");
+    container.innerHTML = "";
+  
+    const byWeek = new Map();
+    for (const game of games) {
+      if (!byWeek.has(game.week)) byWeek.set(game.week, []);
+      byWeek.get(game.week).push(game);
     }
-
-    weekBlock.appendChild(list);
-    container.appendChild(weekBlock);
+  
+    const sortedWeeks = Array.from(byWeek.keys()).sort((a, b) => a - b);
+  
+    for (const week of sortedWeeks) {
+      const weekGames = byWeek.get(week);
+      const weekBlock = document.createElement("div");
+      weekBlock.className = "week-block";
+  
+      const header = document.createElement("div");
+      header.className = "week-header";
+      const h3 = document.createElement("h3");
+      h3.textContent = `Week ${week}`;
+      const span = document.createElement("span");
+      span.textContent = `${weekGames.length} games`;
+      header.appendChild(h3);
+      header.appendChild(span);
+      weekBlock.appendChild(header);
+  
+      const list = document.createElement("div");
+      list.className = "games-list";
+  
+      for (const game of weekGames) {
+        const card = document.createElement("div");
+        card.className = "game-card";
+        card.dataset.gameId = String(game.id);
+  
+        // --- Left side: info ---
+        const info = document.createElement("div");
+        const infoTop = document.createElement("div");
+        infoTop.className = "game-info-top";
+        infoTop.textContent = `Week ${game.week} · ${game.day}`;
+        const infoMain = document.createElement("div");
+        infoMain.className = "game-info-main";
+        const awayTeam = teams[game.away];
+        const homeTeam = teams[game.home];
+        infoMain.innerHTML = `
+          <span class="team away">${game.away} ${awayTeam.name}</span>
+          <span class="at-separator">at</span>
+          <span class="team home">${game.home} ${homeTeam.name}</span>
+        `;
+  
+        const infoMeta = document.createElement("div");
+        infoMeta.className = "game-info-meta";
+  
+        const selectedSpreadSpan = document.createElement("span");
+        selectedSpreadSpan.className = "selected-spread";
+  
+        const selectedProbSpan = document.createElement("span");
+        selectedProbSpan.className = "selected-prob";
+  
+        infoMeta.appendChild(selectedSpreadSpan);
+        infoMeta.appendChild(selectedProbSpan);
+  
+        info.appendChild(infoTop);
+        info.appendChild(infoMain);
+        info.appendChild(infoMeta);
+  
+        // --- Right side: spread band + expand control ---
+        const band = document.createElement("div");
+        band.className = "spread-band";
+  
+        for (const value of spreadBandValues) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "spread-option";
+          btn.dataset.value = String(value);
+  
+          const label =
+            (value > 0 ? "+" : "") + value.toFixed(1).replace(/\.0$/, ".0");
+          btn.textContent = label;
+  
+          // Style by sign
+          if (Math.abs(value - NEUTRAL_SPREAD) < 1e-6) {
+            btn.classList.add("neutral");
+          } else if (value < 0) {
+            btn.classList.add("favorite");
+          } else {
+            btn.classList.add("underdog");
+          }
+  
+          // Hide by default outside ±10.5 – mark as extra
+          if (Math.abs(value) > 10.5) {
+            btn.classList.add("extra");
+          }
+  
+          btn.addEventListener("click", () => {
+            setSpreadForGame(game.id, value);
+          });
+  
+          band.appendChild(btn);
+        }
+  
+        card.appendChild(info);
+        card.appendChild(band);
+  
+        // Expand / collapse spreads beyond ±10.5
+        const expandBtn = document.createElement("button");
+        expandBtn.type = "button";
+        expandBtn.className = "btn spread-expand-btn";
+        expandBtn.textContent = "Expand spreads";
+  
+        expandBtn.addEventListener("click", () => {
+          card.classList.toggle("expanded");
+          expandBtn.textContent = card.classList.contains("expanded")
+            ? "Collapse spreads"
+            : "Expand spreads";
+        });
+  
+        card.appendChild(expandBtn);
+  
+        list.appendChild(card);
+  
+        // Initialize display with stored spread, if any
+        updateGameCardDisplay(game.id);
+      }
+  
+      weekBlock.appendChild(list);
+      container.appendChild(weekBlock);
+    }
   }
-}
+  
 
 // Set spread for a game and recompute
 function setSpreadForGame(gameId, spreadValue) {
@@ -848,47 +879,63 @@ function setSpreadForGame(gameId, spreadValue) {
 
 // Update one game card (selected spread, prob)
 function updateGameCardDisplay(gameId) {
-  const card = document.querySelector(`.game-card[data-game-id="${gameId}"]`);
-  if (!card) return;
-
-  const spreadRaw = state.spreads[String(gameId)];
-  let spread = typeof spreadRaw === "number" ? spreadRaw : null;
-
-  let prob = 0.5;
-  let spreadText = "Spread: — (treated as neutral for now)";
-
-  const game = games.find((g) => g.id === Number(gameId));
-
-  if (spread !== null && game) {
-    prob = homeWinProbFromSpread(spread);
-    const label =
-      (spread > 0 ? "+" : spread < 0 ? "" : "") +
-      spread.toFixed(1).replace(/\.0$/, ".0");
-    spreadText = `Spread (home perspective): ${label}`;
-  }
-
-  const selectedSpreadSpan = card.querySelector(".selected-spread");
-  const selectedProbSpan = card.querySelector(".selected-prob");
-  if (selectedSpreadSpan) selectedSpreadSpan.textContent = spreadText;
-  if (selectedProbSpan) {
-    selectedProbSpan.textContent = `Home win prob: ${formatNumber(
-      prob,
-      state.precision
-    )}`;
-  }
-
-  // Update selection visuals
-  const buttons = card.querySelectorAll(".spread-option");
-  buttons.forEach((btn) => {
-    btn.classList.remove("selected");
-    if (spread !== null) {
-      const val = parseFloat(btn.dataset.value);
-      if (Math.abs(val - spread) < 1e-6) {
-        btn.classList.add("selected");
-      }
+    const card = document.querySelector(`.game-card[data-game-id="${gameId}"]`);
+    if (!card) return;
+  
+    const spreadRaw = state.spreads[String(gameId)];
+    const game = games.find((g) => g.id === Number(gameId));
+    if (!game) return;
+  
+    let spread = typeof spreadRaw === "number" ? spreadRaw : null;
+  
+    // If no spread set, treat as neutral for probabilities
+    const spreadForProb = spread !== null ? spread : NEUTRAL_SPREAD;
+    const homeProb = homeWinProbFromSpread(spreadForProb);
+    const awayProb = 1 - homeProb;
+  
+    // Description text
+    let spreadText;
+    if (spread === null) {
+      spreadText = "Spread: — (treated as neutral for now)";
+    } else {
+      const label =
+        (spread > 0 ? "+" : spread < 0 ? "" : "") +
+        spread.toFixed(1).replace(/\.0$/, ".0");
+      spreadText = `Spread (home perspective): ${label}`;
     }
-  });
-}
+  
+    const selectedSpreadSpan = card.querySelector(".selected-spread");
+    const selectedProbSpan = card.querySelector(".selected-prob");
+  
+    if (selectedSpreadSpan) {
+      selectedSpreadSpan.textContent = spreadText;
+    }
+  
+    if (selectedProbSpan) {
+      const decimals = Math.max(2, state.precision); // at least 2 decimals on %
+      selectedProbSpan.innerHTML = `
+        <span class="prob-box home">
+          Home: <strong>${formatPercent(homeProb, decimals)}</strong>
+        </span>
+        <span class="prob-box away">
+          Away: <strong>${formatPercent(awayProb, decimals)}</strong>
+        </span>
+      `;
+    }
+  
+    // Update selection visuals
+    const buttons = card.querySelectorAll(".spread-option");
+    buttons.forEach((btn) => {
+      btn.classList.remove("selected");
+      if (spread !== null) {
+        const val = parseFloat(btn.dataset.value);
+        if (Math.abs(val - spread) < 1e-6) {
+          btn.classList.add("selected");
+        }
+      }
+    });
+  }
+  
 
 // Fill neutral for all games without spread
 function fillNeutralSpreads() {
