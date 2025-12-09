@@ -602,50 +602,59 @@ const spreadBandValues = (() => {
 
 // App state
 const state = {
-  theme: "dark",
-  precision: 4,
-  threshold: 10,
-  spreads: {}, // gameId -> spread number
-  results: [], // computed per-team
-  currentSort: { key: "projected", direction: "desc" }
+    theme: "dark",
+    precision: 4,
+    threshold: 10,
+    spreads: {}, // gameId -> spread number
+    results: [], // computed per-team
+    currentSort: { key: "projected", direction: "desc" },
+    view: "schedule" // "schedule" or "projections"
 };
+  
 
 // Utility: load/save state to localStorage
 function loadStateFromStorage() {
-  try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    if (parsed.theme === "light" || parsed.theme === "dark") {
-      state.theme = parsed.theme;
+    try {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+  
+      if (parsed.theme === "light" || parsed.theme === "dark") {
+        state.theme = parsed.theme;
+      }
+      if (typeof parsed.precision === "number") {
+        state.precision = parsed.precision;
+      }
+      if (typeof parsed.threshold === "number") {
+        state.threshold = parsed.threshold;
+      }
+      if (parsed.spreads && typeof parsed.spreads === "object") {
+        state.spreads = parsed.spreads;
+      }
+      if (parsed.view === "schedule" || parsed.view === "projections") {
+        state.view = parsed.view;
+      }
+    } catch (err) {
+      console.warn("Failed to load state:", err);
     }
-    if (typeof parsed.precision === "number") {
-      state.precision = parsed.precision;
-    }
-    if (typeof parsed.threshold === "number") {
-      state.threshold = parsed.threshold;
-    }
-    if (parsed.spreads && typeof parsed.spreads === "object") {
-      state.spreads = parsed.spreads;
-    }
-  } catch (err) {
-    console.warn("Failed to load state:", err);
   }
-}
+  
 
-function saveStateToStorage() {
-  const toSave = {
-    theme: state.theme,
-    precision: state.precision,
-    threshold: state.threshold,
-    spreads: state.spreads
-  };
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
-  } catch (err) {
-    console.warn("Failed to save state:", err);
+  function saveStateToStorage() {
+    const toSave = {
+      theme: state.theme,
+      precision: state.precision,
+      threshold: state.threshold,
+      spreads: state.spreads,
+      view: state.view
+    };
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
+    } catch (err) {
+      console.warn("Failed to save state:", err);
+    }
   }
-}
+  
 
 // Theme handling
 function applyTheme() {
@@ -661,6 +670,26 @@ function applyTheme() {
     if (btn) btn.textContent = "Switch to Dark Theme";
   }
 }
+
+// Show/hide schedule vs projections
+function applyViewMode() {
+    const scheduleSection = document.getElementById("scheduleSection");
+    const resultsSection = document.getElementById("resultsSection");
+    const viewToggleBtn = document.getElementById("viewToggleBtn");
+  
+    if (!scheduleSection || !resultsSection || !viewToggleBtn) return;
+  
+    if (state.view === "schedule") {
+      scheduleSection.classList.remove("hidden");
+      resultsSection.classList.add("hidden");
+      viewToggleBtn.textContent = "Show Team Projections";
+    } else {
+      scheduleSection.classList.add("hidden");
+      resultsSection.classList.remove("hidden");
+      viewToggleBtn.textContent = "Show Schedule & Spreads";
+    }
+  }
+  
 
 // Spread → home win probability
 function favoriteProbFromAbsSpread(absSpreadRaw) {
@@ -1387,77 +1416,91 @@ function handleThresholdChange(value) {
 }
 
 function attachEventListeners() {
-  const themeToggle = document.getElementById("themeToggle");
-  if (themeToggle) {
-    themeToggle.addEventListener("click", () => {
-      state.theme = state.theme === "dark" ? "light" : "dark";
-      saveStateToStorage();
-      applyTheme();
-    });
+    const themeToggle = document.getElementById("themeToggle");
+    if (themeToggle) {
+      themeToggle.addEventListener("click", () => {
+        state.theme = state.theme === "dark" ? "light" : "dark";
+        saveStateToStorage();
+        applyTheme();
+      });
+    }
+  
+    const viewToggleBtn = document.getElementById("viewToggleBtn");
+    if (viewToggleBtn) {
+      viewToggleBtn.addEventListener("click", () => {
+        state.view = state.view === "schedule" ? "projections" : "schedule";
+        saveStateToStorage();
+        applyViewMode();
+      });
+    }
+  
+    const precisionSelect = document.getElementById("precisionSelect");
+    if (precisionSelect) {
+      precisionSelect.addEventListener("change", (e) => {
+        handlePrecisionChange(e.target.value);
+      });
+    }
+  
+    const thresholdInput = document.getElementById("thresholdInput");
+    if (thresholdInput) {
+      thresholdInput.addEventListener("change", (e) => {
+        handleThresholdChange(e.target.value);
+      });
+    }
+  
+    const fillEvenBtn = document.getElementById("fillEvenBtn");
+    if (fillEvenBtn) {
+      fillEvenBtn.addEventListener("click", () => {
+        fillNeutralSpreads();
+      });
+    }
+  
+    const exportBtn = document.getElementById("exportCSV");
+    if (exportBtn) {
+      exportBtn.addEventListener("click", () => {
+        exportCsv();
+      });
+    }
+  
+    const overlay = document.getElementById("teamDetailOverlay");
+    const closeBtn = document.getElementById("teamDetailClose");
+    if (overlay) {
+      overlay.addEventListener("click", (e) => {
+        // click outside content closes overlay
+        if (e.target === overlay) {
+          overlay.classList.add("hidden");
+        }
+      });
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        if (overlay) overlay.classList.add("hidden");
+      });
+    }
   }
-
-  const precisionSelect = document.getElementById("precisionSelect");
-  if (precisionSelect) {
-    precisionSelect.addEventListener("change", (e) => {
-      handlePrecisionChange(e.target.value);
-    });
-  }
-
-  const thresholdInput = document.getElementById("thresholdInput");
-  if (thresholdInput) {
-    thresholdInput.addEventListener("change", (e) => {
-      handleThresholdChange(e.target.value);
-    });
-  }
-
-  const fillEvenBtn = document.getElementById("fillEvenBtn");
-  if (fillEvenBtn) {
-    fillEvenBtn.addEventListener("click", () => {
-      fillNeutralSpreads();
-    });
-  }
-
-  const exportBtn = document.getElementById("exportCSV");
-  if (exportBtn) {
-    exportBtn.addEventListener("click", () => {
-      exportCsv();
-    });
-  }
-
-  const overlay = document.getElementById("teamDetailOverlay");
-  const closeBtn = document.getElementById("teamDetailClose");
-  if (overlay) {
-    overlay.addEventListener("click", (e) => {
-      // click outside content closes overlay
-      if (e.target === overlay) {
-        overlay.classList.add("hidden");
-      }
-    });
-  }
-  if (closeBtn) {
-    closeBtn.addEventListener("click", () => {
-      if (overlay) overlay.classList.add("hidden");
-    });
-  }
-}
+  
 
 // ---------------------------
 // Bootstrapping
 // ---------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Load any saved state
-  loadStateFromStorage();
-
-  // Apply theme & sync controls
-  applyTheme();
-  updateControlsFromState();
-
-  // Render main UI
-  renderSchedule();
-  computeAndRenderResults();
-
-  // Wire up events
-  attachEventListeners();
+    // Load any saved state
+    loadStateFromStorage();
+  
+    // Apply theme & sync controls
+    applyTheme();
+    updateControlsFromState();
+  
+    // Render main UI
+    renderSchedule();
+    computeAndRenderResults();
+  
+    // Set initial view (schedule full-page or projections)
+    applyViewMode();
+  
+    // Wire up events
+    attachEventListeners();
 });
+  
 
