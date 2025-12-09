@@ -1081,7 +1081,6 @@ function updateGameCardDisplay(gameId) {
   
       selectedProbSpan.innerHTML = `
         <div class="prob-box away ${awayExtra}">
-          <span class="prob-label">Away</span>
           <div class="prob-values">
             <strong>${formatPercent(awayProb, decimals)}</strong>
             ${
@@ -1092,7 +1091,6 @@ function updateGameCardDisplay(gameId) {
           </div>
         </div>
         <div class="prob-box home ${homeExtra}">
-          <span class="prob-label">Home</span>
           <div class="prob-values">
             <strong>${formatPercent(homeProb, decimals)}</strong>
             ${
