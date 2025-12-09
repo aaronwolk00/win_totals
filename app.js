@@ -47,6 +47,58 @@ const teams = {
   NO: { name: "New Orleans Saints", division: "NS", currentWins: 3 }
 };
 
+// Team color palettes (primary + secondary) – 2025
+const teamPalettes = {
+    // AFC EAST
+    BUF: { primary: "#00338D", secondary: "#C60C30" }, // Royal Blue / Red
+    MIA: { primary: "#008E97", secondary: "#FC4C02" }, // Aqua / Orange
+    NE:  { primary: "#002244", secondary: "#C60C30" }, // Navy / Red
+    NYJ: { primary: "#125740", secondary: "#000000" }, // Legacy Green / Black
+  
+    // AFC NORTH
+    BAL: { primary: "#241773", secondary: "#9E7C0C" }, // Purple / Gold
+    CIN: { primary: "#FB4F14", secondary: "#000000" }, // Orange / Black
+    CLE: { primary: "#311D00", secondary: "#FF3C00" }, // Brown / Orange
+    PIT: { primary: "#101820", secondary: "#FFB612" }, // Black / Gold
+  
+    // AFC SOUTH
+    HOU: { primary: "#03202F", secondary: "#A71930" }, // Deep Steel / Battle Red
+    IND: { primary: "#002C5F", secondary: "#A2AAAD" }, // Speed Blue / Gray
+    JAX: { primary: "#006778", secondary: "#9F792C" }, // Teal / Gold
+    TEN: { primary: "#0C2340", secondary: "#4B92DB" }, // Navy / Titans Blue
+  
+    // AFC WEST
+    DEN: { primary: "#FB4F14", secondary: "#0C2340" }, // Sunset Orange / Navy
+    KC:  { primary: "#E31837", secondary: "#FFB81C" }, // Red / Gold
+    LV:  { primary: "#000000", secondary: "#A5ACAF" }, // Black / Silver
+    LAC: { primary: "#0080C6", secondary: "#FFC20E" }, // Powder Blue / Sunshine Gold
+  
+    // NFC EAST
+    DAL: { primary: "#003594", secondary: "#869397" }, // Navy / Silver
+    NYG: { primary: "#0B2265", secondary: "#A71930" }, // Blue / Red
+    PHI: { primary: "#004C54", secondary: "#A5ACAF" }, // Midnight Green / Silver
+    WAS: { primary: "#5A1414", secondary: "#FFB612" }, // Burgundy / Gold
+  
+    // NFC NORTH
+    CHI: { primary: "#0B162A", secondary: "#C83803" }, // Dark Navy / Orange
+    DET: { primary: "#0076B6", secondary: "#B0B7BC" }, // Honolulu Blue / Silver
+    GB:  { primary: "#203731", secondary: "#FFB612" }, // Green / Gold
+    MIN: { primary: "#4F2683", secondary: "#FFC62F" }, // Purple / Gold
+  
+    // NFC SOUTH
+    ATL: { primary: "#000000", secondary: "#A71930" }, // Black / Red
+    CAR: { primary: "#0085CA", secondary: "#101820" }, // Process Blue / Black
+    NO:  { primary: "#D3BC8D", secondary: "#101820" }, // Old Gold / Black
+    TB:  { primary: "#D50A0A", secondary: "#34302B" }, // Red / Pewter
+  
+    // NFC WEST
+    ARI: { primary: "#97233F", secondary: "#000000" }, // Cardinal / Black
+    LAR: { primary: "#003594", secondary: "#FFA300" }, // Rams Blue / Sol
+    SF:  { primary: "#AA0000", secondary: "#B3995D" }, // Red / Gold
+    SEA: { primary: "#002244", secondary: "#69BE28" }  // Navy / Action Green
+  };
+  
+
 const teamIds = Object.keys(teams);
 
 // Schedule (64 games) – away/home abbreviations
@@ -591,6 +643,26 @@ const spreadProbTable = {
   14.5: 0.8541
 };
 
+// Convert win probability -> American odds
+function probToAmerican(probRaw) {
+    // clamp to avoid infinite odds
+    const p = Math.min(0.9999, Math.max(0.0001, probRaw));
+    let odds;
+    if (p >= 0.5) {
+      odds = -Math.round((p / (1 - p)) * 100);
+    } else {
+      odds = Math.round(((1 - p) / p) * 100);
+    }
+    return odds;
+  }
+  
+  function formatAmerican(odds) {
+    if (!Number.isFinite(odds)) return "";
+    if (odds > 0) return `+${odds}`;
+    return String(odds);
+  }
+  
+
 // Spread band values: from -20.5 to +20.5 in 1-point increments
 const spreadBandValues = (() => {
   const arr = [];
@@ -608,8 +680,10 @@ const state = {
     spreads: {}, // gameId -> spread number
     results: [], // computed per-team
     currentSort: { key: "projected", direction: "desc" },
-    view: "schedule" // "schedule" or "projections"
-};
+    view: "schedule", // "schedule" or "projections"
+    showImpliedOdds: false // global toggle for showing American odds
+  };
+  
   
 
 // Utility: load/save state to localStorage
@@ -634,26 +708,31 @@ function loadStateFromStorage() {
       if (parsed.view === "schedule" || parsed.view === "projections") {
         state.view = parsed.view;
       }
+      if (typeof parsed.showImpliedOdds === "boolean") {
+        state.showImpliedOdds = parsed.showImpliedOdds;
+      }
     } catch (err) {
       console.warn("Failed to load state:", err);
     }
-  }
+}
   
 
-  function saveStateToStorage() {
+function saveStateToStorage() {
     const toSave = {
-      theme: state.theme,
-      precision: state.precision,
-      threshold: state.threshold,
-      spreads: state.spreads,
-      view: state.view
+        theme: state.theme,
+        precision: state.precision,
+        threshold: state.threshold,
+        spreads: state.spreads,
+        view: state.view,
+        showImpliedOdds: state.showImpliedOdds
     };
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
     } catch (err) {
-      console.warn("Failed to save state:", err);
+        console.warn("Failed to save state:", err);
     }
-  }
+}
+
   
 
 // Theme handling
@@ -772,6 +851,27 @@ function renderSchedule() {
         const card = document.createElement("div");
         card.className = "game-card";
         card.dataset.gameId = String(game.id);
+
+        // Attach team colors as CSS custom properties for this card
+        const homePalette = teamPalettes[game.home] || {};
+        const awayPalette = teamPalettes[game.away] || {};
+
+        card.style.setProperty(
+            "--home-color-main",
+            homePalette.primary || "#22c55e"
+        );
+        card.style.setProperty(
+            "--home-color-alt",
+            homePalette.secondary || "#16a34a"
+        );
+        card.style.setProperty(
+            "--away-color-main",
+            awayPalette.primary || "#f97316"
+        );
+        card.style.setProperty(
+            "--away-color-alt",
+            awayPalette.secondary || "#ea580c"
+        );
   
         // --- Left side: info ---
         const info = document.createElement("div");
@@ -877,27 +977,30 @@ function setSpreadForGame(gameId, spreadValue) {
   computeAndRenderResults();
 }
 
+function updateOddsToggleButton() {
+    const oddsBtn = document.getElementById("toggleOddsBtn");
+    if (!oddsBtn) return;
+    oddsBtn.textContent = state.showImpliedOdds
+      ? "Hide Implied Odds"
+      : "Show Implied Odds";
+  }
+  
+
 // Update one game card (selected spread, prob)
 function updateGameCardDisplay(gameId) {
     const card = document.querySelector(`.game-card[data-game-id="${gameId}"]`);
     if (!card) return;
   
     const spreadRaw = state.spreads[String(gameId)];
-    const game = games.find((g) => g.id === Number(gameId));
-    if (!game) return;
-  
     let spread = typeof spreadRaw === "number" ? spreadRaw : null;
   
-    // If no spread set, treat as neutral for probabilities
-    const spreadForProb = spread !== null ? spread : NEUTRAL_SPREAD;
-    const homeProb = homeWinProbFromSpread(spreadForProb);
-    const awayProb = 1 - homeProb;
+    let prob = 0.5;
+    let spreadText = "Spread: — (treated as neutral for now)";
   
-    // Description text
-    let spreadText;
-    if (spread === null) {
-      spreadText = "Spread: — (treated as neutral for now)";
-    } else {
+    const game = games.find((g) => g.id === Number(gameId));
+  
+    if (spread !== null && game) {
+      prob = homeWinProbFromSpread(spread);
       const label =
         (spread > 0 ? "+" : spread < 0 ? "" : "") +
         spread.toFixed(1).replace(/\.0$/, ".0");
@@ -912,14 +1015,37 @@ function updateGameCardDisplay(gameId) {
     }
   
     if (selectedProbSpan) {
-      const decimals = Math.max(2, state.precision); // at least 2 decimals on %
+      const homeProb = prob;
+      const awayProb = 1 - prob;
+      const decimals = state.precision;
+      const showOdds = state.showImpliedOdds;
+  
+      const homeOdds = probToAmerican(homeProb);
+      const awayOdds = probToAmerican(awayProb);
+  
       selectedProbSpan.innerHTML = `
-        <span class="prob-box home">
-          Home: <strong>${formatPercent(homeProb, decimals)}</strong>
-        </span>
-        <span class="prob-box away">
-          Away: <strong>${formatPercent(awayProb, decimals)}</strong>
-        </span>
+        <div class="prob-box home">
+          <span class="prob-label">Home</span>
+          <div class="prob-values">
+            <strong>${formatPercent(homeProb, decimals)}</strong>
+            ${
+              showOdds
+                ? `<span class="prob-odds">${formatAmerican(homeOdds)}</span>`
+                : ""
+            }
+          </div>
+        </div>
+        <div class="prob-box away">
+          <span class="prob-label">Away</span>
+          <div class="prob-values">
+            <strong>${formatPercent(awayProb, decimals)}</strong>
+            ${
+              showOdds
+                ? `<span class="prob-odds">${formatAmerican(awayOdds)}</span>`
+                : ""
+            }
+          </div>
+        </div>
       `;
     }
   
@@ -934,7 +1060,8 @@ function updateGameCardDisplay(gameId) {
         }
       }
     });
-  }
+}
+  
   
 
 // Fill neutral for all games without spread
@@ -1430,16 +1557,19 @@ function exportCsv() {
 // ---------------------------
 
 function updateControlsFromState() {
-  const precisionSelect = document.getElementById("precisionSelect");
-  const thresholdInput = document.getElementById("thresholdInput");
-
-  if (precisionSelect) {
-    precisionSelect.value = String(state.precision);
+    const precisionSelect = document.getElementById("precisionSelect");
+    const thresholdInput = document.getElementById("thresholdInput");
+  
+    if (precisionSelect) {
+      precisionSelect.value = String(state.precision);
+    }
+    if (thresholdInput) {
+      thresholdInput.value = String(state.threshold);
+    }
+  
+    updateOddsToggleButton();
   }
-  if (thresholdInput) {
-    thresholdInput.value = String(state.threshold);
-  }
-}
+  
 
 function handlePrecisionChange(value) {
   const parsed = parseInt(value, 10);
@@ -1508,6 +1638,19 @@ function attachEventListeners() {
         exportCsv();
       });
     }
+
+    const oddsBtn = document.getElementById("toggleOddsBtn");
+    if (oddsBtn) {
+      oddsBtn.addEventListener("click", () => {
+        state.showImpliedOdds = !state.showImpliedOdds;
+        saveStateToStorage();
+        updateOddsToggleButton();
+        // Re-render all game cards so odds appear/disappear
+        for (const game of games) {
+          updateGameCardDisplay(game.id);
+        }
+      });
+    }  
   
     const overlay = document.getElementById("teamDetailOverlay");
     const closeBtn = document.getElementById("teamDetailClose");

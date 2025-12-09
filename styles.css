@@ -192,7 +192,7 @@
     opacity: 0.85;
   }
   
-  /* Schedule – LARGE */
+  /* Schedule */
   
   .schedule-container {
     display: flex;
@@ -242,94 +242,254 @@
     gap: 0.9rem;
   }
   
-  /* Game card – base grid/spacing */
+  /* ------------------------------------------------------
+     GAME CARD – sportsbook / scoreboard look
+     ----------------------------------------------------*/
   
   .game-card {
+    position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.7fr);
-    gap: 0.9rem;
-    padding: 0.9rem 1.1rem;
-    border-radius: 0.95rem;
-    border: 1px solid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr);
+    gap: 1rem;
+    padding: 1rem 1.4rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.45);
     align-items: center;
     font-size: 1.05rem;
+    overflow: hidden;
   }
   
+  /* base background */
+  
   body.theme-dark .game-card {
-    border-color: var(--border-subtle-dark);
-    background: rgba(15, 23, 42, 0.9);
+    background: radial-gradient(circle at top left, #111827 0, #020617 55%);
   }
   
   body.theme-light .game-card {
-    border-color: var(--border-subtle-light);
-    background: rgba(255, 255, 255, 1);
+    background: radial-gradient(circle at top left, #e5e7eb 0, #ffffff 55%);
   }
+  
+  /* overlay gradient using team colors */
+  
+  .game-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      120deg,
+      var(--home-color-main, #22c55e),
+      transparent 38%,
+      transparent 62%,
+      var(--away-color-main, #f97316)
+    );
+    opacity: 0.22;
+  }
+  
+  /* edge bar – vertical gradient home -> away */
+  
+  .game-card::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(
+      to bottom,
+      var(--home-color-main, #22c55e),
+      var(--away-color-main, #f97316)
+    );
+  }
+  
+  /* make children sit above overlays */
+  
+  .game-card > * {
+    position: relative;
+  }
+  
+  /* Week / day row */
   
   .game-info-top {
-    font-size: 0.95rem;
-    opacity: 0.75;
-    margin-bottom: 0.3rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.9;
   }
   
+  .game-info-top::before {
+    content: "NFL";
+    font-weight: 700;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.8);
+  }
+  
+  /* Matchup */
+  
   .game-info-main {
-    font-size: 1.3rem;
-    font-weight: 600;
+    margin-top: 0.25rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.3;
   }
   
   .game-info-main .home {
-    font-weight: 700;
+    font-weight: 800;
+  }
+  
+  .game-info-main .team {
+    display: inline-block;
   }
   
   .game-info-main .at-separator {
-    margin: 0 0.35rem;
-    font-size: 1rem;
+    margin: 0 0.4rem;
+    font-size: 0.9rem;
     opacity: 0.7;
   }
   
+  /* Meta row */
+  
   .game-info-meta {
-    margin-top: 0.45rem;
-    font-size: 1rem;
+    margin-top: 0.55rem;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.5rem;
+    font-size: 0.95rem;
   }
   
-  /* Spread description + probabilities (base) */
+  /* Spread pill */
   
   .selected-spread {
-    font-size: 1.05rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.95rem;
     font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
+  
+  body.theme-dark .selected-spread {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    color: var(--text-main-dark);
+  }
+  
+  body.theme-light .selected-spread {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    color: var(--text-main-light);
+  }
+  
+  .selected-spread::before {
+    content: "LINE";
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.18);
+  }
+  
+  /* Probability boxes – scoreboard style */
   
   .selected-prob {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.45rem;
+    gap: 0.5rem;
   }
   
   .prob-box {
-    padding: 0.3rem 0.7rem;
-    border-radius: 0.6rem;
-    border: 1px solid;
+    min-width: 130px;
+    padding: 0.35rem 0.85rem;
+    border-radius: 0.7rem;
+    border: 1px solid transparent;
     font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   
-  body.theme-dark .prob-box {
-    border-color: var(--border-subtle-dark);
-    background: rgba(15, 23, 42, 0.9);
+  .prob-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.9;
   }
   
-  body.theme-light .prob-box {
-    border-color: var(--border-subtle-light);
-    background: rgba(255, 255, 255, 1);
+  .prob-values {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.05rem;
   }
   
-  .prob-box.home {
-    border-color: var(--spread-favorite);
+  .prob-box strong {
+    font-variant-numeric: tabular-nums;
+    font-size: 1.02rem;
   }
   
-  .prob-box.away {
-    border-color: var(--spread-dog);
+  .prob-odds {
+    font-size: 0.78rem;
+    opacity: 0.9;
+  }
+  
+  /* link labels to team colors */
+  
+  .prob-box.home .prob-label {
+    color: var(--home-color-main, #22c55e);
+  }
+  
+  .prob-box.away .prob-label {
+    color: var(--away-color-main, #f97316);
+  }
+  
+  /* Themed boxes */
+  
+  body.theme-dark .prob-box.home {
+    background: linear-gradient(
+      135deg,
+      rgba(34, 197, 94, 0.24),
+      rgba(5, 46, 22, 0.8)
+    );
+    border-color: rgba(34, 197, 94, 0.9);
+    color: #bbf7d0;
+  }
+  
+  body.theme-light .prob-box.home {
+    background: linear-gradient(
+      135deg,
+      rgba(34, 197, 94, 0.14),
+      rgba(220, 252, 231, 0.9)
+    );
+    border-color: rgba(22, 163, 74, 0.8);
+    color: #064e3b;
+  }
+  
+  body.theme-dark .prob-box.away {
+    background: linear-gradient(
+      135deg,
+      rgba(248, 113, 22, 0.24),
+      rgba(124, 45, 18, 0.8)
+    );
+    border-color: rgba(248, 113, 22, 0.9);
+    color: #ffedd5;
+  }
+  
+  body.theme-light .prob-box.away {
+    background: linear-gradient(
+      135deg,
+      rgba(248, 113, 22, 0.18),
+      rgba(254, 243, 199, 0.95)
+    );
+    border-color: rgba(248, 113, 22, 0.85);
+    color: #7c2d12;
   }
   
   /* Spread band */
@@ -378,7 +538,7 @@
     transform: translateY(-1px);
   }
   
-  /* Selected spread button – strong emphasis */
+  /* Selected spread button */
   
   .spread-option.selected {
     background: var(--accent);
@@ -397,7 +557,7 @@
     display: inline-flex;
   }
   
-  /* Expand/collapse button */
+  /* Expand / collapse button */
   
   .spread-expand-btn {
     margin-top: 0.4rem;
@@ -406,11 +566,11 @@
     padding: 0.25rem 0.75rem;
   }
   
-  /* Results */
+  /* Results table */
   
   .table-container {
     margin-top: 0.6rem;
-    max-height: none; /* allow full page scroll */
+    max-height: none;
     overflow: auto;
     border-radius: 0.75rem;
     border: 1px solid;
@@ -492,7 +652,7 @@
     opacity: 0.85;
   }
   
-  /* Division summary – larger & lower */
+  /* Division summary */
   
   .division-summary-container {
     display: grid;
@@ -619,218 +779,5 @@
       flex-direction: column;
       align-items: flex-start;
     }
-  }
-  
-  /* ------------------------------------------------------
-     CARD VISUAL POLISH – sportsbook / scoreboard look
-     (overrides some of the base game-card styles above)
-     ----------------------------------------------------*/
-  
-  /* Game card – gradient + accent bar */
-  
-  .game-card {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr);
-    gap: 1rem;
-    padding: 1rem 1.4rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(148, 163, 184, 0.45);
-    align-items: center;
-    font-size: 1.05rem;
-    overflow: hidden;
-  }
-  
-  body.theme-dark .game-card {
-    background: radial-gradient(circle at top left, #111827 0, #020617 55%);
-  }
-  
-  body.theme-light .game-card {
-    background: radial-gradient(circle at top left, #e5e7eb 0, #ffffff 55%);
-  }
-  
-  .game-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(
-      120deg,
-      rgba(34, 197, 94, 0.16),
-      transparent 38%,
-      transparent 62%,
-      rgba(249, 115, 22, 0.16)
-    );
-    opacity: 0.55;
-  }
-  
-  .game-card::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: linear-gradient(to bottom, #22c55e, #f97316);
-  }
-  
-  /* make content sit above gradients */
-  
-  .game-card > * {
-    position: relative;
-  }
-  
-  /* Week / day row as pill */
-  
-  .game-info-top {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    opacity: 0.9;
-  }
-  
-  .game-info-top::before {
-    content: "NFL";
-    font-weight: 700;
-    font-size: 0.7rem;
-    padding: 0.15rem 0.45rem;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.8);
-  }
-  
-  /* Matchup text */
-  
-  .game-info-main {
-    margin-top: 0.25rem;
-    font-size: 1.35rem;
-    font-weight: 700;
-    line-height: 1.3;
-  }
-  
-  .game-info-main .home {
-    font-weight: 800;
-  }
-  
-  .game-info-main .team {
-    display: inline-block;
-  }
-  
-  .game-info-main .at-separator {
-    margin: 0 0.4rem;
-    font-size: 0.9rem;
-    opacity: 0.7;
-  }
-  
-  /* Meta row */
-  
-  .game-info-meta {
-    margin-top: 0.55rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  /* Spread pill */
-  
-  .selected-spread {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.95rem;
-    font-weight: 600;
-    padding: 0.25rem 0.75rem;
-    border-radius: 999px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  
-  body.theme-dark .selected-spread {
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(148, 163, 184, 0.7);
-    color: var(--text-main-dark);
-  }
-  
-  body.theme-light .selected-spread {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(148, 163, 184, 0.7);
-    color: var(--text-main-light);
-  }
-  
-  .selected-spread::before {
-    content: "LINE";
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 0.1rem 0.4rem;
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.18);
-  }
-  
-  /* Probability boxes – scoreboard style */
-  
-  .selected-prob {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  
-  .prob-box {
-    min-width: 130px;
-    padding: 0.35rem 0.85rem;
-    border-radius: 0.7rem;
-    border: 1px solid transparent;
-    font-size: 0.95rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  
-  .prob-box strong {
-    font-variant-numeric: tabular-nums;
-    font-size: 1.02rem;
-  }
-  
-  /* Home = green, Away = orange */
-  
-  body.theme-dark .prob-box.home {
-    background: linear-gradient(
-      135deg,
-      rgba(34, 197, 94, 0.24),
-      rgba(5, 46, 22, 0.8)
-    );
-    border-color: rgba(34, 197, 94, 0.9);
-    color: #bbf7d0;
-  }
-  
-  body.theme-light .prob-box.home {
-    background: linear-gradient(
-      135deg,
-      rgba(34, 197, 94, 0.14),
-      rgba(220, 252, 231, 0.9)
-    );
-    border-color: rgba(22, 163, 74, 0.8);
-    color: #064e3b;
-  }
-  
-  body.theme-dark .prob-box.away {
-    background: linear-gradient(
-      135deg,
-      rgba(248, 113, 22, 0.24),
-      rgba(124, 45, 18, 0.8)
-    );
-    border-color: rgba(248, 113, 22, 0.9);
-    color: #ffedd5;
-  }
-  
-  body.theme-light .prob-box.away {
-    background: linear-gradient(
-      135deg,
-      rgba(248, 113, 22, 0.18),
-      rgba(254, 243, 199, 0.95)
-    );
-    border-color: rgba(248, 113, 22, 0.85);
-    color: #7c2d12;
   }
   
