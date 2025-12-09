@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NFL Win Totals – Betting Edges</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark">
+  <header class="app-header">
+    <div class="app-title">
+      <h1>NFL Win Totals – Betting Edges</h1>
+      <p>
+        Compares your simulation to posted regular-season win totals.
+        EV numbers assume a <strong>$100 stake</strong> and are net profit (not including stake).
+      </p>
+    </div>
+    <div class="app-controls">
+      <button id="betThemeToggle" type="button" class="btn secondary">
+        Switch to Light Theme
+      </button>
+
+      <button id="betBackBtn" type="button" class="btn secondary">
+        Back to Projections
+      </button>
+
+      <button id="betReloadBtn" type="button" class="btn secondary">
+        Reload sim results
+      </button>
+
+      <button id="betExportBtn" type="button" class="btn primary">
+        Export betting table as CSV
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section id="bettingSection" class="results-section">
+      <div class="results-header-row">
+        <h2>Betting Table (Additional Wins vs Market)</h2>
+        <button
+          id="betToggleColumnPicker"
+          type="button"
+          class="btn secondary results-columns-btn"
+        >
+          Columns
+        </button>
+      </div>
+
+      <p id="betStatusNote" class="section-note">
+        Loading simulation results from local storage…
+      </p>
+
+      <div class="app-controls" style="margin-top: 0.4rem;">
+        <label class="control-group">
+          <span>Division</span>
+          <select id="betDivisionFilter">
+            <option value="ALL">All</option>
+            <option value="AE">AE</option>
+            <option value="AW">AW</option>
+            <option value="AN">AN</option>
+            <option value="AS">AS</option>
+            <option value="NE">NE</option>
+            <option value="NN">NN</option>
+            <option value="NS">NS</option>
+            <option value="NW">NW</option>
+          </select>
+        </label>
+
+        <label class="control-group">
+          <input id="betPositiveEVOnly" type="checkbox" />
+          <span>Only teams with any positive EV</span>
+        </label>
+      </div>
+
+      <!-- Column selection panel -->
+      <div id="betColumnPicker" class="column-picker hidden"></div>
+
+      <!-- Main betting table -->
+      <div id="betTableContainer" class="table-container"></div>
+    </section>
+
+    <section id="rawMarketsSection" class="results-section">
+      <h2>Raw Market Win Totals (as posted)</h2>
+      <p class="section-note">
+        Regular-season win totals and alt lines, shown exactly as provided.
+      </p>
+      <div id="rawMarketsContainer" class="table-container"></div>
+    </section>
+  </main>
+
+  <!-- Per-team market detail drawer -->
+  <div id="betDetailOverlay" class="team-detail-overlay hidden">
+    <div class="team-detail-modal">
+      <button
+        id="betDetailClose"
+        class="btn close-btn"
+        type="button"
+        aria-label="Close"
+      >
+        ×
+      </button>
+      <div id="betDetailContent"></div>
+    </div>
+  </div>
+
+  <script src="betting.js"></script>
+</body>
+</html>
