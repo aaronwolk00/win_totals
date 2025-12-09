@@ -1,73 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>NFL Win Projection Tool</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body class="theme-dark">
+  <head>
+    <meta charset="UTF-8" />
+    <title>NFL Win Projection Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body class="theme-dark">
+    <!-- Top bar ------------------------------------------------------------ -->
     <header class="app-header">
-        <div class="app-title">
-          <h1>NFL Win Projection Tool</h1>
-          <p>Weeks 15–18, 2025 · Spread-based probabilities (home perspective)</p>
-        </div>
-        <div class="app-controls">
-          <button id="themeToggle" type="button" class="btn secondary">
-            Switch to Light Theme
-          </button>
-      
-          <button id="viewToggleBtn" type="button" class="btn secondary">
-            Show Team Projections
-          </button>
-      
-          <button id="toggleOddsBtn" type="button" class="btn secondary">
-            Show Implied Odds
-          </button>
-      
-          <label class="control-group">
-            <span>Display precision</span>
-            <select id="precisionSelect">
-              <option value="2">2 decimals</option>
-              <option value="3">3 decimals</option>
-              <option value="4" selected>4 decimals</option>
-            </select>
-          </label>
-      
-          <label class="control-group">
-            <span>Threshold total wins&nbsp;(X)</span>
-            <input id="thresholdInput" type="number" step="0.5" value="10" />
-          </label>
-      
-          <button id="fillEvenBtn" type="button" class="btn secondary">
-            Fill empty games with neutral spread
-          </button>
-      
-          <button id="resetStateBtn" type="button" class="btn danger">
-            Reset all spreads
-          </button>
-      
-          <button id="exportCSV" type="button" class="btn primary">
-            Export projections as CSV
-          </button>
-        </div>
+      <div class="app-title">
+        <h1>NFL Win Projection Tool</h1>
+        <p>Weeks 15–18, 2025 · Spread-based probabilities (home perspective)</p>
+      </div>
+
+      <div class="app-controls">
+        <button id="themeToggle" type="button" class="btn secondary">
+          Switch to Light Theme
+        </button>
+
+        <button id="viewToggleBtn" type="button" class="btn secondary">
+          Show Team Projections
+        </button>
+
+        <button id="toggleOddsBtn" type="button" class="btn secondary">
+          Show Implied Odds
+        </button>
+
+        <label class="control-group">
+          <span>Display precision</span>
+          <select id="precisionSelect">
+            <option value="2">2 decimals</option>
+            <option value="3">3 decimals</option>
+            <option value="4" selected>4 decimals</option>
+          </select>
+        </label>
+
+        <label class="control-group">
+          <span>Threshold total wins&nbsp;(X)</span>
+          <input id="thresholdInput" type="number" step="0.5" value="10" />
+        </label>
+
+        <button id="fillEvenBtn" type="button" class="btn secondary">
+          Fill empty games with neutral spread
+        </button>
+
+        <button id="resetStateBtn" type="button" class="btn danger">
+          Reset all spreads
+        </button>
+
+        <button id="exportCSV" type="button" class="btn primary">
+          Export projections as CSV
+        </button>
+      </div>
     </header>
-      
 
-  <main class="layout">
-    <section id="scheduleSection" class="schedule-section">
-      <h2>Schedule &amp; Spread Inputs</h2>
-      <p class="section-note">
-        Spreads are always from the <strong>home team's perspective</strong>.
-        Click on a spread in the band to set it for that game.
-      </p>
-      <div id="scheduleContainer" class="schedule-container"></div>
-    </section>
+    <!-- Main content ------------------------------------------------------- -->
+    <main class="layout">
+      <!-- Schedule / spreads ---------------------------------------------- -->
+      <section id="scheduleSection" class="schedule-section">
+        <h2>Schedule &amp; Spread Inputs</h2>
+        <p class="section-note">
+          Spreads are always from the <strong>home team's perspective</strong>.
+          Click on a number in the spread band to set the line for that game.
+        </p>
 
-    <!-- Hidden by default; shown via view toggle -->
-    <section id="resultsSection" class="results-section hidden">
+        <!-- Game cards are injected here by app.js -->
+        <div id="scheduleContainer" class="schedule-container"></div>
+      </section>
+
+      <!-- Projections view (hidden by default, toggled in JS) -------------- -->
+      <section id="resultsSection" class="results-section hidden">
         <div class="results-header-row">
           <h2>Team Projections</h2>
+
           <button
             id="toggleColumnPicker"
             type="button"
@@ -76,34 +84,38 @@
             Columns
           </button>
         </div>
-      
+
         <div id="divisionNote" class="division-note"></div>
-      
-        <!-- Column selection panel (populated by JS) -->
+
+        <!-- Column selection panel (options injected in JS) -->
         <div id="columnPicker" class="column-picker hidden"></div>
-      
+
+        <!-- Main projections table (injected in JS) -->
         <div id="teamTableContainer" class="table-container"></div>
-      
+
         <h3>Division Summaries</h3>
-        <div id="divisionSummaryContainer" class="division-summary-container"></div>
+        <div
+          id="divisionSummaryContainer"
+          class="division-summary-container"
+        ></div>
       </section>
-      
-  </main>
+    </main>
 
-  <div id="teamDetailOverlay" class="team-detail-overlay hidden">
-    <div class="team-detail-modal">
-      <button
-        id="teamDetailClose"
-        class="btn close-btn"
-        type="button"
-        aria-label="Close"
-      >
-        ×
-      </button>
-      <div id="teamDetailContent"></div>
+    <!-- Team detail modal -------------------------------------------------- -->
+    <div id="teamDetailOverlay" class="team-detail-overlay hidden" aria-hidden="true">
+      <div class="team-detail-modal" role="dialog" aria-modal="true" aria-labelledby="teamDetailTitle">
+        <button
+          id="teamDetailClose"
+          class="btn close-btn"
+          type="button"
+          aria-label="Close team detail"
+        >
+          ×
+        </button>
+        <div id="teamDetailContent"></div>
+      </div>
     </div>
-  </div>
 
-  <script src="app.js"></script>
-</body>
+    <script src="app.js"></script>
+  </body>
 </html>
