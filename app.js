@@ -1108,59 +1108,55 @@ function applyViewMode() {
       resultsSection.classList.remove("hidden");
       viewToggleBtn.textContent = "Show Schedule & Spreads";
     }
-  
-    // Keep bottom-nav in sync for Games / Teams
-    const navItems = document.querySelectorAll(".bottom-nav-item");
-    navItems.forEach((btn) => {
-      const tab = btn.dataset.tab;
-      const shouldBeActive =
-        (state.view === "schedule" && tab === "games") ||
-        (state.view === "projections" && tab === "teams");
-      // Don't touch the betting / more tabs here
-      if (tab === "betting" || tab === "more") return;
-      btn.classList.toggle("is-active", shouldBeActive);
-    });
   }
+  
   
   function setActiveTab(tab) {
-    const navItems = document.querySelectorAll(".bottom-nav-item");
-    navItems.forEach((btn) => {
-      const tabName = btn.dataset.tab;
-      btn.classList.toggle("is-active", tabName === tab);
-    });
+    const scheduleSection   = document.getElementById("scheduleSection");
+    const resultsSection    = document.getElementById("resultsSection");
+    const bettingSection    = document.getElementById("bettingSection");
+    const rawMarketsSection = document.getElementById("rawMarketsSection");
   
-    const scheduleSection = document.getElementById("scheduleSection");
-    const resultsSection = document.getElementById("resultsSection");
-    const bettingSection = document.getElementById("bettingSection");
+    // Highlight correct bottom-nav button
+    document
+      .querySelectorAll(".bottom-nav-item")
+      .forEach((btn) => {
+        btn.classList.toggle("is-active", btn.dataset.tab === tab);
+      });
   
-    // Default: hide betting section unless explicitly on that tab
-    if (bettingSection) {
-      if (tab === "betting") {
-        bettingSection.classList.remove("hidden");
-      } else {
-        bettingSection.classList.add("hidden");
-      }
-    }
+    // Hide everything by default; we'll re-show what we want
+    if (scheduleSection)   scheduleSection.classList.add("hidden");
+    if (resultsSection)    resultsSection.classList.add("hidden");
+    if (bettingSection)    bettingSection.classList.add("hidden");
+    if (rawMarketsSection) rawMarketsSection.classList.add("hidden");
   
     if (tab === "games") {
+      // Games = schedule view
       state.view = "schedule";
       saveStateToStorage();
-      applyViewMode();
+      applyViewMode(); // shows scheduleSection
+  
     } else if (tab === "teams") {
+      // Teams = projections view
       state.view = "projections";
       saveStateToStorage();
-      applyViewMode();
+      applyViewMode(); // shows resultsSection
+  
     } else if (tab === "betting") {
-      // Betting tab: hide both schedule + projections, show bettingSection only
-      if (scheduleSection) scheduleSection.classList.add("hidden");
-      if (resultsSection) resultsSection.classList.add("hidden");
+      // Betting tab: show both betting sections
+      if (bettingSection)    bettingSection.classList.remove("hidden");
+      if (rawMarketsSection) rawMarketsSection.classList.remove("hidden");
+      // betting.js will have already drawn the tables on DOMContentLoaded
     } else if (tab === "more") {
-      // For now just highlight the tab; you can wire a "More" panel later.
-      if (scheduleSection) scheduleSection.classList.add("hidden");
-      if (resultsSection) resultsSection.classList.add("hidden");
-      // bettingSection stays hidden unless you want something here
+      // For now, "More" can just leave things as-is or later show a dedicated section.
+      // Easiest behaviour: default back to schedule if nothing else.
+      if (scheduleSection) scheduleSection.classList.remove("hidden");
+      state.view = "schedule";
+      saveStateToStorage();
     }
   }
+  
+  
   
   
 
@@ -2494,9 +2490,9 @@ function attachEventListeners() {
     const viewToggleBtn = document.getElementById("viewToggleBtn");
     if (viewToggleBtn) {
       viewToggleBtn.addEventListener("click", () => {
-        state.view = state.view === "schedule" ? "projections" : "schedule";
-        saveStateToStorage();
-        applyViewMode();
+        // Flip between Games (schedule) and Teams (projections) via tabs
+        const nextTab = state.view === "schedule" ? "teams" : "games";
+        setActiveTab(nextTab);
       });
     }
   
@@ -2521,7 +2517,7 @@ function attachEventListeners() {
       });
     }
   
-    // HEADER "Betting Table" → switch to Betting tab instead of navigating
+    // HEADER "Betting Table" → go to Betting tab (no navigation)
     const bettingBtn = document.getElementById("bettingTableBtn");
     if (bettingBtn) {
       bettingBtn.addEventListener("click", () => {
@@ -2602,7 +2598,7 @@ function attachEventListeners() {
       });
     }
   
-    // NEW: bottom tab bar wiring (Games / Teams / Betting / More)
+    // Bottom tab bar wiring (Games / Teams / Betting / More)
     const bottomNav = document.querySelector(".bottom-nav");
     if (bottomNav) {
       bottomNav.querySelectorAll(".bottom-nav-item").forEach((btn) => {
@@ -2614,8 +2610,10 @@ function attachEventListeners() {
       });
     }
   
+    // Scenario controls (unchanged)
     initScenarioControls();
   }
+  
   
 
   function initBottomNav() {
@@ -2767,11 +2765,11 @@ function attachEventListeners() {
 // ---------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1) Load state + display mode
+    // 1) Load state + shared display mode
     loadStateFromStorage();
     loadDisplayMode();
   
-    // 2) Apply theme + display mode before rendering UI
+    // 2) Apply theme + layout mode before rendering
     applyTheme();
     applyDisplayModeMainPage();
   
@@ -2783,14 +2781,14 @@ document.addEventListener("DOMContentLoaded", () => {
     renderSchedule();
     computeAndRenderResults();
   
-    // 5) View (schedule vs projections)
-    applyViewMode();
-  
-    // 6) Tabs + listeners
+    // 5) Decide which tab to show first (Games or Teams) from state.view
     const initialTab = state.view === "projections" ? "teams" : "games";
     setActiveTab(initialTab);
+  
+    // 6) Wire up all UI events
     attachEventListeners();
   });
+  
   
   
   

@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
     <link rel="stylesheet" href="styles.css" />
+    <!-- Optional: betting-specific styles if still separate -->
+    <link rel="stylesheet" href="betting.css" />
   </head>
 
   <!-- Start in dark + desktop mode; JS will adjust -->
@@ -230,6 +232,43 @@
           class="division-summary-container"
         ></div>
       </section>
+
+      <!-- Betting view (inline, used when Betting tab is active) ----------- -->
+      <section id="bettingSection" class="results-section hidden">
+        <div class="results-header-row">
+          <h2>Betting Edges</h2>
+          <button
+            id="betToggleColumns"
+            type="button"
+            class="btn secondary results-columns-btn"
+          >
+            Columns
+          </button>
+        </div>
+
+        <p id="betStatusNote" class="section-note">
+          Run a projection first, then come back here to see edges vs the
+          market.
+        </p>
+
+        <div id="betColumnPicker" class="column-picker hidden"></div>
+
+        <!-- Main betting EV table -->
+        <div id="betTableContainer" class="table-container"></div>
+      </section>
+
+      <!-- Optional raw markets table under betting ------------------------- -->
+      <section id="rawMarketsSection" class="results-section hidden">
+        <div class="results-header-row">
+          <h2>Market Win Totals</h2>
+        </div>
+        <p class="section-note">
+          These are the raw win totals and odds from the book side, without your
+          model applied.
+        </p>
+
+        <div id="rawMarketsContainer" class="table-container"></div>
+      </section>
     </main>
 
     <!-- Team detail modal -------------------------------------------------- -->
@@ -256,6 +295,30 @@
       </div>
     </div>
 
+    <!-- Betting detail drawer (for betting table rows) --------------------- -->
+    <div
+      id="betDetailOverlay"
+      class="team-detail-overlay hidden"
+      aria-hidden="true"
+    >
+      <div
+        class="team-detail-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="betDetailTitle"
+      >
+        <button
+          id="betDetailClose"
+          class="btn close-btn"
+          type="button"
+          aria-label="Close betting detail"
+        >
+          ×
+        </button>
+        <div id="betDetailContent"></div>
+      </div>
+    </div>
+
     <!-- Bottom tab bar – mobile-first fan navigation ---------------------- -->
     <nav class="bottom-nav" aria-label="Primary navigation">
       <button
@@ -279,6 +342,8 @@
       </button>
     </nav>
 
+    <!-- Main app + betting logic -->
     <script src="app.js"></script>
+    <script src="betting.js"></script>
   </body>
 </html>
