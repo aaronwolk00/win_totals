@@ -663,6 +663,121 @@ const spreadProbTable = {
   14.5: 0.8541
 };
 
+
+// ---------------------------
+// Mode handling (Fan / Pro)
+// ---------------------------
+function applyMode() {
+    const body = document.body;
+    const btn = document.getElementById("modeToggleBtn");
+  
+    body.classList.toggle("mode-fan", state.mode === "fan");
+    body.classList.toggle("mode-pro", state.mode === "pro");
+  
+    if (btn) {
+      btn.textContent =
+        state.mode === "fan" ? "Switch to Pro Mode" : "Switch to Fan Mode";
+    }
+  
+    // Column presets per mode (can still be overridden via column picker)
+    if (state.mode === "fan") {
+      state.visibleColumns = {
+        team: true,
+        division: true,
+        current: true,
+        expected: true,
+        projected: true,
+        P0: false,
+        P1: false,
+        P2: false,
+        P3: false,
+        P4: false,
+        PA1: false,
+        PA2: false,
+        PA3: false,
+        PA4: false
+      };
+    } else {
+      // Pro mode: show everything by default
+      state.visibleColumns = {
+        team: true,
+        division: true,
+        current: true,
+        expected: true,
+        projected: true,
+        P0: true,
+        P1: true,
+        P2: true,
+        P3: true,
+        P4: true,
+        PA1: true,
+        PA2: true,
+        PA3: true,
+        PA4: true
+      };
+    }
+  
+    saveStateToStorage();
+    renderTeamTable();
+    renderColumnPicker();
+  }
+  
+  // ---------------------------
+  // Progress indicators
+  // ---------------------------
+  function updateProgressUI() {
+    const step1El = document.getElementById("step1ProgressText");
+    const step2El = document.getElementById("step2ProgressText");
+    const step3El = document.getElementById("step3ProgressText");
+    const barEl = document.getElementById("globalProgressBar");
+    const barLabelEl = document.getElementById("globalProgressLabel");
+  
+    const totalGames = games.length;
+    const pickedGameIds = Object.keys(state.spreads);
+  
+    const pickedGamesCount = pickedGameIds.length;
+  
+    const touchedTeams = new Set();
+    for (const idStr of pickedGameIds) {
+      const g = games.find((gg) => gg.id === Number(idStr));
+      if (!g) continue;
+      touchedTeams.add(g.home);
+      touchedTeams.add(g.away);
+    }
+    const teamsTouchedCount = touchedTeams.size;
+  
+    const pctGames = totalGames
+      ? Math.round((pickedGamesCount / totalGames) * 100)
+      : 0;
+    const pctTeams = teamIds.length
+      ? Math.round((teamsTouchedCount / teamIds.length) * 100)
+      : 0;
+  
+    const hasProjections = state.results.length > 0;
+    const pctBettingReady = hasProjections ? 100 : 0;
+  
+    const overall = Math.round((pctGames + pctTeams + pctBettingReady) / 3);
+  
+    if (step1El) {
+      step1El.textContent = `Games with your line: ${pickedGamesCount}/${totalGames} (${pctGames}%)`;
+    }
+    if (step2El) {
+      step2El.textContent = `Teams touched: ${teamsTouchedCount}/${teamIds.length} (${pctTeams}%)`;
+    }
+    if (step3El) {
+      step3El.textContent = hasProjections
+        ? "Betting edges ready"
+        : "Set some spreads to unlock betting edges";
+    }
+    if (barEl) {
+      barEl.style.width = overall + "%";
+    }
+    if (barLabelEl) {
+      barLabelEl.textContent = `${overall}% complete`;
+    }
+  }
+  
+
 // Has the user picked at least one spread for this team's games?
 function teamHasAnyPickedGame(teamId) {
     for (const game of games) {
@@ -709,11 +824,11 @@ const spreadBandValues = (() => {
 const state = {
     theme: "dark",
     precision: 2,
-    spreads: {}, // gameId -> spread number
-    results: [], // computed per-team
+    spreads: {},           // gameId -> spread number
+    results: [],           // computed per-team
     currentSort: { key: "projected", direction: "desc" },
-    view: "schedule", // "schedule" or "projections"
-    showImpliedOdds: false, // global toggle for showing American odds
+    view: "schedule",      // "schedule" or "projections"
+    showImpliedOdds: false,
     visibleColumns: {
       team: true,
       division: true,
@@ -728,15 +843,23 @@ const state = {
       PA1: true,
       PA2: true,
       PA3: true,
-      PA4: true,
+      PA4: true
     },
   
-    // NEW: schedule filters + scroll memory
-    filterWeek: "ALL",      // "ALL" or week number (15–18)
-    filterTeam: "ALL",      // "ALL" or teamId like "NE"
-    filterDivision: "ALL",  // "ALL" or division code like "AE"
-    lastFocusedGameId: null // last game you interacted with
+    // Schedule filters + scroll memory
+    filterWeek: "ALL",
+    filterTeam: "ALL",
+    filterDivision: "ALL",
+    lastFocusedGameId: null,
+  
+    // NEW: fan vs pro mode
+    mode: "fan",          // "fan" or "pro"
+  
+    // NEW: scenarios – name -> snapshot
+    scenarios: {},        // { [name]: { spreads, precision, showImpliedOdds } }
+    activeScenario: null
   };
+  
   
   
   
@@ -767,7 +890,6 @@ function loadStateFromStorage() {
         state.results = parsed.results;
       }
   
-      // NEW: filters + last focused game
       if (parsed.filterWeek !== undefined) {
         state.filterWeek = parsed.filterWeek;
       }
@@ -780,10 +902,49 @@ function loadStateFromStorage() {
       if (parsed.lastFocusedGameId !== undefined) {
         state.lastFocusedGameId = parsed.lastFocusedGameId;
       }
+  
+      // NEW: mode
+      if (parsed.mode === "fan" || parsed.mode === "pro") {
+        state.mode = parsed.mode;
+      }
+  
+      // NEW: scenarios
+      if (parsed.scenarios && typeof parsed.scenarios === "object") {
+        state.scenarios = parsed.scenarios;
+      }
+      if (typeof parsed.activeScenario === "string") {
+        state.activeScenario = parsed.activeScenario;
+      }
     } catch (err) {
       console.warn("Failed to load state:", err);
     }
   }
+  
+  function saveStateToStorage() {
+    const toSave = {
+      theme: state.theme,
+      precision: state.precision,
+      spreads: state.spreads,
+      view: state.view,
+      showImpliedOdds: state.showImpliedOdds,
+      results: state.results,
+      filterWeek: state.filterWeek,
+      filterTeam: state.filterTeam,
+      filterDivision: state.filterDivision,
+      lastFocusedGameId: state.lastFocusedGameId,
+  
+      // NEW
+      mode: state.mode,
+      scenarios: state.scenarios,
+      activeScenario: state.activeScenario
+    };
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
+    } catch (err) {
+      console.warn("Failed to save state:", err);
+    }
+  }
+  
   
   
   
@@ -1220,12 +1381,12 @@ function renderSchedule() {
 // Set spread for a game and recompute
 function setSpreadForGame(gameId, spreadValue) {
     state.spreads[String(gameId)] = spreadValue;
-  
     state.lastFocusedGameId = gameId;
   
     updateGameCardDisplay(gameId);
     saveStateToStorage();
     computeAndRenderResults();
+    updateProgressUI();
   }
   
 
@@ -1239,25 +1400,27 @@ function updateOddsToggleButton() {
 
   function resetAllState() {
     const confirmed = window.confirm(
-      "Are you sure you want to reset all spreads and projections?\n\nThis will clear all custom spreads and revert controls to defaults."
+      "Are you sure you want to reset all spreads and projections?\n\nThis will clear all custom spreads, filters, and scenarios."
     );
     if (!confirmed) return;
   
     state.spreads = {};
     state.precision = 2;
     state.showImpliedOdds = false;
-  
-    // NEW
     state.filterWeek = "ALL";
     state.filterTeam = "ALL";
     state.filterDivision = "ALL";
     state.lastFocusedGameId = null;
+    state.results = [];
   
+    // keep mode + scenarios – those are "meta"
     saveStateToStorage();
     updateControlsFromState();
   
     renderSchedule();
-    computeAndRenderResults();
+    renderTeamTable();
+    renderDivisionSummary();
+    updateProgressUI();
   }
   
 
@@ -1319,28 +1482,32 @@ function fillNeutralSpreads() {
 function computeAndRenderResults() {
     const precision = state.precision;
   
-    // Map team -> list of per-game win probs (remaining schedule)
     const teamGameProbs = {};
     for (const teamId of teamIds) {
       teamGameProbs[teamId] = [];
     }
   
-    // For each game, if no spread set -> homeProb = 0.5
+    const touchedTeams = new Set();
+  
     for (const game of games) {
       const key = String(game.id);
       let homeProb = 0.5;
   
-      if (typeof state.spreads[key] === "number") {
-        homeProb = homeWinProbFromSpread(state.spreads[key]);
+      if (Object.prototype.hasOwnProperty.call(state.spreads, key)) {
+        const spreadVal = state.spreads[key];
+        if (typeof spreadVal === "number") {
+          homeProb = homeWinProbFromSpread(spreadVal);
+          touchedTeams.add(game.home);
+          touchedTeams.add(game.away);
+        }
       }
   
       const awayProb = 1 - homeProb;
-  
       teamGameProbs[game.home].push(homeProb);
       teamGameProbs[game.away].push(awayProb);
     }
   
-    // Ensure each team has 4 games padded with 0.5 (bye or missing data safety)
+    // pad to 4 games (safety)
     for (const teamId of teamIds) {
       const arr = teamGameProbs[teamId];
       while (arr.length < 4) {
@@ -1351,6 +1518,11 @@ function computeAndRenderResults() {
     const results = [];
   
     for (const teamId of teamIds) {
+      if (!touchedTeams.has(teamId)) {
+        // user has not picked any games for this team yet
+        continue;
+      }
+  
       const info = teams[teamId];
       const probs = teamGameProbs[teamId];
   
@@ -1376,7 +1548,9 @@ function computeAndRenderResults() {
     renderTeamTable();
     renderDivisionSummary();
     saveStateToStorage();
+    updateProgressUI();
   }
+  
   
 
 // Compute distribution P(exactly k wins), k=0..4, via 2^4 combinations
@@ -1690,7 +1864,7 @@ function showTeamDetail(teamId) {
         const spread =
           typeof state.spreads[key] === "number"
             ? state.spreads[key]
-            : NEUTRAL_SPREAD; // neutral default
+            : NEUTRAL_SPREAD; // default if not set
   
         const homeProb = homeWinProbFromSpread(spread);
         const teamProb = game.home === teamId ? homeProb : 1 - homeProb;
@@ -1705,9 +1879,9 @@ function showTeamDetail(teamId) {
     }
   
     teamGames.sort((a, b) => a.game.week - b.game.week);
-  
     const precision = state.precision;
   
+    // Basic header
     let html = "";
     html += `<h3>${teamId} · ${teamInfo.name}</h3>`;
     html += `<p>Current wins: <strong>${teamInfo.currentWins}</strong> · Expected additional wins: <strong>${formatNumber(
@@ -1717,6 +1891,9 @@ function showTeamDetail(teamId) {
       result.projectedWins,
       precision
     )}</strong></p>`;
+  
+    // NEW: short narrative summary (fan-friendly)
+    html += buildTeamNarrative(teamInfo, result);
   
     html += `<h4>Edit remaining games</h4>`;
     html += `<p class="team-detail-note">Click a preset to set the spread for this game. Changes immediately update projections and the betting view.</p>`;
@@ -1759,7 +1936,6 @@ function showTeamDetail(teamId) {
   
     html += `</tbody></table>`;
   
-    // Distribution summary
     html += `<h4>Win distribution (remaining 4 games)</h4>`;
     html += `<ul class="team-detail-dist">`;
     for (let k = 0; k <= 4; k++) {
@@ -1780,7 +1956,6 @@ function showTeamDetail(teamId) {
         const value = parseFloat(btn.dataset.value);
         setSpreadForGame(gameId, value);
   
-        // Update the small table's spread text & win prob for that row
         const row = content.querySelector(`tr[data-game-id="${gameId}"]`);
         if (!row) return;
   
@@ -1792,8 +1967,6 @@ function showTeamDetail(teamId) {
           spreadCell.textContent = lbl;
         }
   
-        // Recompute results and refresh distribution + P(win) column
-        // (computeAndRenderResults already got called in setSpreadForGame)
         const updatedResult = state.results.find((r) => r.teamId === teamId);
         if (!updatedResult) return;
   
@@ -1808,8 +1981,8 @@ function showTeamDetail(teamId) {
           )}</strong>`;
         }
   
-        // Update per-row P(win) by recomputing from current spreads
-        const g = games.find((g) => g.id === gameId);
+        // Update per-row P(win)
+        const g = games.find((gg) => gg.id === gameId);
         if (!g) return;
         const spread =
           typeof state.spreads[String(gameId)] === "number"
@@ -1819,11 +1992,48 @@ function showTeamDetail(teamId) {
         const teamProb = g.home === teamId ? homeProb : 1 - homeProb;
         row.lastElementChild.textContent = formatPercent(teamProb, precision);
   
-        // Also remember this as "last focused game"
         state.lastFocusedGameId = gameId;
         saveStateToStorage();
       });
     });
+  }
+  
+  function buildTeamNarrative(teamInfo, result) {
+    const current = teamInfo.currentWins;
+    const projected = result.projectedWins;
+  
+    // Most likely additional wins
+    let bestK = 0;
+    let bestProb = 0;
+    for (let k = 0; k <= 4; k++) {
+      if (result.exact[k] > bestProb) {
+        bestProb = result.exact[k];
+        bestK = k;
+      }
+    }
+  
+    const mostLikelyTotal = current + bestK;
+    const p3Plus = result.cumulative[3]; // ≥3 of 4
+    const p0or1 = result.exact[0] + result.exact[1];
+  
+    let html = `<div class="team-detail-narrative"><ul>`;
+  
+    html += `<li>Most likely outcome: <strong>${bestK} additional wins</strong> (${mostLikelyTotal} total).</li>`;
+    html += `<li>Chance to win <strong>3 or more</strong> of the remaining 4: <strong>${formatPercent(
+      p3Plus,
+      1
+    )}</strong>.</li>`;
+    html += `<li>They finish with <strong>0–1 more wins</strong> only <strong>${formatPercent(
+      p0or1,
+      1
+    )}</strong> of the time.</li>`;
+    html += `<li>Your model’s average projection: <strong>${formatNumber(
+      projected,
+      2
+    )}</strong> total wins.</li>`;
+  
+    html += `</ul></div>`;
+    return html;
   }
   
 
@@ -1893,13 +2103,15 @@ function exportCsv() {
 
 function updateControlsFromState() {
     const precisionSelect = document.getElementById("precisionSelect");
-  
     if (precisionSelect) {
       precisionSelect.value = String(state.precision);
     }
   
     updateOddsToggleButton();
+    applyMode();        // NEW – ensure body classes + columns match mode
+    updateProgressUI(); // NEW – initial progress line-up
   }
+  
   
 
 function handlePrecisionChange(value) {
@@ -1916,98 +2128,190 @@ function handlePrecisionChange(value) {
 }
 
 function attachEventListeners() {
-  const themeToggle = document.getElementById("themeToggle");
-  if (themeToggle) {
-    themeToggle.addEventListener("click", () => {
-      state.theme = state.theme === "dark" ? "light" : "dark";
-      saveStateToStorage();
-      applyTheme();
-    });
-  }
-
-  const viewToggleBtn = document.getElementById("viewToggleBtn");
-  if (viewToggleBtn) {
-    viewToggleBtn.addEventListener("click", () => {
-      state.view = state.view === "schedule" ? "projections" : "schedule";
-      saveStateToStorage();
-      applyViewMode();
-    });
-  }
-  const colBtn = document.getElementById("toggleColumnPicker");
-  if (colBtn) {
-    colBtn.addEventListener("click", () => {
+    const themeToggle = document.getElementById("themeToggle");
+    if (themeToggle) {
+      themeToggle.addEventListener("click", () => {
+        state.theme = state.theme === "dark" ? "light" : "dark";
+        saveStateToStorage();
+        applyTheme();
+      });
+    }
+  
+    const viewToggleBtn = document.getElementById("viewToggleBtn");
+    if (viewToggleBtn) {
+      viewToggleBtn.addEventListener("click", () => {
+        state.view = state.view === "schedule" ? "projections" : "schedule";
+        saveStateToStorage();
+        applyViewMode();
+      });
+    }
+  
+    const colBtn = document.getElementById("toggleColumnPicker");
+    if (colBtn) {
+      colBtn.addEventListener("click", () => {
         const picker = document.getElementById("columnPicker");
         if (!picker) return;
         picker.classList.toggle("hidden");
-    });
+      });
     }
-
-
-  const oddsBtn = document.getElementById("toggleOddsBtn");
-  if (oddsBtn) {
-    oddsBtn.addEventListener("click", () => {
-      state.showImpliedOdds = !state.showImpliedOdds;
+  
+    const oddsBtn = document.getElementById("toggleOddsBtn");
+    if (oddsBtn) {
+      oddsBtn.addEventListener("click", () => {
+        state.showImpliedOdds = !state.showImpliedOdds;
+        saveStateToStorage();
+        updateOddsToggleButton();
+        for (const game of games) {
+          updateGameCardDisplay(game.id);
+        }
+      });
+    }
+  
+    const bettingBtn = document.getElementById("bettingTableBtn");
+    if (bettingBtn) {
+      bettingBtn.addEventListener("click", () => {
+        window.location.href = "betting.html";
+      });
+    }
+  
+    const precisionSelect = document.getElementById("precisionSelect");
+    if (precisionSelect) {
+      precisionSelect.addEventListener("change", (e) => {
+        handlePrecisionChange(e.target.value);
+      });
+    }
+  
+    const fillEvenBtn = document.getElementById("fillEvenBtn");
+    if (fillEvenBtn) {
+      fillEvenBtn.addEventListener("click", () => {
+        fillNeutralSpreads();
+      });
+    }
+  
+    const resetBtn = document.getElementById("resetStateBtn");
+    if (resetBtn) {
+      resetBtn.addEventListener("click", () => {
+        resetAllState();
+      });
+    }
+  
+    const exportBtn = document.getElementById("exportCSV");
+    if (exportBtn) {
+      exportBtn.addEventListener("click", () => {
+        exportCsv();
+      });
+    }
+  
+    const overlay = document.getElementById("teamDetailOverlay");
+    const closeBtn = document.getElementById("teamDetailClose");
+    if (overlay) {
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+          overlay.classList.add("hidden");
+        }
+      });
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        if (overlay) overlay.classList.add("hidden");
+      });
+    }
+  
+    // NEW: mode toggle
+    const modeToggle = document.getElementById("modeToggleBtn");
+    if (modeToggle) {
+      modeToggle.addEventListener("click", () => {
+        state.mode = state.mode === "fan" ? "pro" : "fan";
+        saveStateToStorage();
+        applyMode();
+      });
+    }
+  
+    // NEW: scenario controls
+    initScenarioControls();
+  }
+  
+  function initScenarioControls() {
+    const select = document.getElementById("scenarioSelect");
+    const nameInput = document.getElementById("scenarioNameInput");
+    const saveBtn = document.getElementById("scenarioSaveBtn");
+    const deleteBtn = document.getElementById("scenarioDeleteBtn");
+  
+    if (!select || !nameInput || !saveBtn || !deleteBtn) return;
+  
+    function refreshScenarioSelect() {
+      select.innerHTML = "";
+      const optNone = document.createElement("option");
+      optNone.value = "";
+      optNone.textContent = "No scenario";
+      select.appendChild(optNone);
+  
+      const names = Object.keys(state.scenarios).sort();
+      for (const name of names) {
+        const o = document.createElement("option");
+        o.value = name;
+        o.textContent = name;
+        if (state.activeScenario === name) {
+          o.selected = true;
+        }
+        select.appendChild(o);
+      }
+    }
+  
+    refreshScenarioSelect();
+  
+    saveBtn.addEventListener("click", () => {
+      const rawName = nameInput.value.trim();
+      if (!rawName) {
+        alert("Enter a scenario name first.");
+        return;
+      }
+      state.scenarios[rawName] = {
+        spreads: { ...state.spreads },
+        precision: state.precision,
+        showImpliedOdds: state.showImpliedOdds
+      };
+      state.activeScenario = rawName;
       saveStateToStorage();
-      updateOddsToggleButton();
-      for (const game of games) {
-        updateGameCardDisplay(game.id);
+      refreshScenarioSelect();
+    });
+  
+    deleteBtn.addEventListener("click", () => {
+      const sel = select.value;
+      if (!sel) return;
+      if (!window.confirm(`Delete scenario "${sel}"?`)) return;
+      delete state.scenarios[sel];
+      if (state.activeScenario === sel) {
+        state.activeScenario = null;
       }
+      saveStateToStorage();
+      refreshScenarioSelect();
     });
-  }
-
-  const bettingBtn = document.getElementById("bettingTableBtn");
-  if (bettingBtn) {
-    bettingBtn.addEventListener("click", () => {
-      // Navigate to your betting table page
-      window.location.href = "betting.html";
-    });
-  }
-
-
-  const precisionSelect = document.getElementById("precisionSelect");
-  if (precisionSelect) {
-    precisionSelect.addEventListener("change", (e) => {
-      handlePrecisionChange(e.target.value);
-    });
-  }
-
-  const fillEvenBtn = document.getElementById("fillEvenBtn");
-  if (fillEvenBtn) {
-    fillEvenBtn.addEventListener("click", () => {
-      fillNeutralSpreads();
-    });
-  }
-
-  const resetBtn = document.getElementById("resetStateBtn");
-  if (resetBtn) {
-    resetBtn.addEventListener("click", () => {
-      resetAllState();
-    });
-  }
-
-  const exportBtn = document.getElementById("exportCSV");
-  if (exportBtn) {
-    exportBtn.addEventListener("click", () => {
-      exportCsv();
-    });
-  }
-
-  const overlay = document.getElementById("teamDetailOverlay");
-  const closeBtn = document.getElementById("teamDetailClose");
-  if (overlay) {
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) {
-        overlay.classList.add("hidden");
+  
+    select.addEventListener("change", () => {
+      const name = select.value;
+      if (!name || !state.scenarios[name]) {
+        state.activeScenario = null;
+        saveStateToStorage();
+        return;
       }
+      const snap = state.scenarios[name];
+      state.spreads = { ...(snap.spreads || {}) };
+      if (typeof snap.precision === "number") {
+        state.precision = snap.precision;
+      }
+      if (typeof snap.showImpliedOdds === "boolean") {
+        state.showImpliedOdds = snap.showImpliedOdds;
+      }
+      state.activeScenario = name;
+      saveStateToStorage();
+  
+      updateControlsFromState();
+      renderSchedule();
+      computeAndRenderResults();
     });
   }
-  if (closeBtn) {
-    closeBtn.addEventListener("click", () => {
-      if (overlay) overlay.classList.add("hidden");
-    });
-  }
-}
-
+  
   
 
 // ---------------------------
