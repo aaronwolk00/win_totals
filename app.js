@@ -1318,7 +1318,7 @@ function renderTeamTable() {
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
   
-    for (const h of header) {
+    for (const h of TABLE_HEADERS) {
       if (!state.visibleColumns[h.key]) continue;
   
       const th = document.createElement("th");
@@ -1369,7 +1369,7 @@ function renderTeamTable() {
         showTeamDetail(r.teamId);
       });
   
-      for (const h of header) {
+      for (const h of TABLE_HEADERS) {
         if (!state.visibleColumns[h.key]) continue;
   
         const td = document.createElement("td");
@@ -1438,7 +1438,7 @@ function renderTeamTable() {
     const grid = document.createElement("div");
     grid.className = "column-picker-grid";
   
-    header.forEach((h) => {
+    TABLE_HEADERS.forEach((h) => {
       // If you want 'team' & 'division' always on, skip them here:
       // if (h.key === "team" || h.key === "division") return;
   
@@ -1620,7 +1620,7 @@ function showTeamDetail(teamId) {
 // Export CSV
 function exportCsv() {
   const rows = [];
-  const header = [
+  const TABLE_HEADERS = [
     "Team",
     "Division",
     "CurrentWins",
@@ -1637,7 +1637,7 @@ function exportCsv() {
     "P_atLeast4",
     `P_totalAtLeast_${state.threshold}`
   ];
-  rows.push(header);
+  rows.push(TABLE_HEADERS);
 
   for (const r of state.results) {
     rows.push([
