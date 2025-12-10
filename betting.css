@@ -882,4 +882,41 @@ body.mode-mobile .app-title h1 {
   body.mode-mobile .team-detail-modal table {
     font-size: 0.85rem;
   }
+
+  /* -------------------------------------------
+   Fan vs Pro modes – betting table columns
+   Use these classes on your TH/TD:
+   - col-core: always visible
+   - col-fan-only: only in Fan mode
+   - col-pro-only: only in Pro mode
+------------------------------------------- */
+
+/* Always-visible columns */
+.betting-table th.col-core,
+.betting-table td.col-core {
+  display: table-cell;
+}
+
+/* Fan-only columns */
+body.mode-fan .betting-table th.col-fan-only,
+body.mode-fan .betting-table td.col-fan-only {
+  display: table-cell;
+}
+
+body.mode-pro .betting-table th.col-fan-only,
+body.mode-pro .betting-table td.col-fan-only {
+  display: none;
+}
+
+/* Pro-only columns */
+body.mode-fan .betting-table th.col-pro-only,
+body.mode-fan .betting-table td.col-pro-only {
+  display: none;
+}
+
+body.mode-pro .betting-table th.col-pro-only,
+body.mode-pro .betting-table td.col-pro-only {
+  display: table-cell;
+}
+
   
