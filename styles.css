@@ -37,7 +37,13 @@
   body {
     margin: 0;
     padding: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    width: 100%;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+  }
+  
+  body {
+    overflow-x: hidden;
   }
   
   /* Theme shells */
@@ -83,6 +89,7 @@
     padding: 0.85rem 1.75rem;
     border-bottom: 1px solid;
     backdrop-filter: blur(16px);
+    width: 100%;
   }
   
   .app-title h1 {
@@ -105,13 +112,6 @@
     margin-top: 0.6rem;
   }
   
-  .control-group {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.95rem;
-  }
-  
   /* Buttons / inputs */
   
   .btn {
@@ -121,8 +121,8 @@
     font-size: 0.95rem;
     cursor: pointer;
     background: none;
-    transition: background 0.15s ease, border-color 0.15s ease,
-      color 0.15s ease, transform 0.05s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+      transform 0.05s ease;
   }
   
   .btn.primary {
@@ -191,6 +191,8 @@
     flex-direction: column;
     gap: 1rem;
     padding: 1.25rem 1.75rem 2rem;
+    width: 100%;
+    max-width: 100%;
   }
   
   .schedule-section,
@@ -199,6 +201,7 @@
     border: 1px solid;
     padding: 1.2rem 1.4rem 1.7rem;
     box-shadow: 0 18px 50px rgba(15, 23, 42, 0.45);
+    width: 100%;
   }
   
   .schedule-section h2,
@@ -225,12 +228,14 @@
     max-height: none;
     overflow: visible;
     padding-right: 0.25rem;
+    width: 100%;
   }
   
   .week-block {
     border-radius: 0.9rem;
     border: 1px dashed;
     padding: 0.9rem 1rem 1rem;
+    width: 100%;
   }
   
   body.theme-dark .week-block {
@@ -264,6 +269,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
+    width: 100%;
   }
   
   /* -------------------------
@@ -281,6 +287,7 @@
     align-items: center;
     font-size: 1.05rem;
     overflow: hidden;
+    width: 100%;
   }
   
   /* team color heat both sides, neutral middle */
@@ -389,36 +396,22 @@
     opacity: 0.9;
   }
   
-  /* Center "AT" + big spread */
-  
   .game-center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.15rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.75;
     text-align: center;
   }
   
-  .game-center-label {
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    opacity: 0.8;
-  }
-  
-  .game-center-spread {
-    font-size: 1.6rem;
+  /* optional: if you add an inline spread span next to "AT" */
+  .game-center .inline-spread-display {
+    display: inline-block;
+    margin-left: 0.35rem;
+    font-size: 1.3rem;
     font-weight: 800;
-    letter-spacing: 0.06em;
-    color: #f9fafb;
-    text-shadow: 0 1px 2px rgba(15, 23, 42, 0.9);
-    font-variant-numeric: tabular-nums;
-    min-width: 3.5ch;
-  }
-  
-  body.theme-light .game-center-spread {
-    color: #0f172a;
-    text-shadow: none;
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
   }
   
   /* Meta row */
@@ -429,6 +422,45 @@
     flex-direction: column;
     gap: 0.5rem;
     font-size: 0.95rem;
+  }
+  
+  /* -------------------------
+     Spread pill (kept, but subtle)
+  ------------------------- */
+  
+  .selected-spread {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.85;
+  }
+  
+  body.theme-dark .selected-spread {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    color: var(--text-main-dark);
+  }
+  
+  body.theme-light .selected-spread {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    color: var(--text-main-light);
+  }
+  
+  .selected-spread::before {
+    content: "LINE";
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.18);
   }
   
   /* -------------------------
@@ -511,7 +543,7 @@
     color: var(--text-main-light);
   }
   
-  /* favorite / underdog variations (classes added in JS) */
+  /* favorite / underdog variations */
   
   body.theme-dark .prob-box.favorite {
     background: linear-gradient(
@@ -602,15 +634,14 @@
     transform: translateY(-1px);
   }
   
-  /* selected spread */
+  /* selected spread – higher contrast so numbers stay visible */
   
   .spread-option.selected {
-    background: var(--accent);
+    background: rgba(15, 23, 42, 0.9);
     border-color: var(--accent);
-    color: #000000;
-    font-weight: 700;
-    text-shadow: none;
-    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.7);
+    color: #f9fafb;
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.7);
+    font-weight: 600;
   }
   
   /* hide extra wide spreads unless expanded */
@@ -653,6 +684,7 @@
     overflow: auto;
     border-radius: 0.75rem;
     border: 1px solid;
+    width: 100%;
   }
   
   body.theme-dark .table-container {
@@ -717,8 +749,10 @@
     --team-color-alt: #64748b;
     background-image: linear-gradient(
       90deg,
-      var(--team-color-main) 0%,
-      var(--team-color-alt) 100%
+      rgba(15, 23, 42, 0.98) 0%,
+      var(--team-color-main) 18%,
+      var(--team-color-alt) 55%,
+      rgba(15, 23, 42, 0.98) 100%
     );
     background-size: 100% 100%;
     background-repeat: no-repeat;
@@ -727,8 +761,10 @@
   body.theme-light .table tbody tr {
     background-image: linear-gradient(
       90deg,
-      var(--team-color-main) 0%,
-      var(--team-color-alt) 100%
+      rgba(249, 250, 251, 0.98) 0%,
+      var(--team-color-main) 18%,
+      var(--team-color-alt) 55%,
+      rgba(249, 250, 251, 0.98) 100%
     );
   }
   
