@@ -85,6 +85,12 @@
     border-color: var(--border-subtle-light);
   }
   
+  /* In explicit mobile mode, header is a bit tighter */
+  body.mode-mobile .app-header {
+    padding-inline: 1rem;
+    padding-block: 0.7rem;
+  }
+  
   .app-title h1 {
     margin: 0;
     font-size: 1.7rem;
@@ -229,6 +235,11 @@
     padding: 1.25rem 1.75rem 2rem;
   }
   
+  /* Mobile mode: tighter padding, more "app" feel */
+  body.mode-mobile .layout {
+    padding: 0.9rem 1rem 1.5rem;
+  }
+  
   .results-section {
     border-radius: 1rem;
     border: 1px solid;
@@ -244,6 +255,12 @@
   body.theme-light .results-section {
     background-color: #f9fafb;
     border-color: var(--border-subtle-light);
+  }
+  
+  /* Mobile mode: slightly softer shadow and padding */
+  body.mode-mobile .results-section {
+    padding: 1rem 1.1rem 1.2rem;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.3);
   }
   
   .results-section h2 {
@@ -298,6 +315,12 @@
     background: rgba(249, 250, 251, 0.98);
   }
   
+  /* Smaller, denser picker in mobile mode */
+  body.mode-mobile .column-picker {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.85rem;
+  }
+  
   .column-picker-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -325,6 +348,13 @@
     overflow: auto;
     border-radius: 0.9rem;
     border: 1px solid;
+  }
+  
+  /* mobile mode: ensure horizontal scroll is smooth */
+  body.mode-mobile .table-container {
+    max-height: none;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
   body.theme-dark .table-container {
@@ -386,6 +416,11 @@
     border-radius: 0.55rem;
     box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.6);
     overflow: hidden;
+  }
+  
+  /* clickable rows */
+  .table.betting-table tbody tr {
+    cursor: pointer;
   }
   
   body.theme-light .table tbody tr {
@@ -467,6 +502,21 @@
     );
   }
   
+  /* In explicit mobile mode, soften gradients and reduce spacing */
+  body.mode-mobile .betting-table {
+    font-size: 0.9rem;
+  }
+  
+  body.mode-mobile .betting-table thead th,
+  body.mode-mobile .betting-table tbody td {
+    padding: 0.4rem 0.55rem;
+  }
+  
+  body.mode-mobile.table, /* safeguard if class applied incorrectly */ 
+  body.mode-mobile .table {
+    border-spacing: 0 2px;
+  }
+  
   /* division separator row */
   .betting-table tbody tr.division-break td {
     border-top: 2px solid rgba(148, 163, 184, 0.9);
@@ -482,6 +532,11 @@
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+  
+  /* slightly smaller team text in mobile mode */
+  body.mode-mobile .team-cell-with-bar {
+    font-size: 0.95rem;
   }
   
   .team-color-bar {
@@ -583,6 +638,10 @@
     border-collapse: collapse;
     border-spacing: 0;
     font-size: 0.95rem;
+  }
+  
+  body.mode-mobile .raw-markets-table {
+    font-size: 0.86rem;
   }
   
   .raw-markets-table thead th,
@@ -702,6 +761,8 @@
   .hidden {
     display: none !important;
   }
+  
+  /* Viewport-based tweaks (in addition to explicit mobile/desktop mode) */
   
   @media (max-width: 960px) {
     .layout {

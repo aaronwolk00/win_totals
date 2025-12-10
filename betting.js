@@ -343,6 +343,41 @@ for (const entry of BET_WIN_TOTALS) {
 // -----------------------
 // Helpers
 // -----------------------
+const DISPLAY_MODE_KEY = "nflDisplayMode"; // "desktop" | "mobile"
+let displayMode = "desktop";
+
+function loadDisplayMode() {
+  try {
+    const raw = localStorage.getItem(DISPLAY_MODE_KEY);
+    if (!raw) return;
+    if (raw === "mobile" || raw === "desktop") {
+      displayMode = raw;
+    }
+  } catch (e) {
+    console.warn("Failed to load display mode", e);
+  }
+}
+
+function saveDisplayMode() {
+  try {
+    localStorage.setItem(DISPLAY_MODE_KEY, displayMode);
+  } catch (e) {
+    console.warn("Failed to save display mode", e);
+  }
+}
+
+function applyDisplayMode() {
+  const body = document.body;
+  body.classList.toggle("mode-mobile", displayMode === "mobile");
+  body.classList.toggle("mode-desktop", displayMode !== "mobile");
+
+  const btn = document.getElementById("betDisplayModeToggle");
+  if (btn) {
+    btn.textContent =
+      displayMode === "mobile" ? "Switch to Desktop View" : "Switch to Mobile View";
+  }
+}
+
 
 function americanToProb(odds) {
   if (odds == null) return null;
@@ -1229,167 +1264,186 @@ function applyBetMode() {
 // -----------------------
 
 function initBettingPage() {
-  const status = document.getElementById("betStatusNote");
-
-  const simState = loadSimState();
-  const results = simState ? simState.results : null;
-
-  if (!results) {
-    status.textContent =
-      "No simulation results found in local storage. Open index.html, set spreads, then come back here.";
-  } else {
-    status.textContent =
-      "Using saved simulation results from index.html. EVs assume a $100 stake.";
-    currentBetRows = buildBettingRows(results);
-    renderBetColumnPicker();
-    renderBettingTable(currentBetRows);
-  }
-
-  // Theme from main app
-  const body = document.body;
-  const initialTheme = simState?.theme === "light" ? "light" : "dark";
-  body.classList.toggle("theme-dark", initialTheme === "dark");
-  body.classList.toggle("theme-light", initialTheme === "light");
-
-  // Mode from main app, if present
-  if (simState?.mode === "pro" || simState?.mode === "fan") {
-    betMode = simState.mode;
-  }
-
-  applyBetMode();
-  renderRawMarketsTable();
-
-  const themeBtn = document.getElementById("betThemeToggle");
-  if (themeBtn) {
-    themeBtn.addEventListener("click", () => {
-      const isDark = body.classList.contains("theme-dark");
-      body.classList.toggle("theme-dark", !isDark);
-      body.classList.toggle("theme-light", isDark);
-      themeBtn.textContent = isDark
-        ? "Switch to Dark Theme"
-        : "Switch to Light Theme";
-    });
-  }
-
-  const backBtn = document.getElementById("betBackBtn");
-  if (backBtn) {
-    backBtn.addEventListener("click", () => {
-      window.location.href = "index.html";
-    });
-  }
-
-  const reloadBtn = document.getElementById("betReloadBtn");
-  if (reloadBtn) {
-    reloadBtn.addEventListener("click", () => {
-      const st = loadSimState();
-      const res = st ? st.results : null;
-      if (!res) {
-        status.textContent =
-          "Still no simulation results in storage. Re-run index.html.";
-        return;
-      }
-      status.textContent = "Simulation results reloaded.";
-      currentBetRows = buildBettingRows(res);
+    // --- Load and apply display mode (desktop / mobile) first ---
+    loadDisplayMode();
+    applyDisplayMode();
+      
+    const status = document.getElementById("betStatusNote");
+  
+    const simState = loadSimState();
+    const results = simState ? simState.results : null;
+  
+    if (!results) {
+      status.textContent =
+        "No simulation results found in local storage. Open index.html, set spreads, then come back here.";
+    } else {
+      status.textContent =
+        "Using saved simulation results from index.html. EVs assume a $100 stake.";
+      currentBetRows = buildBettingRows(results);
+      renderBetColumnPicker();
       renderBettingTable(currentBetRows);
-    });
+    }
+  
+    // Theme from main app
+    const body = document.body;
+    const initialTheme = simState?.theme === "light" ? "light" : "dark";
+    body.classList.toggle("theme-dark", initialTheme === "dark");
+    body.classList.toggle("theme-light", initialTheme === "light");
+  
+    // Mode from main app, if present (fan/pro)
+    if (simState?.mode === "pro" || simState?.mode === "fan") {
+      betMode = simState.mode;
+    }
+  
+    applyBetMode();
+    renderRawMarketsTable();
+  
+    // THEME TOGGLE
+    const themeBtn = document.getElementById("betThemeToggle");
+    if (themeBtn) {
+      themeBtn.addEventListener("click", () => {
+        const isDark = body.classList.contains("theme-dark");
+        body.classList.toggle("theme-dark", !isDark);
+        body.classList.toggle("theme-light", isDark);
+        themeBtn.textContent = isDark
+          ? "Switch to Dark Theme"
+          : "Switch to Light Theme";
+      });
+    }
+  
+    // DISPLAY MODE TOGGLE (Desktop / Mobile) – renamed variable
+    const displayModeBtn = document.getElementById("betDisplayModeToggle");
+    if (displayModeBtn) {
+      displayModeBtn.addEventListener("click", () => {
+        displayMode = displayMode === "mobile" ? "desktop" : "mobile";
+        saveDisplayMode();
+        applyDisplayMode();
+      });
+    }
+  
+    const backBtn = document.getElementById("betBackBtn");
+    if (backBtn) {
+      backBtn.addEventListener("click", () => {
+        window.location.href = "index.html";
+      });
+    }
+  
+    const reloadBtn = document.getElementById("betReloadBtn");
+    if (reloadBtn) {
+      reloadBtn.addEventListener("click", () => {
+        const st = loadSimState();
+        const res = st ? st.results : null;
+        if (!res) {
+          status.textContent =
+            "Still no simulation results in storage. Re-run index.html.";
+          return;
+        }
+        status.textContent = "Simulation results reloaded.";
+        currentBetRows = buildBettingRows(res);
+        renderBettingTable(currentBetRows);
+      });
+    }
+  
+    const colBtn = document.getElementById("betToggleColumnPicker");
+    if (colBtn) {
+      colBtn.addEventListener("click", () => {
+        const picker = document.getElementById("betColumnPicker");
+        if (!picker) return;
+        picker.classList.toggle("hidden");
+      });
+    }
+  
+    const divFilter = document.getElementById("betDivisionFilter");
+    if (divFilter) {
+      divFilter.addEventListener("change", (e) => {
+        betFilters.division = e.target.value;
+        renderBettingTable(currentBetRows);
+      });
+    }
+  
+    const posFilter = document.getElementById("betPositiveEVOnly");
+    if (posFilter) {
+      posFilter.addEventListener("change", (e) => {
+        betFilters.positiveEVOnly = e.target.checked;
+        renderBettingTable(currentBetRows);
+      });
+    }
+  
+    const minEVInput = document.getElementById("betMinEV");
+    if (minEVInput) {
+      minEVInput.addEventListener("input", (e) => {
+        const v = parseFloat(e.target.value);
+        betFilters.minEV = Number.isFinite(v) && v > 0 ? v : 0;
+        renderBettingTable(currentBetRows);
+      });
+    }
+  
+    const minEdgeInput = document.getElementById("betMinEdge");
+    if (minEdgeInput) {
+      minEdgeInput.addEventListener("input", (e) => {
+        const v = parseFloat(e.target.value);
+        // user inputs percentage points, convert to probability
+        betFilters.minEdgeAbs = Number.isFinite(v) && v > 0 ? v / 100 : 0;
+        renderBettingTable(currentBetRows);
+      });
+    }
+  
+    // FAN / PRO MODE TOGGLE – renamed variable so it doesn't clash
+    const betModeBtn = document.getElementById("betModeToggle");
+    if (betModeBtn) {
+      betModeBtn.addEventListener("click", () => {
+        betMode = betMode === "fan" ? "pro" : "fan";
+        applyBetMode();
+      });
+    }
+  
+    const bankrollInput = document.getElementById("betBankroll");
+    if (bankrollInput) {
+      bankrollInput.value = betSettings.bankroll.toString();
+      bankrollInput.addEventListener("input", (e) => {
+        const v = parseFloat(e.target.value);
+        if (Number.isFinite(v) && v > 0) {
+          betSettings.bankroll = v;
+        }
+      });
+    }
+  
+    const kellyInput = document.getElementById("betKellyFraction");
+    if (kellyInput) {
+      kellyInput.value = (betSettings.kellyFraction * 100).toString();
+      kellyInput.addEventListener("input", (e) => {
+        const v = parseFloat(e.target.value);
+        if (Number.isFinite(v) && v >= 0 && v <= 100) {
+          betSettings.kellyFraction = v / 100;
+        }
+      });
+    }
+  
+    const exportBtn = document.getElementById("betExportBtn");
+    if (exportBtn) {
+      exportBtn.addEventListener("click", () => {
+        exportBetCsv();
+      });
+    }
+  
+    const overlay = document.getElementById("betDetailOverlay");
+    const closeBtn = document.getElementById("betDetailClose");
+    if (overlay) {
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+          overlay.classList.add("hidden");
+        }
+      });
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        const ol = document.getElementById("betDetailOverlay");
+        if (ol) ol.classList.add("hidden");
+      });
+    }
   }
-
-  const colBtn = document.getElementById("betToggleColumnPicker");
-  if (colBtn) {
-    colBtn.addEventListener("click", () => {
-      const picker = document.getElementById("betColumnPicker");
-      if (!picker) return;
-      picker.classList.toggle("hidden");
-    });
-  }
-
-  const divFilter = document.getElementById("betDivisionFilter");
-  if (divFilter) {
-    divFilter.addEventListener("change", (e) => {
-      betFilters.division = e.target.value;
-      renderBettingTable(currentBetRows);
-    });
-  }
-
-  const posFilter = document.getElementById("betPositiveEVOnly");
-  if (posFilter) {
-    posFilter.addEventListener("change", (e) => {
-      betFilters.positiveEVOnly = e.target.checked;
-      renderBettingTable(currentBetRows);
-    });
-  }
-
-  const minEVInput = document.getElementById("betMinEV");
-  if (minEVInput) {
-    minEVInput.addEventListener("input", (e) => {
-      const v = parseFloat(e.target.value);
-      betFilters.minEV = Number.isFinite(v) && v > 0 ? v : 0;
-      renderBettingTable(currentBetRows);
-    });
-  }
-
-  const minEdgeInput = document.getElementById("betMinEdge");
-  if (minEdgeInput) {
-    minEdgeInput.addEventListener("input", (e) => {
-      const v = parseFloat(e.target.value);
-      // user inputs percentage points, convert to probability
-      betFilters.minEdgeAbs = Number.isFinite(v) && v > 0 ? v / 100 : 0;
-      renderBettingTable(currentBetRows);
-    });
-  }
-
-  const modeBtn = document.getElementById("betModeToggle");
-  if (modeBtn) {
-    modeBtn.addEventListener("click", () => {
-      betMode = betMode === "fan" ? "pro" : "fan";
-      applyBetMode();
-    });
-  }
-
-  const bankrollInput = document.getElementById("betBankroll");
-  if (bankrollInput) {
-    bankrollInput.value = betSettings.bankroll.toString();
-    bankrollInput.addEventListener("input", (e) => {
-      const v = parseFloat(e.target.value);
-      if (Number.isFinite(v) && v > 0) {
-        betSettings.bankroll = v;
-      }
-    });
-  }
-
-  const kellyInput = document.getElementById("betKellyFraction");
-  if (kellyInput) {
-    kellyInput.value = (betSettings.kellyFraction * 100).toString();
-    kellyInput.addEventListener("input", (e) => {
-      const v = parseFloat(e.target.value);
-      if (Number.isFinite(v) && v >= 0 && v <= 100) {
-        betSettings.kellyFraction = v / 100;
-      }
-    });
-  }
-
-  const exportBtn = document.getElementById("betExportBtn");
-  if (exportBtn) {
-    exportBtn.addEventListener("click", () => {
-      exportBetCsv();
-    });
-  }
-
-  const overlay = document.getElementById("betDetailOverlay");
-  const closeBtn = document.getElementById("betDetailClose");
-  if (overlay) {
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) {
-        overlay.classList.add("hidden");
-      }
-    });
-  }
-  if (closeBtn) {
-    closeBtn.addEventListener("click", () => {
-      const ol = document.getElementById("betDetailOverlay");
-      if (ol) ol.classList.add("hidden");
-    });
-  }
-}
+  
+  document.addEventListener("DOMContentLoaded", initBettingPage);
+  
 
 document.addEventListener("DOMContentLoaded", initBettingPage);
