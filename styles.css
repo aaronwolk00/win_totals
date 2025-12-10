@@ -1,6 +1,6 @@
-/* ============================================
+/* ==========================================================
    Root tokens
-   ============================================ */
+   ========================================================== */
 
    :root {
     --bg-dark: #020617;
@@ -27,9 +27,9 @@
     --spread-dog: #f97316;
   }
   
-  /* ============================================
-     Base / global
-     ============================================ */
+  /* ==========================================================
+     Base / reset
+     ========================================================== */
   
   *,
   *::before,
@@ -44,13 +44,16 @@
     width: 100%;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
       sans-serif;
+    font-size: 16px;
   }
   
   body {
     overflow-x: hidden;
   }
   
-  /* Theme shells */
+  /* ==========================================================
+     Themes
+     ========================================================== */
   
   body.theme-dark {
     background: radial-gradient(circle at top left, #111827 0, #020617 45%);
@@ -78,15 +81,25 @@
     border-color: var(--border-subtle-light);
   }
   
-  /* Utility */
+  /* ==========================================================
+     Utilities
+     ========================================================== */
   
   .hidden {
     display: none !important;
   }
   
-  /* ============================================
+  /* little flex row helper used in header controls */
+  .controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  /* ==========================================================
      Header + controls
-     ============================================ */
+     ========================================================== */
   
   .app-header {
     position: sticky;
@@ -112,6 +125,7 @@
     margin: 0.25rem 0 0;
     font-size: 0.9rem;
     opacity: 0.8;
+    max-width: 42rem;
   }
   
   .app-controls {
@@ -122,7 +136,7 @@
     margin-top: 0.6rem;
   }
   
-  /* Buttons / inputs */
+  /* Buttons */
   
   .btn {
     border-radius: 999px;
@@ -173,7 +187,7 @@
     color: var(--text-main-light);
   }
   
-  /* Tiny buttons (used in team editor presets) */
+  /* Tiny buttons (team editor presets) */
   .btn.btn-xs {
     padding: 0.18rem 0.5rem;
     font-size: 0.76rem;
@@ -203,7 +217,7 @@
     color: var(--text-main-light);
   }
   
-  /* Little label + control groups */
+  /* Label + control pair */
   
   .control-group {
     display: inline-flex;
@@ -216,9 +230,9 @@
     opacity: 0.85;
   }
   
-  /* ============================================
-     Layout wrappers
-     ============================================ */
+  /* ==========================================================
+     Layout
+     ========================================================== */
   
   .layout {
     display: flex;
@@ -260,9 +274,9 @@
     margin-top: 0.5rem;
   }
   
-  /* ============================================
+  /* ==========================================================
      Schedule / weeks
-     ============================================ */
+     ========================================================== */
   
   .schedule-container {
     display: flex;
@@ -313,9 +327,9 @@
     width: 100%;
   }
   
-  /* ============================================
-     Game cards – compact with hover expansion
-     ============================================ */
+  /* ==========================================================
+     Game cards
+     ========================================================== */
   
   .game-card {
     position: relative;
@@ -332,7 +346,7 @@
     min-height: 48px;
   }
   
-  /* Gradient heat: away -> neutral -> home */
+  /* Gradient heat: away → neutral → home */
   
   body.theme-dark .game-card {
     background: linear-gradient(
@@ -349,7 +363,7 @@
     border-color: rgba(148, 163, 184, 0.55);
   }
   
-  /* Edge bar: home -> away vertically */
+  /* Edge bar: home → away vertically */
   
   .game-card::after {
     content: "";
@@ -369,7 +383,7 @@
     position: relative;
   }
   
-  /* Header label: week / day */
+  /* Top line: Week · Day */
   
   .game-info-top {
     display: inline-flex;
@@ -429,7 +443,7 @@
     opacity: 0.9;
   }
   
-  /* Center cell: AT + big line pill */
+  /* Center cell: AT + line pill */
   
   .game-center {
     display: flex;
@@ -466,44 +480,25 @@
     color: #f9fafb;
   }
   
-  /* muted look when no line chosen yet */
+  /* muted when no line chosen */
   .game-center-spread.is-empty {
     opacity: 0.6;
   }
   
-  /* Meta row (spread band + probs) – hidden when collapsed */
+  /* Meta row: band + probs + expand button
+     Always visible now (no hover gating). */
   
   .game-info-meta {
-    margin-top: 0;
+    margin-top: 0.3rem;
     display: flex;
     flex-direction: column;
     gap: 0.45rem;
     font-size: 0.93rem;
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    pointer-events: none;
-    transform: translateY(-4px);
-    transition:
-      max-height 0.18s ease,
-      opacity 0.18s ease,
-      transform 0.18s ease;
   }
   
-  /* Hover or .expanded card shows full meta */
-  
-  .game-card:hover .game-info-meta,
-  .game-card.expanded .game-info-meta {
-    max-height: 500px;
-    opacity: 1;
-    pointer-events: auto;
-    margin-top: 0.3rem;
-    transform: translateY(0);
-  }
-  
-  /* ============================================
+  /* ==========================================================
      Spread band
-     ============================================ */
+     ========================================================== */
   
   .spread-band-wrapper {
     max-width: 100%;
@@ -565,6 +560,8 @@
     color: #f9fafb;
     box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.7);
     font-weight: 600;
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
   }
   
   /* Hide extra-wide spreads unless expanded */
@@ -577,7 +574,7 @@
     display: inline-flex;
   }
   
-  /* Expand / collapse button – more important on mobile */
+  /* Expand/collapse spreads button */
   
   .spread-expand-btn {
     margin-top: 0.25rem;
@@ -588,133 +585,47 @@
   
   @media (pointer: fine) {
     .spread-expand-btn {
-      opacity: 0.7;
+      opacity: 0.75;
     }
   }
   
-  /* ============================================
-     Probability boxes
-     ============================================ */
+  /* ==========================================================
+     Probability line (always visible)
+     ========================================================== */
   
   .selected-prob {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.6rem;
-    width: 100%;
-    margin-top: 0.25rem;
-  }
-  
-  .prob-box {
-    min-width: 130px;
-    padding: 0.4rem 0.8rem;
-    border-radius: 0.7rem;
-    border: 1px solid transparent;
-    font-size: 0.94rem;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-  }
-  
-  .prob-main {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 1.25rem;
-  }
-  
-  .prob-value {
+    width: auto;
+    max-width: 100%;
+    margin-top: 0.25rem;
+    padding: 0.2rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
     font-variant-numeric: tabular-nums;
-    font-size: 1.16rem;
-    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
-  .prob-odds {
-    font-size: 1rem;
-    opacity: 0.95;
+  /* Theme styling for probability pill */
+  
+  body.theme-dark .selected-prob {
+    background: rgba(15, 23, 42, 0.96);
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    color: #e5e7eb;
   }
   
-  .prob-box.away .prob-main {
-    flex-direction: row; /* odds, then percent */
+  body.theme-light .selected-prob {
+    background: #e5e7eb;
+    border: 1px solid #cbd5f5;
+    color: #111827;
   }
   
-  .prob-box.home .prob-main {
-    flex-direction: row; /* percent then odds */
-  }
-  
-  .prob-box.home .prob-value {
-    order: 1;
-  }
-  
-  .prob-box.home .prob-odds {
-    order: 2;
-  }
-  
-  .prob-box.away .prob-value {
-    order: 2;
-  }
-  
-  .prob-box.away .prob-odds {
-    order: 1;
-  }
-  
-  /* Neutral base */
-  
-  body.theme-dark .prob-box {
-    background: rgba(15, 23, 42, 0.9);
-    border-color: rgba(148, 163, 184, 0.7);
-    color: var(--text-main-dark);
-  }
-  
-  body.theme-light .prob-box {
-    background: rgba(255, 255, 255, 0.95);
-    border-color: rgba(148, 163, 184, 0.7);
-    color: var(--text-main-light);
-  }
-  
-  /* Favorite / underdog variations */
-  
-  body.theme-dark .prob-box.favorite {
-    background: linear-gradient(
-      135deg,
-      rgba(34, 197, 94, 0.24),
-      rgba(5, 46, 22, 0.9)
-    );
-    border-color: rgba(34, 197, 94, 0.95);
-    color: #bbf7d0;
-  }
-  
-  body.theme-light .prob-box.favorite {
-    background: linear-gradient(
-      135deg,
-      rgba(34, 197, 94, 0.14),
-      rgba(220, 252, 231, 0.95)
-    );
-    border-color: rgba(22, 163, 74, 0.9);
-    color: #064e3b;
-  }
-  
-  body.theme-dark .prob-box.underdog {
-    background: linear-gradient(
-      135deg,
-      rgba(248, 113, 22, 0.24),
-      rgba(124, 45, 18, 0.9)
-    );
-    border-color: rgba(248, 113, 22, 0.95);
-    color: #ffedd5;
-  }
-  
-  body.theme-light .prob-box.underdog {
-    background: linear-gradient(
-      135deg,
-      rgba(248, 113, 22, 0.18),
-      rgba(254, 243, 199, 0.98)
-    );
-    border-color: rgba(248, 113, 22, 0.9);
-    color: #7c2d12;
-  }
-  
-  /* ============================================
+  /* ==========================================================
      Results table
-     ============================================ */
+     ========================================================== */
   
   .results-header-row {
     display: flex;
@@ -760,6 +671,7 @@
   
   body.theme-dark .table thead {
     background: #020617;
+    color: var(--text-main-dark);
   }
   
   body.theme-light .table thead {
@@ -846,8 +758,9 @@
     border: 1px solid rgba(148, 163, 184, 0.8);
   }
   
-  /* Division note */
+  /* Division tie note */
   
+  #divisionNote,
   .division-note {
     font-size: 0.9rem;
     margin-bottom: 0.6rem;
@@ -855,9 +768,9 @@
     opacity: 0.85;
   }
   
-  /* ============================================
+  /* ==========================================================
      Column picker
-     ============================================ */
+     ========================================================== */
   
   .column-picker {
     margin-top: 0.6rem;
@@ -894,9 +807,9 @@
     accent-color: var(--accent);
   }
   
-  /* ============================================
+  /* ==========================================================
      Division summary cards
-     ============================================ */
+     ========================================================== */
   
   .division-summary-container {
     display: grid;
@@ -1002,9 +915,9 @@
     font-weight: 600;
   }
   
-  /* ============================================
+  /* ==========================================================
      Team detail overlay / mini editor
-     ============================================ */
+     ========================================================== */
   
   .team-detail-overlay {
     position: fixed;
@@ -1086,86 +999,43 @@
     font-size: 0.84rem;
   }
   
-  /* ============================================
-     Responsive tweaks
-     ============================================ */
+  /* ==========================================================
+     Display mode toggles & responsiveness
+     ========================================================== */
   
-  @media (max-width: 1960px) {
-    .layout {
-      padding: 0.9rem 1rem 1.6rem;
-    }
+  /* Mode: mobile (user toggle) */
   
-    .game-card {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  
-    .game-info-main {
-      grid-template-columns: 1fr;
-      row-gap: 0.25rem;
-    }
-  
-    .team-home {
-      justify-content: flex-start;
-      text-align: left;
-    }
-  }
-  
-  @media (max-width: 640px) {
-    .app-controls {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-  }
-  .spread-option.selected {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
-  }
-
-  /* -------------------------------------------
-   MOBILE VIEW – MAIN PROJECTION PAGE
-   Triggered by body.mode-mobile
-------------------------------------------- */
-
-/* Slightly tighter padding for the main layout on mobile */
-body.mode-mobile .layout {
+  body.mode-mobile .layout {
     padding: 0.9rem 0.8rem 1.6rem;
   }
   
-  /* Week blocks stacked vertically */
   body.mode-mobile .week-block {
     margin-bottom: 0.75rem;
   }
   
-  /* Make the week header look like a section header bar */
   body.mode-mobile .week-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
     padding: 0 0.1rem 0.25rem;
     font-size: 0.9rem;
   }
   
-  /* Game list lives in a simple vertical stack */
   body.mode-mobile .games-list {
-    display: flex;
-    flex-direction: column;
     gap: 0.4rem;
   }
   
-  /* Cards: bigger tap targets, simpler borders on mobile */
   body.mode-mobile .game-card {
     border-radius: 0.75rem;
     padding: 0.6rem 0.6rem 0.5rem;
-    border: 1px solid rgba(148, 163, 184, 0.55);
   }
   
-  /* Top line (Week · Day) */
+  /* Top line */
+  
   body.mode-mobile .game-info-top {
     font-size: 0.78rem;
     opacity: 0.85;
   }
   
-  /* Main matchup row on one line if possible */
+  /* Main row compacter */
+  
   body.mode-mobile .game-info-main {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -1191,28 +1061,28 @@ body.mode-mobile .layout {
     opacity: 0.9;
   }
   
+  /* Center */
+  
   body.mode-mobile .game-center {
-    display: flex;
     flex-direction: column;
     align-items: center;
     font-size: 0.78rem;
   }
   
-  /* Center spread text – keep visible and compact */
   body.mode-mobile .game-center-spread {
     font-weight: 600;
     margin-top: 0.1rem;
   }
   
-  /* Meta row: band + probabilities + expand button in a column */
+  /* Meta row: column stack */
+  
   body.mode-mobile .game-info-meta {
     margin-top: 0.4rem;
-    display: flex;
-    flex-direction: column;
     gap: 0.3rem;
   }
   
-  /* Make the spread band horizontally scrollable on small screens */
+  /* Spread band scrollable */
+  
   body.mode-mobile .spread-band-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -1225,57 +1095,42 @@ body.mode-mobile .layout {
     padding: 0.15rem 0.05rem;
   }
   
-  /* Bigger, more tappable buttons for spreads */
+  /* Larger tap targets */
+  
   body.mode-mobile .spread-option {
     min-width: 3rem;
     padding: 0.35rem 0.4rem;
-    border-radius: 999px;
     font-size: 0.78rem;
   }
   
-  /* Selected spread stands out more (but still readable) */
-  body.mode-mobile .spread-option.selected {
-    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.8);
-  }
+  /* Expand button */
   
-  /* Expand/collapse spreads button */
   body.mode-mobile .spread-expand-btn {
     align-self: flex-start;
     padding: 0.35rem 0.75rem;
     font-size: 0.8rem;
   }
   
-  /* Always-visible probabilities pill under the band */
+  /* Probability pill – slightly smaller on mobile */
+  
   body.mode-mobile .selected-prob,
   body.mode-desktop .selected-prob {
+    display: inline-flex;
     margin-top: 0.05rem;
     font-size: 0.78rem;
-    padding: 0.14rem 0.55rem;
-    border-radius: 999px;
-    font-variant-numeric: tabular-nums;
+    padding: 0.14rem 0.6rem;
   }
   
-  /* Theme-specific styling for the prob pill */
-  body.theme-dark .selected-prob {
-    background: rgba(15, 23, 42, 0.96);
-    border: 1px solid rgba(148, 163, 184, 0.7);
-    color: #e5e7eb;
-  }
+  /* Header controls stack on mobile mode */
   
-  body.theme-light .selected-prob {
-    background: #e5e7eb;
-    border: 1px solid #cbd5f5;
-    color: #111827;
-  }
-  
-  /* Controls row in header: stack vertically in mobile mode */
   body.mode-mobile .app-controls,
   body.mode-mobile .controls-row {
     flex-direction: column;
     align-items: flex-start;
   }
   
-  /* Title a bit smaller on mobile */
+  /* Title size tweak */
+  
   body.mode-mobile .app-title h1 {
     font-size: 1.3rem;
   }
@@ -1284,4 +1139,32 @@ body.mode-mobile .layout {
     font-size: 0.86rem;
   }
   
+  /* Default responsive fallback (if user never touches mode toggle) */
+  
+  @media (max-width: 960px) {
+    .layout {
+      padding: 0.9rem 1rem 1.6rem;
+    }
+  
+    .game-card {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  
+    .game-info-main {
+      grid-template-columns: 1fr;
+      row-gap: 0.25rem;
+    }
+  
+    .team-home {
+      justify-content: flex-start;
+      text-align: left;
+    }
+  }
+  
+  @media (max-width: 640px) {
+    .app-controls {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
   
