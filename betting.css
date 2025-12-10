@@ -98,12 +98,20 @@
     max-width: 48rem;
   }
   
+  /* generic flex container for button rows / control rows */
   .app-controls {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.6rem;
     margin-top: 0.6rem;
+  }
+  
+  .controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
   }
   
   /* Buttons / inputs */
@@ -163,6 +171,8 @@
     font-size: 0.95rem;
   }
   
+  /* Inputs */
+  
   select,
   input[type="number"] {
     border-radius: 999px;
@@ -182,6 +192,30 @@
   body.theme-light input[type="number"] {
     border-color: var(--border-subtle-light);
     color: var(--text-main-light);
+  }
+  
+  input[type="number"]::placeholder {
+    opacity: 0.6;
+  }
+  
+  /* control groups */
+  
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+  }
+  
+  .control-group span {
+    font-size: 0.82rem;
+    opacity: 0.9;
+  }
+  
+  .checkbox-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
   }
   
   /* -------------------------
@@ -226,9 +260,16 @@
   
   .results-header-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 0.75rem;
+  }
+  
+  .results-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
   }
   
   .results-columns-btn {
@@ -300,10 +341,6 @@
   .table {
     width: 100%;
     font-size: 0.95rem;
-  }
-  
-  /* default: betting table uses separate spacing; raw markets overrides below */
-  .table {
     border-collapse: separate;
     border-spacing: 0 4px; /* vertical spacing between rows */
   }
@@ -344,7 +381,7 @@
     text-transform: uppercase;
   }
   
-  /* outer row "cards" – we fake borders with background + box-shadow */
+  /* outer row "cards" */
   .table tbody tr {
     border-radius: 0.55rem;
     box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.6);
@@ -383,7 +420,7 @@
     font-size: 1rem;
   }
   
-  /* Dark theme betting rows – subtle team-tinted band across */
+  /* Dark theme betting rows */
   body.theme-dark .betting-table tbody tr {
     --base-dark: #020617;
     background-image: linear-gradient(
@@ -403,7 +440,7 @@
     filter: brightness(1.12);
   }
   
-  /* Light theme betting rows – pastel version, easy on the eyes */
+  /* Light theme betting rows */
   body.theme-light .betting-table tbody tr {
     --base-light: #f3f4f6;
     background-image: linear-gradient(
@@ -458,7 +495,7 @@
     );
   }
   
-  /* numeric cells – mono, slightly bigger */
+  /* numeric cells */
   
   .numeric-cell {
     text-align: right;
@@ -467,7 +504,7 @@
     line-height: 1.35;
   }
   
-  /* probability edge cells: muted and in parentheses from JS */
+  /* probability edge cells */
   
   .percent-cell {
     color: var(--text-soft-dark);
@@ -540,7 +577,6 @@
   
   /* -------------------------
      RAW MARKETS TABLE
-     (keeps strong full-row color heat)
   ------------------------- */
   
   .raw-markets-table {
@@ -679,10 +715,25 @@
     .app-controls {
       justify-content: flex-start;
     }
+  
+    .results-header-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  
+    .results-header-actions {
+      align-self: stretch;
+      justify-content: flex-start;
+    }
   }
   
   @media (max-width: 640px) {
     .app-controls {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  
+    .controls-row {
       flex-direction: column;
       align-items: flex-start;
     }
