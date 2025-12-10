@@ -136,6 +136,13 @@
     margin-top: 0.6rem;
   }
   
+  /* Header controls toggle (only visible in mobile mode) */
+  .header-toggle-btn {
+    display: none;
+    margin-left: auto;
+    margin-top: 0.6rem;
+  }
+  
   /* Buttons */
   
   .btn {
@@ -485,8 +492,7 @@
     opacity: 0.6;
   }
   
-  /* Meta row: band + probs + expand button
-     Always visible now (no hover gating). */
+  /* Meta row: band + probs + expand button */
   
   .game-info-meta {
     margin-top: 0.3rem;
@@ -590,7 +596,7 @@
   }
   
   /* ==========================================================
-     Probability line (always visible)
+     Probability line
      ========================================================== */
   
   .selected-prob {
@@ -1123,14 +1129,6 @@
   
   /* Header controls stack on mobile mode */
   
-  body.mode-mobile .app-controls,
-  body.mode-mobile .controls-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  /* Title size tweak */
-  
   body.mode-mobile .app-title h1 {
     font-size: 1.3rem;
   }
@@ -1139,7 +1137,44 @@
     font-size: 0.86rem;
   }
   
-  /* Default responsive fallback (if user never touches mode toggle) */
+  /* Compact / collapsible header controls in mobile mode */
+  
+  body.mode-mobile .app-header {
+    position: static; /* let it scroll away */
+    padding: 0.7rem 0.9rem 0.6rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  body.mode-mobile .header-toggle-btn {
+    display: inline-flex;
+  }
+  
+  body.mode-mobile .header-controls {
+    width: 100%;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transform: translateY(-4px);
+    transition:
+      max-height 0.2s ease,
+      opacity 0.2s ease,
+      transform 0.2s ease;
+  }
+  
+  /* When JS adds this class (e.g., on body), controls expand */
+  body.mode-mobile.header-controls-open .header-controls {
+    max-height: 500px; /* big enough to show all */
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  
+  /* Fallback responsive behavior if user never touches display mode */
   
   @media (max-width: 960px) {
     .layout {

@@ -19,7 +19,17 @@
         </p>
       </div>
 
-      <div class="app-controls">
+      <!-- Header-controls toggle (shown in mobile via CSS) -->
+      <button
+        id="headerControlsToggle"
+        type="button"
+        class="btn secondary header-toggle-btn"
+      >
+        Show Header Controls
+      </button>
+
+      <!-- Main header controls -->
+      <div class="app-controls header-controls">
         <!-- Theme toggle -->
         <button id="themeToggle" type="button" class="btn secondary">
           Switch to Light Theme
@@ -150,7 +160,7 @@
             <select id="filterDivision"></select>
           </label>
 
-          <!-- NEW: Pick status filter (wired in app.js via filterPickStatus) -->
+          <!-- Pick status filter (wired in app.js via filterPickStatus) -->
           <label class="control-group">
             <span>Pick status</span>
             <select id="filterPickStatus"></select>

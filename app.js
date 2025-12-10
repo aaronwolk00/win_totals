@@ -50,16 +50,34 @@ function saveDisplayMode() {
 }
 
 function applyDisplayModeMainPage() {
-  const body = document.body;
-  body.classList.toggle("mode-mobile", displayMode === "mobile");
-  body.classList.toggle("mode-desktop", displayMode !== "mobile");
-
-  const btn = document.getElementById("mainDisplayModeToggle");
-  if (btn) {
-    btn.textContent =
-      displayMode === "mobile" ? "Switch to Desktop View" : "Switch to Mobile View";
+    const body = document.body;
+    body.classList.toggle("mode-mobile", displayMode === "mobile");
+    body.classList.toggle("mode-desktop", displayMode !== "mobile");
+  
+    const btn = document.getElementById("mainDisplayModeToggle");
+    if (btn) {
+      btn.textContent =
+        displayMode === "mobile"
+          ? "Switch to Desktop View"
+          : "Switch to Mobile View";
+    }
+  
+    // NEW: sync header controls toggle text
+    const headerToggle = document.getElementById("headerControlsToggle");
+    const headerControls = document.querySelector(".header-controls");
+    if (headerToggle && headerControls) {
+      if (displayMode === "mobile") {
+        const open = headerControls.classList.contains("is-open");
+        headerToggle.textContent = open
+          ? "Hide Header Controls"
+          : "Show Header Controls";
+      } else {
+        // On desktop, always show controls (CSS handles layout)
+        headerControls.classList.remove("is-open");
+      }
+    }
   }
-}
+  
 
 
 // Teams, divisions, current wins
@@ -2363,6 +2381,17 @@ function attachEventListeners() {
         state.mode = state.mode === "fan" ? "pro" : "fan";
         saveStateToStorage();
         applyMode();
+      });
+    }
+
+    const headerToggle = document.getElementById("headerControlsToggle");
+    const headerControls = document.querySelector(".header-controls");
+    if (headerToggle && headerControls) {
+      headerToggle.addEventListener("click", () => {
+        const nowOpen = headerControls.classList.toggle("is-open");
+        headerToggle.textContent = nowOpen
+          ? "Hide Header Controls"
+          : "Show Header Controls";
       });
     }
 
