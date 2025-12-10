@@ -1130,9 +1130,9 @@
     padding: 0.14rem 0.6rem;
   }
   
-  /* Header in mobile: not sticky, compact, controls collapsible */
-  
-  body.mode-mobile .app-header {
+/* Header in mobile: not sticky, compact, controls collapsible */
+
+body.mode-mobile .app-header {
     position: static; /* let it scroll away */
     padding: 0.7rem 0.9rem 0.6rem;
     flex-direction: column;
@@ -1154,10 +1154,11 @@
   
   /* Collapsible controls in mobile:
      - default: collapsed
-     - when body has .header-controls-open: expanded */
-  body.mode-mobile .app-controls {
+     - when .header-controls has .is-open (toggled in JS): expanded */
+  body.mode-mobile .header-controls {
     width: 100%;
     margin-top: 0.5rem;
+    display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
     max-height: 0;
@@ -1171,12 +1172,13 @@
       transform 0.2s ease;
   }
   
-  body.mode-mobile.header-controls-open .app-controls {
+  body.mode-mobile .header-controls.is-open {
     max-height: 500px; /* large enough to show all controls */
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);
   }
+  
   
   /* Fallback responsive behavior if user never touches mode toggle */
   
