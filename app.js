@@ -23,6 +23,44 @@ const TABLE_HEADERS = [
   
 const QUICK_SPREAD_PRESETS = [-10.5, -7.5, -3.5, -0.5, +0.5, +3.5, +7.5, +10.5];
 
+// -----------------------
+// Global display mode (Desktop / Mobile) – shared with betting page
+// -----------------------
+const DISPLAY_MODE_KEY = "nflDisplayMode"; // shared storage key
+let displayMode = "desktop";
+
+function loadDisplayMode() {
+  try {
+    const raw = localStorage.getItem(DISPLAY_MODE_KEY);
+    if (!raw) return;
+    if (raw === "mobile" || raw === "desktop") {
+      displayMode = raw;
+    }
+  } catch (e) {
+    console.warn("Failed to load display mode", e);
+  }
+}
+
+function saveDisplayMode() {
+  try {
+    localStorage.setItem(DISPLAY_MODE_KEY, displayMode);
+  } catch (e) {
+    console.warn("Failed to save display mode", e);
+  }
+}
+
+function applyDisplayModeMainPage() {
+  const body = document.body;
+  body.classList.toggle("mode-mobile", displayMode === "mobile");
+  body.classList.toggle("mode-desktop", displayMode !== "mobile");
+
+  const btn = document.getElementById("mainDisplayModeToggle");
+  if (btn) {
+    btn.textContent =
+      displayMode === "mobile" ? "Switch to Desktop View" : "Switch to Mobile View";
+  }
+}
+
 
 // Teams, divisions, current wins
 const teams = {
@@ -926,49 +964,25 @@ function loadStateFromStorage() {
       view: state.view,
       showImpliedOdds: state.showImpliedOdds,
       results: state.results,
+  
+      // filters + scroll memory
       filterWeek: state.filterWeek,
       filterTeam: state.filterTeam,
       filterDivision: state.filterDivision,
       lastFocusedGameId: state.lastFocusedGameId,
   
-      // NEW
+      // meta
       mode: state.mode,
       scenarios: state.scenarios,
       activeScenario: state.activeScenario
     };
+  
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
     } catch (err) {
       console.warn("Failed to save state:", err);
     }
   }
-  
-  
-  
-  
-
-  function saveStateToStorage() {
-    const toSave = {
-      theme: state.theme,
-      precision: state.precision,
-      spreads: state.spreads,
-      view: state.view,
-      showImpliedOdds: state.showImpliedOdds,
-      results: state.results,
-  
-      // NEW
-      filterWeek: state.filterWeek,
-      filterTeam: state.filterTeam,
-      filterDivision: state.filterDivision,
-      lastFocusedGameId: state.lastFocusedGameId
-    };
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
-    } catch (err) {
-      console.warn("Failed to save state:", err);
-    }
-  }
-  
   
 
   
@@ -1483,25 +1497,35 @@ function updateGameCardDisplay(gameId) {
   
     // 3) Probability + optional implied odds display
     if (!selectedProbSpan) return;
-  
-    if (!game || spread === null) {
-      selectedProbSpan.textContent = "No line selected";
-      return;
+
+    // If we somehow have no game, bail out
+    if (!game) {
+    selectedProbSpan.textContent = "—";
+    return;
     }
-  
+
+    // Compute probabilities using either the picked spread or neutral
     const precision = state.precision;
-    const homeLabel = `${game.home} ${formatPercent(homeProb, precision)}`;
-    const awayLabel = `${game.away} ${formatPercent(awayProb, precision)}`;
-  
+    const effectiveSpread =
+    spread === null ? NEUTRAL_SPREAD : spread; // neutral if none picked
+
+    const effectiveHomeProb = homeWinProbFromSpread(effectiveSpread);
+    const effectiveAwayProb = 1 - effectiveHomeProb;
+
+    const homeLabel = `${game.home} ${formatPercent(effectiveHomeProb, precision)}`;
+    const awayLabel = `${game.away} ${formatPercent(effectiveAwayProb, precision)}`;
+
     let text = `${homeLabel} · ${awayLabel}`;
-  
+
+    // Optional implied odds
     if (state.showImpliedOdds) {
-      const homeOdds = formatAmerican(probToAmerican(homeProb));
-      const awayOdds = formatAmerican(probToAmerican(awayProb));
-      text += `  |  ${homeOdds} / ${awayOdds}`;
+    const homeOdds = formatAmerican(probToAmerican(effectiveHomeProb));
+    const awayOdds = formatAmerican(probToAmerican(effectiveAwayProb));
+    text += `  |  ${homeOdds} / ${awayOdds}`;
     }
-  
+
     selectedProbSpan.textContent = text;
+
   }
   
   
@@ -1828,7 +1852,6 @@ function renderDivisionSummary() {
   
     const resultsByDiv = {};
     for (const r of state.results) {
-      // NEW: ignore teams with no picked games
       if (!teamHasAnyPickedGame(r.teamId)) continue;
     
       if (!resultsByDiv[r.division]) resultsByDiv[r.division] = [];
@@ -2091,7 +2114,6 @@ function exportCsv() {
   rows.push(headerRow);
 
   for (const r of state.results) {
-    // NEW: skip teams with no picked games
     if (!teamHasAnyPickedGame(r.teamId)) continue;
   
     rows.push([
@@ -2153,8 +2175,8 @@ function updateControlsFromState() {
     }
   
     updateOddsToggleButton();
-    applyMode();        // NEW – ensure body classes + columns match mode
-    updateProgressUI(); // NEW – initial progress line-up
+    applyMode(); 
+    updateProgressUI(); 
   }
   
   
@@ -2262,7 +2284,6 @@ function attachEventListeners() {
       });
     }
   
-    // NEW: mode toggle
     const modeToggle = document.getElementById("modeToggleBtn");
     if (modeToggle) {
       modeToggle.addEventListener("click", () => {
@@ -2271,8 +2292,16 @@ function attachEventListeners() {
         applyMode();
       });
     }
+
+    const displayModeBtn = document.getElementById("mainDisplayModeToggle");
+    if (displayModeBtn) {
+      displayModeBtn.addEventListener("click", () => {
+        displayMode = displayMode === "mobile" ? "desktop" : "mobile";
+        saveDisplayMode();
+        applyDisplayModeMainPage();
+      });
+    }
   
-    // NEW: scenario controls
     initScenarioControls();
   }
   
@@ -2364,21 +2393,27 @@ function attachEventListeners() {
 // ---------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
+    // 1) Load state + display mode
     loadStateFromStorage();
+    loadDisplayMode();
   
+    // 2) Apply theme + display mode before rendering UI
     applyTheme();
-    updateControlsFromState();
+    applyDisplayModeMainPage();
   
-    // NEW: build week/team/division filter dropdowns
+    // 3) Controls / filters
+    updateControlsFromState();
     initScheduleFilters();
   
-    // Render main UI
+    // 4) Render main UI
     renderSchedule();
     computeAndRenderResults();
   
+    // 5) View (schedule vs projections) + wiring
     applyViewMode();
     attachEventListeners();
   });
+  
   
   
 
