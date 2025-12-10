@@ -663,6 +663,19 @@ const spreadProbTable = {
   14.5: 0.8541
 };
 
+// Has the user picked at least one spread for this team's games?
+function teamHasAnyPickedGame(teamId) {
+    for (const game of games) {
+      if (game.home === teamId || game.away === teamId) {
+        if (typeof state.spreads[String(game.id)] === "number") {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  
+
 // Convert win probability -> American odds
 function probToAmerican(probRaw) {
     // clamp to avoid infinite odds
@@ -1479,6 +1492,10 @@ function renderTeamTable() {
     const tbody = document.createElement("tbody");
   
     for (const r of resultsCopy) {
+
+      if (!teamHasAnyPickedGame(r.teamId)) {
+          continue;
+        }
       const tr = document.createElement("tr");
       tr.dataset.teamId = r.teamId;
   
@@ -1592,9 +1609,13 @@ function renderDivisionSummary() {
   
     const resultsByDiv = {};
     for (const r of state.results) {
+      // NEW: ignore teams with no picked games
+      if (!teamHasAnyPickedGame(r.teamId)) continue;
+    
       if (!resultsByDiv[r.division]) resultsByDiv[r.division] = [];
       resultsByDiv[r.division].push(r);
     }
+    
   
     const divisionNote = document.getElementById("divisionNote");
     divisionNote.textContent = "";
@@ -1815,6 +1836,9 @@ function exportCsv() {
   rows.push(headerRow);
 
   for (const r of state.results) {
+    // NEW: skip teams with no picked games
+    if (!teamHasAnyPickedGame(r.teamId)) continue;
+  
     rows.push([
       r.teamId,
       r.division,
@@ -1832,6 +1856,7 @@ function exportCsv() {
       r.cumulative[4],
     ]);
   }
+  
 
   const csv = rows
     .map((row) =>
