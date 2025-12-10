@@ -279,7 +279,7 @@
   .game-card {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 2fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
     padding: 1rem 1.4rem;
     border-radius: 1rem;
@@ -1022,7 +1022,7 @@
     display: none !important;
   }
   
-  @media (max-width: 960px) {
+  @media (max-width: 1960px) {
     .layout {
       padding: 0.9rem 1rem 1.6rem;
     }
