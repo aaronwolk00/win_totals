@@ -702,23 +702,30 @@ const state = {
     view: "schedule", // "schedule" or "projections"
     showImpliedOdds: false, // global toggle for showing American odds
     visibleColumns: {
-        team: true,
-        division: true,
-        current: true,
-        expected: true,
-        projected: true,
-        P0: true,
-        P1: true,
-        P2: true,
-        P3: true,
-        P4: true,
-        PA1: true,
-        PA2: true,
-        PA3: true,
-        PA4: true,
-        threshold: true
-      }
+      team: true,
+      division: true,
+      current: true,
+      expected: true,
+      projected: true,
+      P0: true,
+      P1: true,
+      P2: true,
+      P3: true,
+      P4: true,
+      PA1: true,
+      PA2: true,
+      PA3: true,
+      PA4: true,
+      threshold: true
+    },
+  
+    // NEW: schedule filters + scroll memory
+    filterWeek: "ALL",      // "ALL" or week number (15–18)
+    filterTeam: "ALL",      // "ALL" or teamId like "NE"
+    filterDivision: "ALL",  // "ALL" or division code like "AE"
+    lastFocusedGameId: null // last game you interacted with
   };
+  
   
   
 
@@ -747,9 +754,22 @@ function loadStateFromStorage() {
       if (typeof parsed.showImpliedOdds === "boolean") {
         state.showImpliedOdds = parsed.showImpliedOdds;
       }
-      // NEW: if results were persisted, restore them
       if (Array.isArray(parsed.results)) {
         state.results = parsed.results;
+      }
+  
+      // NEW: filters + last focused game
+      if (parsed.filterWeek !== undefined) {
+        state.filterWeek = parsed.filterWeek;
+      }
+      if (parsed.filterTeam !== undefined) {
+        state.filterTeam = parsed.filterTeam;
+      }
+      if (parsed.filterDivision !== undefined) {
+        state.filterDivision = parsed.filterDivision;
+      }
+      if (parsed.lastFocusedGameId !== undefined) {
+        state.lastFocusedGameId = parsed.lastFocusedGameId;
       }
     } catch (err) {
       console.warn("Failed to load state:", err);
@@ -757,8 +777,9 @@ function loadStateFromStorage() {
   }
   
   
+  
 
-function saveStateToStorage() {
+  function saveStateToStorage() {
     const toSave = {
       theme: state.theme,
       precision: state.precision,
@@ -766,8 +787,13 @@ function saveStateToStorage() {
       spreads: state.spreads,
       view: state.view,
       showImpliedOdds: state.showImpliedOdds,
-      // NEW: persist the current computed results so betting page can read them
-      results: state.results
+      results: state.results,
+  
+      // NEW
+      filterWeek: state.filterWeek,
+      filterTeam: state.filterTeam,
+      filterDivision: state.filterDivision,
+      lastFocusedGameId: state.lastFocusedGameId
     };
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
@@ -775,6 +801,7 @@ function saveStateToStorage() {
       console.warn("Failed to save state:", err);
     }
   }
+  
   
 
   
@@ -860,13 +887,150 @@ function formatPercent(prob, decimals) {
   return (prob * 100).toFixed(decimals) + "%";
 }
 
-// Build schedule UI
-function renderSchedule() {
+function gameMatchesFilters(game) {
+    const { filterWeek, filterTeam, filterDivision } = state;
+  
+    // Week filter
+    if (filterWeek !== "ALL" && game.week !== filterWeek) return false;
+  
+    // Team filter (either side)
+    if (
+      filterTeam !== "ALL" &&
+      game.home !== filterTeam &&
+      game.away !== filterTeam
+    ) {
+      return false;
+    }
+  
+    // Division filter (either side belongs to that division)
+    if (filterDivision !== "ALL") {
+      const homeDiv = teams[game.home].division;
+      const awayDiv = teams[game.away].division;
+      if (homeDiv !== filterDivision && awayDiv !== filterDivision) {
+        return false;
+      }
+    }
+  
+    return true;
+  }
+  
+  // Populate the three selects and wire them to state
+  function initScheduleFilters() {
+    const weekSelect = document.getElementById("filterWeek");
+    const teamSelect = document.getElementById("filterTeam");
+    const divisionSelect = document.getElementById("filterDivision");
+    if (!weekSelect || !teamSelect || !divisionSelect) return;
+  
+    // Weeks
+    const weeks = [...new Set(games.map(g => g.week))].sort((a, b) => a - b);
+    weekSelect.innerHTML = "";
+    let opt = document.createElement("option");
+    opt.value = "ALL";
+    opt.textContent = "All weeks";
+    weekSelect.appendChild(opt);
+    weeks.forEach(w => {
+      const o = document.createElement("option");
+      o.value = String(w);
+      o.textContent = `Week ${w}`;
+      weekSelect.appendChild(o);
+    });
+    weekSelect.value =
+      state.filterWeek === "ALL" ? "ALL" : String(state.filterWeek);
+  
+    // Teams
+    teamSelect.innerHTML = "";
+    opt = document.createElement("option");
+    opt.value = "ALL";
+    opt.textContent = "All teams";
+    teamSelect.appendChild(opt);
+    teamIds.forEach(id => {
+      const t = teams[id];
+      const o = document.createElement("option");
+      o.value = id;
+      o.textContent = `${id} – ${t.name}`;
+      teamSelect.appendChild(o);
+    });
+    teamSelect.value = state.filterTeam || "ALL";
+  
+    // Divisions
+    divisionSelect.innerHTML = "";
+    opt = document.createElement("option");
+    opt.value = "ALL";
+    opt.textContent = "All divisions";
+    divisionSelect.appendChild(opt);
+    const divisions = [...new Set(Object.values(teams).map(t => t.division))].sort();
+    divisions.forEach(d => {
+      const o = document.createElement("option");
+      o.value = d;
+      o.textContent = d;
+      divisionSelect.appendChild(o);
+    });
+    divisionSelect.value = state.filterDivision || "ALL";
+  
+    // Change handlers
+    weekSelect.addEventListener("change", (e) => {
+      const v = e.target.value;
+      state.filterWeek = v === "ALL" ? "ALL" : Number(v);
+      saveStateToStorage();
+      renderSchedule();
+    });
+  
+    teamSelect.addEventListener("change", (e) => {
+      const v = e.target.value;
+      state.filterTeam = v;
+      saveStateToStorage();
+      renderSchedule();
+    });
+  
+    divisionSelect.addEventListener("change", (e) => {
+      const v = e.target.value;
+      state.filterDivision = v;
+      saveStateToStorage();
+      renderSchedule();
+    });
+  }
+  
+  // After rendering, jump back to last interacted game (or first with a spread)
+  function scrollToLastFocusedGame() {
+    let targetId = state.lastFocusedGameId;
+  
+    if (targetId == null) {
+      // fallback: first game with a custom spread
+      const spreadKeys = Object.keys(state.spreads);
+      if (spreadKeys.length) {
+        targetId = spreadKeys[0];
+      }
+    }
+  
+    if (!targetId) return;
+  
+    const card = document.querySelector(
+      `.game-card[data-game-id="${targetId}"]`
+    );
+    if (!card) return;
+  
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+
+  // Build schedule UI
+  function renderSchedule() {
     const container = document.getElementById("scheduleContainer");
     container.innerHTML = "";
   
+    // Apply filters first
+    const filteredGames = games.filter(gameMatchesFilters);
+  
+    if (!filteredGames.length) {
+      const p = document.createElement("p");
+      p.className = "section-note";
+      p.textContent = "No games match the current filters.";
+      container.appendChild(p);
+      return;
+    }
+  
     const byWeek = new Map();
-    for (const game of games) {
+    for (const game of filteredGames) {
       if (!byWeek.has(game.week)) byWeek.set(game.week, []);
       byWeek.get(game.week).push(game);
     }
@@ -896,7 +1060,6 @@ function renderSchedule() {
         card.className = "game-card";
         card.dataset.gameId = String(game.id);
   
-        // Attach team colors as CSS custom properties for this card
         const homePalette = teamPalettes[game.home] || {};
         const awayPalette = teamPalettes[game.away] || {};
   
@@ -919,17 +1082,15 @@ function renderSchedule() {
   
         const info = document.createElement("div");
   
-        // Top row: week / day
         const infoTop = document.createElement("div");
         infoTop.className = "game-info-top";
         infoTop.textContent = `Week ${game.week} · ${game.day}`;
   
-        // Matchup row – away left, home right
         const infoMain = document.createElement("div");
         infoMain.className = "game-info-main";
         const awayTeam = teams[game.away];
         const homeTeam = teams[game.home];
-        
+  
         infoMain.innerHTML = `
           <div class="team-slot team-away">
             <span class="team-code">${game.away}</span>
@@ -944,103 +1105,52 @@ function renderSchedule() {
             <span class="team-name">${homeTeam.name}</span>
           </div>
         `;
-        
   
         const infoMeta = document.createElement("div");
         infoMeta.className = "game-info-meta";
   
-        // Spread band row (no separate LINE pill anymore)
         const lineRow = document.createElement("div");
         lineRow.className = "line-row";
-
+  
         const bandWrapper = document.createElement("div");
         bandWrapper.className = "spread-band-wrapper";
-
+  
         const band = document.createElement("div");
         band.className = "spread-band";
-
-        // Flip so high negatives are closer to the home team (right side),
-        // high positives closer to the away team (left side).
+  
         for (const value of [...spreadBandValues].reverse()) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "spread-option";
-        btn.dataset.value = String(value);
-
-        const label =
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "spread-option";
+          btn.dataset.value = String(value);
+  
+          const label =
             (value > 0 ? "+" : "") + value.toFixed(1).replace(/\.0$/, ".0");
-        btn.textContent = label;
-
-        if (Math.abs(value - NEUTRAL_SPREAD) < 1e-6) {
+          btn.textContent = label;
+  
+          if (Math.abs(value - NEUTRAL_SPREAD) < 1e-6) {
             btn.classList.add("neutral");
-        } else if (value < 0) {
+          } else if (value < 0) {
             btn.classList.add("favorite");
-        } else {
-            btn.classList.add("underdog");
+          }
         }
-
-        if (Math.abs(value) > 10.5) {
-            btn.classList.add("extra");
-        }
-
-        btn.addEventListener("click", () => {
-            setSpreadForGame(game.id, value);
-        });
-
-        band.appendChild(btn);
-        }
-
-        bandWrapper.appendChild(band);
-        lineRow.appendChild(bandWrapper);
-
-  
-        // Probabilities row
-        const selectedProbSpan = document.createElement("div");
-        selectedProbSpan.className = "selected-prob";
-  
-        infoMeta.appendChild(lineRow);
-        infoMeta.appendChild(selectedProbSpan);
-  
-        // Expand / collapse spreads beyond ±10.5
-        const expandBtn = document.createElement("button");
-        expandBtn.type = "button";
-        expandBtn.className = "btn spread-expand-btn";
-        expandBtn.textContent = "Expand spreads";
-  
-        expandBtn.addEventListener("click", () => {
-          card.classList.toggle("expanded");
-          expandBtn.textContent = card.classList.contains("expanded")
-            ? "Collapse spreads"
-            : "Expand spreads";
-        });
-  
-        infoMeta.appendChild(expandBtn);
-  
-        info.appendChild(infoTop);
-        info.appendChild(infoMain);
-        info.appendChild(infoMeta);
-  
-        card.appendChild(info);
-        list.appendChild(card);
-  
-        // Initialize display with stored spread, if any
-        updateGameCardDisplay(game.id);
-      }
-  
-      weekBlock.appendChild(list);
-      container.appendChild(weekBlock);
     }
-  }
+    }
+}
   
   
 
 // Set spread for a game and recompute
 function setSpreadForGame(gameId, spreadValue) {
-  state.spreads[String(gameId)] = spreadValue;
-  updateGameCardDisplay(gameId);
-  saveStateToStorage();
-  computeAndRenderResults();
-}
+    state.spreads[String(gameId)] = spreadValue;
+  
+    state.lastFocusedGameId = gameId;
+  
+    updateGameCardDisplay(gameId);
+    saveStateToStorage();
+    computeAndRenderResults();
+  }
+  
 
 function updateOddsToggleButton() {
     const oddsBtn = document.getElementById("toggleOddsBtn");
@@ -1050,26 +1160,30 @@ function updateOddsToggleButton() {
       : "Show Implied Odds";
   }
 
-function resetAllState() {
+  function resetAllState() {
     const confirmed = window.confirm(
-        "Are you sure you want to reset all spreads and projections?\n\nThis will clear all custom spreads and revert controls to defaults."
+      "Are you sure you want to reset all spreads and projections?\n\nThis will clear all custom spreads and revert controls to defaults."
     );
     if (!confirmed) return;
-
-    // keep theme & view, reset all modeling inputs
+  
     state.spreads = {};
     state.precision = 2;
     state.threshold = 10;
     state.showImpliedOdds = false;
-
-    // clear stored spreads / controls but keep theme/view
+  
+    // NEW
+    state.filterWeek = "ALL";
+    state.filterTeam = "ALL";
+    state.filterDivision = "ALL";
+    state.lastFocusedGameId = null;
+  
     saveStateToStorage();
     updateControlsFromState();
-
-    // re-render UI
+  
     renderSchedule();
     computeAndRenderResults();
-}
+  }
+  
 
   
 
@@ -1843,22 +1957,21 @@ function attachEventListeners() {
 // ---------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Load any saved state
     loadStateFromStorage();
   
-    // Apply theme & sync controls
     applyTheme();
     updateControlsFromState();
+  
+    // NEW: build week/team/division filter dropdowns
+    initScheduleFilters();
   
     // Render main UI
     renderSchedule();
     computeAndRenderResults();
   
-    // Set initial view (schedule full-page or projections)
     applyViewMode();
-  
-    // Wire up events
     attachEventListeners();
-});
+  });
+  
   
 
