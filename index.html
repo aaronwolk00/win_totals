@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
 
-  <body class="theme-dark">
+  <!-- start in dark + desktop mode; JS will adjust -->
+  <body class="theme-dark mode-desktop">
     <!-- Top bar ------------------------------------------------------------ -->
     <header class="app-header">
       <div class="app-title">
@@ -17,30 +18,41 @@
       </div>
 
       <div class="app-controls">
+        <!-- Theme toggle -->
         <button id="themeToggle" type="button" class="btn secondary">
           Switch to Light Theme
         </button>
 
+        <!-- Desktop vs Mobile display (uses body.mode-desktop / body.mode-mobile) -->
         <button
-            id="mainDisplayModeToggle"
-            type="button"
-            class="btn secondary"
-            >
-            Switch to Mobile View
+          id="mainDisplayModeToggle"
+          type="button"
+          class="btn secondary"
+        >
+          Switch to Mobile View
         </button>
 
+        <!-- Fan vs Pro mode (column presets + styling) -->
+        <button id="modeToggleBtn" type="button" class="btn secondary">
+          Switch to Pro Mode
+        </button>
+
+        <!-- View toggle: schedule vs projections -->
         <button id="viewToggleBtn" type="button" class="btn secondary">
           Show Team Projections
         </button>
 
+        <!-- Link to betting.html table -->
         <button id="bettingTableBtn" type="button" class="btn secondary">
-            Betting Table
+          Betting Table
         </button>
 
+        <!-- Toggle implied odds on game cards -->
         <button id="toggleOddsBtn" type="button" class="btn secondary">
           Show Implied Odds
         </button>
 
+        <!-- Precision select -->
         <label class="control-group">
           <span>Display precision</span>
           <select id="precisionSelect">
@@ -50,18 +62,20 @@
           </select>
         </label>
 
+        <!-- Fill neutrals -->
         <button id="fillEvenBtn" type="button" class="btn secondary">
           Fill empty games with neutral spread
         </button>
 
+        <!-- Reset -->
         <button id="resetStateBtn" type="button" class="btn danger">
           Reset all spreads
         </button>
 
+        <!-- Export -->
         <button id="exportCSV" type="button" class="btn primary">
           Export projections as CSV
         </button>
-
       </div>
     </header>
 
@@ -74,6 +88,48 @@
           Spreads are always from the <strong>home team's perspective</strong>.
           Click on a number in the spread band to set the line for that game.
         </p>
+
+        <!-- Progress UI (wired by updateProgressUI in app.js) -->
+        <div class="section-note">
+          <div id="step1ProgressText">
+            Games with your line: 0/64 (0%)
+          </div>
+          <div id="step2ProgressText">
+            Teams touched: 0/32 (0%)
+          </div>
+          <div id="step3ProgressText">
+            Set some spreads to unlock betting edges
+          </div>
+
+          <div
+            style="
+              margin-top: 0.4rem;
+              width: 100%;
+              max-width: 420px;
+              height: 8px;
+              border-radius: 999px;
+              background: rgba(148, 163, 184, 0.35);
+              overflow: hidden;
+            "
+          >
+            <div
+              id="globalProgressBar"
+              style="
+                width: 0%;
+                height: 100%;
+                border-radius: inherit;
+                background: linear-gradient(90deg, #22c55e, #0ea5e9);
+                transition: width 0.18s ease;
+              "
+            ></div>
+          </div>
+          <div
+            id="globalProgressLabel"
+            style="margin-top: 0.2rem; font-size: 0.85rem; opacity: 0.85;"
+          >
+            0% complete
+          </div>
+        </div>
 
         <!-- Filters for week / team / division -->
         <div class="app-controls schedule-filters">
@@ -91,6 +147,34 @@
             <span>Division</span>
             <select id="filterDivision"></select>
           </label>
+        </div>
+
+        <!-- Scenario controls (wired by initScenarioControls in app.js) -->
+        <div class="app-controls" style="margin-top: 0.6rem;">
+          <label class="control-group">
+            <span>Saved scenarios</span>
+            <select id="scenarioSelect">
+              <!-- options injected by JS -->
+            </select>
+          </label>
+
+          <label class="control-group">
+            <span>Name</span>
+            <input
+              id="scenarioNameInput"
+              type="text"
+              placeholder="e.g. Chalk, Upsets, Favorites"
+              style="padding: 0.35rem 0.8rem; border-radius: 999px; border: 1px solid currentColor; font-size: 0.9rem;"
+            />
+          </label>
+
+          <button id="scenarioSaveBtn" type="button" class="btn secondary">
+            Save scenario
+          </button>
+
+          <button id="scenarioDeleteBtn" type="button" class="btn danger">
+            Delete scenario
+          </button>
         </div>
 
         <!-- Game cards are injected here by app.js -->
