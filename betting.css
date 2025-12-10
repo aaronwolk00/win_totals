@@ -5,27 +5,20 @@
 
 :root {
     --bg-dark: #020617;
-    --bg-dark-elevated: #020617;
-    --bg-dark-card: #0b1120;
-    --bg-light: #f9fafb;
-    --bg-light-card: #ffffff;
+    --bg-light: #f3f4f6;
   
     --border-subtle-dark: #1f2937;
-    --border-subtle-light: #e5e7eb;
+    --border-subtle-light: #d1d5db;
   
     --text-main-dark: #e5e7eb;
     --text-soft-dark: #9ca3af;
-    --text-main-light: #111827;
+    --text-main-light: #0f172a;
     --text-soft-light: #6b7280;
   
     --accent: #22c55e;
     --accent-soft: rgba(34, 197, 94, 0.16);
     --danger: #ef4444;
     --muted: #4b5563;
-  
-    --spread-neutral: #64748b;
-    --spread-favorite: #16a34a;
-    --spread-dog: #f97316;
   
     --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
       sans-serif;
@@ -48,7 +41,11 @@
     margin: 0;
     padding: 0;
     font-family: var(--font-sans);
-    font-size: 16px; /* comfortable default */
+    font-size: 16px;
+  }
+  
+  body {
+    overflow-x: hidden;
   }
   
   body.theme-dark {
@@ -57,18 +54,8 @@
   }
   
   body.theme-light {
-    background: radial-gradient(circle at top left, #e5e7eb 0, #f9fafb 45%);
+    background: var(--bg-light);
     color: var(--text-main-light);
-  }
-  
-  body.theme-dark .results-section {
-    background-color: rgba(15, 23, 42, 0.96);
-    border-color: var(--border-subtle-dark);
-  }
-  
-  body.theme-light .results-section {
-    background-color: rgba(255, 255, 255, 0.98);
-    border-color: var(--border-subtle-light);
   }
   
   /* -------------------------
@@ -94,13 +81,13 @@
   }
   
   body.theme-light .app-header {
-    background-color: rgba(255, 255, 255, 0.96);
+    background-color: rgba(248, 250, 252, 0.96);
     border-color: var(--border-subtle-light);
   }
   
   .app-title h1 {
     margin: 0;
-    font-size: 1.6rem; /* bigger title */
+    font-size: 1.7rem;
     letter-spacing: 0.02em;
   }
   
@@ -108,7 +95,7 @@
     margin: 0.4rem 0 0;
     font-size: 0.98rem;
     opacity: 0.9;
-    max-width: 46rem;
+    max-width: 48rem;
   }
   
   .app-controls {
@@ -215,6 +202,16 @@
     box-shadow: 0 18px 50px rgba(15, 23, 42, 0.35);
   }
   
+  body.theme-dark .results-section {
+    background-color: rgba(15, 23, 42, 0.96);
+    border-color: var(--border-subtle-dark);
+  }
+  
+  body.theme-light .results-section {
+    background-color: #f9fafb;
+    border-color: var(--border-subtle-light);
+  }
+  
   .results-section h2 {
     margin-top: 0;
     margin-bottom: 0.5rem;
@@ -225,6 +222,17 @@
     margin: 0 0 0.75rem;
     font-size: 0.92rem;
     opacity: 0.9;
+  }
+  
+  .results-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  
+  .results-columns-btn {
+    white-space: nowrap;
   }
   
   /* -------------------------
@@ -274,7 +282,7 @@
     margin-top: 0.8rem;
     max-height: none;
     overflow: auto;
-    border-radius: 0.85rem;
+    border-radius: 0.9rem;
     border: 1px solid;
   }
   
@@ -285,13 +293,19 @@
   
   body.theme-light .table-container {
     border-color: var(--border-subtle-light);
-    background: rgba(255, 255, 255, 1);
+    background: #ffffff;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
   }
   
   .table {
     width: 100%;
-    border-collapse: collapse;
-    font-size: 0.95rem; /* base size */
+    font-size: 0.95rem;
+  }
+  
+  /* default: betting table uses separate spacing; raw markets overrides below */
+  .table {
+    border-collapse: separate;
+    border-spacing: 0 4px; /* vertical spacing between rows */
   }
   
   .table thead {
@@ -314,9 +328,8 @@
   
   .table th,
   .table td {
-    padding: 0.5rem 0.75rem;
+    padding: 0.55rem 0.75rem;
     text-align: right;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.3);
   }
   
   .table th:first-child,
@@ -325,10 +338,21 @@
   }
   
   .table th {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+  }
+  
+  /* outer row "cards" – we fake borders with background + box-shadow */
+  .table tbody tr {
+    border-radius: 0.55rem;
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.6);
+    overflow: hidden;
+  }
+  
+  body.theme-light .table tbody tr {
+    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.5);
   }
   
   /* sortable headers */
@@ -345,67 +369,86 @@
     font-size: 0.8rem;
   }
   
+  /* numeric cell defaults */
+  
+  .table td {
+    font-variant-numeric: tabular-nums;
+  }
+  
   /* -------------------------
-     Betting table – enhanced legibility
+     BETTING TABLE (main EV table)
   ------------------------- */
   
   .betting-table {
-    font-size: 1rem; /* bump everything up a bit */
+    font-size: 1rem;
   }
   
-  .betting-table tbody tr {
-    transition:
-      background-color 0.12s ease,
-      filter 0.12s ease;
-  }
-  
-  /* Dark theme rows */
+  /* Dark theme betting rows – subtle team-tinted band across */
   body.theme-dark .betting-table tbody tr {
-    background-color: #020617;
-  }
-  
-  body.theme-dark .betting-table tbody tr:nth-child(even) {
-    background-color: #030918;
+    --base-dark: #020617;
+    background-image: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--base-dark) 85%, var(--team-color-main, #334155) 15%)
+        0%,
+      color-mix(in srgb, var(--base-dark) 70%, var(--team-color-main, #334155) 30%)
+        25%,
+      color-mix(in srgb, var(--base-dark) 65%, var(--team-color-alt, #64748b) 35%)
+        65%,
+      color-mix(in srgb, var(--base-dark) 90%, var(--team-color-alt, #64748b) 10%)
+        100%
+    );
   }
   
   body.theme-dark .betting-table tbody tr:hover {
-    background-color: #081229;
+    filter: brightness(1.12);
   }
   
-  /* Light theme rows – high contrast, easy to scan */
+  /* Light theme betting rows – pastel version, easy on the eyes */
   body.theme-light .betting-table tbody tr {
-    background-color: #ffffff;
-  }
-  
-  body.theme-light .betting-table tbody tr:nth-child(even) {
-    background-color: #f9fafb;
+    --base-light: #f3f4f6;
+    background-image: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--base-light) 85%, var(--team-color-main, #9ca3af) 15%)
+        0%,
+      color-mix(in srgb, var(--base-light) 70%, var(--team-color-main, #9ca3af) 30%)
+        25%,
+      color-mix(in srgb, var(--base-light) 70%, var(--team-color-alt, #d1d5db) 30%)
+        65%,
+      color-mix(in srgb, var(--base-light) 92%, var(--team-color-alt, #d1d5db) 8%)
+        100%
+    );
   }
   
   body.theme-light .betting-table tbody tr:hover {
-    background-color: #e0f2fe; /* subtle blue highlight */
+    filter: none;
+    background-image: linear-gradient(
+      90deg,
+      #e0f2fe 0%,
+      color-mix(in srgb, #e0f2fe 70%, var(--team-color-main, #0284c7) 30%) 20%,
+      color-mix(in srgb, #e0f2fe 70%, var(--team-color-alt, #38bdf8) 30%) 65%,
+      #e0f2fe 100%
+    );
   }
   
-  /* Division grouping – full width divider on first row of new division */
-  
+  /* division separator row */
   .betting-table tbody tr.division-break td {
     border-top: 2px solid rgba(148, 163, 184, 0.9);
   }
   
-  /* Team cell with color bar */
+  /* team cell with color bar */
   
   .team-cell-with-bar {
     display: flex;
     align-items: center;
-    gap: 0.55rem;
-    font-size: 1.05rem; /* larger team code */
+    gap: 0.6rem;
+    font-size: 1.05rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   
   .team-color-bar {
-    display: inline-block;
-    width: 10px;
+    width: 8px;
     height: 1.5rem;
     border-radius: 999px;
     background: linear-gradient(
@@ -415,7 +458,7 @@
     );
   }
   
-  /* numeric cells – mono, bigger, crisp */
+  /* numeric cells – mono, slightly bigger */
   
   .numeric-cell {
     text-align: right;
@@ -424,14 +467,14 @@
     line-height: 1.35;
   }
   
-  /* probability edge cells */
+  /* probability edge cells: muted and in parentheses from JS */
   
   .percent-cell {
-    color: #9ca3af;
+    color: var(--text-soft-dark);
   }
   
   body.theme-light .percent-cell {
-    color: #6b7280;
+    color: var(--text-soft-light);
   }
   
   /* EV cells */
@@ -440,7 +483,7 @@
     white-space: nowrap;
   }
   
-  /* Positive EV – high visibility but not neon */
+  /* Positive EV */
   
   body.theme-dark .ev-positive {
     color: #4ade80;
@@ -464,27 +507,29 @@
     font-weight: 600;
   }
   
-  /* Extreme EV (top pos / top neg) – subtle cell background */
+  /* Extreme EV (global best + / -) */
   
   .ev-extreme-positive {
-    background-color: rgba(34, 197, 94, 0.16);
-    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.6) inset;
+    background-color: rgba(34, 197, 94, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.65);
+    border-radius: 0.35rem;
   }
   
   body.theme-light .ev-extreme-positive {
-    background-color: rgba(22, 163, 74, 0.14);
+    background-color: rgba(22, 163, 74, 0.16);
   }
   
   .ev-extreme-negative {
-    background-color: rgba(248, 113, 22, 0.16);
-    box-shadow: 0 0 0 1px rgba(248, 113, 22, 0.6) inset;
+    background-color: rgba(239, 68, 68, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.65);
+    border-radius: 0.35rem;
   }
   
   body.theme-light .ev-extreme-negative {
-    background-color: rgba(239, 68, 68, 0.13);
+    background-color: rgba(248, 113, 22, 0.16);
   }
   
-  /* Division badge */
+  /* division badge */
   
   .badge-division {
     font-size: 0.85rem;
@@ -494,16 +539,29 @@
   }
   
   /* -------------------------
-     Raw markets table – old team color heat
-     (kept visually distinct from betting table)
+     RAW MARKETS TABLE
+     (keeps strong full-row color heat)
   ------------------------- */
   
+  .raw-markets-table {
+    border-collapse: collapse;
+    border-spacing: 0;
+    font-size: 0.95rem;
+  }
+  
+  .raw-markets-table thead th,
+  .raw-markets-table tbody td {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  }
+  
   .raw-markets-table tbody tr {
+    --team-color-main: #334155;
+    --team-color-alt: #64748b;
     background-image: linear-gradient(
       90deg,
       rgba(15, 23, 42, 0.98) 0%,
-      var(--team-color-main, #334155) 18%,
-      var(--team-color-alt, #64748b) 55%,
+      var(--team-color-main) 18%,
+      var(--team-color-alt) 55%,
       rgba(15, 23, 42, 0.98) 100%
     );
     background-size: 100% 100%;
@@ -514,10 +572,15 @@
     background-image: linear-gradient(
       90deg,
       rgba(249, 250, 251, 0.98) 0%,
-      var(--team-color-main, #9ca3af) 18%,
-      var(--team-color-alt, #e5e7eb) 55%,
+      var(--team-color-main) 18%,
+      var(--team-color-alt) 55%,
       rgba(249, 250, 251, 0.98) 100%
     );
+  }
+  
+  .raw-markets-table tbody tr:hover {
+    filter: brightness(1.05);
+    cursor: pointer;
   }
   
   .team-cell-heat {
@@ -604,17 +667,6 @@
     display: none !important;
   }
   
-  .results-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-  
-  .results-columns-btn {
-    white-space: nowrap;
-  }
-  
   @media (max-width: 960px) {
     .layout {
       padding: 0.9rem 1rem 1.6rem;
@@ -638,123 +690,5 @@
     .app-title h1 {
       font-size: 1.4rem;
     }
-  }
-
-  
-  /* ============================================
-   BETTING TABLE – VISUAL IMPROVEMENTS
-   ============================================ */
-
-/* Base tweaks */
-.table-container {
-    border-radius: 0.9rem;
-    overflow: hidden;
-  }
-  
-  /* Add subtle row spacing + visual separation */
-  .table tbody tr {
-    margin-bottom: 2px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-  }
-  
-  .table tbody tr:last-child {
-    border-bottom: none;
-  }
-  
-  /* Font size bump + better line spacing */
-  .table th,
-  .table td {
-    font-size: 1rem;
-    padding: 0.6rem 0.75rem;
-    line-height: 1.4;
-  }
-  
-  /* Make dark theme smoother and more readable */
-  body.theme-dark .table tbody tr {
-    background-image: linear-gradient(
-      90deg,
-      rgba(10, 15, 30, 0.95) 0%,
-      var(--team-color-main) 15%,
-      var(--team-color-alt) 55%,
-      rgba(10, 15, 30, 0.95) 100%
-    );
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
-  }
-  
-  body.theme-dark .table tbody tr:hover {
-    filter: brightness(1.15);
-    transform: scale(1.002);
-    transition: transform 0.1s ease, filter 0.1s ease;
-  }
-  
-  /* Softer, modernized dark text */
-  body.theme-dark .table th,
-  body.theme-dark .table td {
-    color: #f3f4f6;
-  }
-  
-  /* Light theme readability overhaul */
-  body.theme-light {
-    background: #f3f4f6;
-    color: #0f172a;
-  }
-  
-  body.theme-light .table-container {
-    background: #ffffff;
-    border-color: #d1d5db;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-  }
-  
-  /* Softer pastel background for rows in light mode */
-  body.theme-light .table tbody tr {
-    background-image: linear-gradient(
-      90deg,
-      rgba(245, 247, 250, 1) 0%,
-      color-mix(in srgb, var(--team-color-main) 22%, white) 20%,
-      color-mix(in srgb, var(--team-color-alt) 25%, white) 60%,
-      rgba(245, 247, 250, 1) 100%
-    );
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  }
-  
-  body.theme-light .table tbody tr:hover {
-    background-color: #e0f2fe;
-    filter: none;
-  }
-  
-  /* Text and number colors */
-  body.theme-light .table th,
-  body.theme-light .table td {
-    color: #1e293b;
-  }
-  
-  body.theme-light .table td strong,
-  body.theme-dark .table td strong {
-    color: var(--accent);
-  }
-  
-  /* EV cells: better readability for wins/losses */
-  .table td {
-    font-variant-numeric: tabular-nums;
-  }
-  
-  .table td:has(span.positive),
-  .table td:has(.green-text) {
-    color: #16a34a;
-  }
-  
-  .table td:has(span.negative),
-  .table td:has(.red-text) {
-    color: #dc2626;
-  }
-  
-  /* Subtle shadow between table rows for depth */
-  body.theme-light .table tbody tr {
-    box-shadow: inset 0 -1px rgba(0, 0, 0, 0.05);
-  }
-  
-  body.theme-dark .table tbody tr {
-    box-shadow: inset 0 -1px rgba(255, 255, 255, 0.05);
   }
   
