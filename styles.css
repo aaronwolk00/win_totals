@@ -489,7 +489,7 @@
   .prob-main {
     display: inline-flex;
     align-items: baseline;
-    gap: 0.35rem;
+    gap: 0.55rem;
   }
   
   .prob-value {
@@ -499,7 +499,7 @@
   }
   
   .prob-odds {
-    font-size: 1.86rem;
+    font-size: 1.06rem;
     opacity: 0.95;
   }
   
