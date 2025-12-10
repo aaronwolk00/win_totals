@@ -877,9 +877,18 @@ function loadStateFromStorage() {
       if (typeof parsed.precision === "number") {
         state.precision = parsed.precision;
       }
+  
+      // spreads – normalize and coerce to numbers
       if (parsed.spreads && typeof parsed.spreads === "object") {
-        state.spreads = parsed.spreads;
+        state.spreads = {};
+        for (const [key, val] of Object.entries(parsed.spreads)) {
+          let n = typeof val === "number" ? val : parseFloat(val);
+          if (Number.isFinite(n)) {
+            state.spreads[String(key)] = n;
+          }
+        }
       }
+  
       if (parsed.view === "schedule" || parsed.view === "projections") {
         state.view = parsed.view;
       }
@@ -890,6 +899,7 @@ function loadStateFromStorage() {
         state.results = parsed.results;
       }
   
+      // filters + last focused game
       if (parsed.filterWeek !== undefined) {
         state.filterWeek = parsed.filterWeek;
       }
@@ -902,23 +912,11 @@ function loadStateFromStorage() {
       if (parsed.lastFocusedGameId !== undefined) {
         state.lastFocusedGameId = parsed.lastFocusedGameId;
       }
-  
-      // NEW: mode
-      if (parsed.mode === "fan" || parsed.mode === "pro") {
-        state.mode = parsed.mode;
-      }
-  
-      // NEW: scenarios
-      if (parsed.scenarios && typeof parsed.scenarios === "object") {
-        state.scenarios = parsed.scenarios;
-      }
-      if (typeof parsed.activeScenario === "string") {
-        state.activeScenario = parsed.activeScenario;
-      }
     } catch (err) {
       console.warn("Failed to load state:", err);
     }
   }
+  
   
   function saveStateToStorage() {
     const toSave = {
@@ -1431,19 +1429,29 @@ function updateGameCardDisplay(gameId) {
     const card = document.querySelector(`.game-card[data-game-id="${gameId}"]`);
     if (!card) return;
   
-    const spreadRaw = state.spreads[String(gameId)];
-    let spread = typeof spreadRaw === "number" ? spreadRaw : null;
+    const key = String(gameId);
+    const rawSpread = state.spreads[key];
   
-    let prob = 0.5;
-    const game = games.find((g) => g.id === Number(gameId));
-  
-    if (spread !== null && game) {
-      prob = homeWinProbFromSpread(spread);
+    let spread = null;
+    if (typeof rawSpread === "number") {
+      spread = rawSpread;
+    } else if (typeof rawSpread === "string") {
+      const parsed = parseFloat(rawSpread);
+      if (Number.isFinite(parsed)) spread = parsed;
     }
   
-    const selectedProbSpan = card.querySelector(".selected-prob");
-    const centerSpreadEl = card.querySelector(".game-center-spread");
+    const game = games.find((g) => g.id === Number(gameId));
   
+    let homeProb = 0.5;
+    if (spread !== null && game) {
+      homeProb = homeWinProbFromSpread(spread);
+    }
+    const awayProb = 1 - homeProb;
+  
+    const centerSpreadEl = card.querySelector(".game-center-spread");
+    const selectedProbSpan = card.querySelector(".selected-prob");
+  
+    // 1) Center line text
     if (centerSpreadEl) {
       if (spread === null) {
         centerSpreadEl.textContent = "—";
@@ -1457,8 +1465,45 @@ function updateGameCardDisplay(gameId) {
       }
     }
   
-    // ... existing prob box + button selection logic ...
+    // 2) Highlight band button that matches the saved spread
+    const buttons = card.querySelectorAll(".spread-option");
+    buttons.forEach((btn) => {
+      const val = parseFloat(btn.dataset.value);
+      const isSelected =
+        spread !== null && Number.isFinite(val) && Math.abs(val - spread) < 1e-6;
+  
+      if (isSelected) {
+        btn.classList.add("selected");
+        btn.setAttribute("aria-pressed", "true");
+      } else {
+        btn.classList.remove("selected");
+        btn.setAttribute("aria-pressed", "false");
+      }
+    });
+  
+    // 3) Probability + optional implied odds display
+    if (!selectedProbSpan) return;
+  
+    if (!game || spread === null) {
+      selectedProbSpan.textContent = "No line selected";
+      return;
+    }
+  
+    const precision = state.precision;
+    const homeLabel = `${game.home} ${formatPercent(homeProb, precision)}`;
+    const awayLabel = `${game.away} ${formatPercent(awayProb, precision)}`;
+  
+    let text = `${homeLabel} · ${awayLabel}`;
+  
+    if (state.showImpliedOdds) {
+      const homeOdds = formatAmerican(probToAmerican(homeProb));
+      const awayOdds = formatAmerican(probToAmerican(awayProb));
+      text += `  |  ${homeOdds} / ${awayOdds}`;
+    }
+  
+    selectedProbSpan.textContent = text;
   }
+  
   
   
   

@@ -1116,4 +1116,8 @@
       align-items: flex-start;
     }
   }
+  .spread-option.selected {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
   
