@@ -2530,6 +2530,65 @@ function attachEventListeners() {
     }
   
     initScenarioControls();
+  }  
+
+  function initBottomNav() {
+    const nav = document.querySelector(".bottom-nav");
+    if (!nav) return;
+  
+    const items = nav.querySelectorAll(".bottom-nav-item");
+  
+    function setActive(tab) {
+      items.forEach((btn) => {
+        btn.classList.toggle("is-active", btn.dataset.tab === tab);
+      });
+    }
+  
+    nav.addEventListener("click", (e) => {
+      const btn = e.target.closest(".bottom-nav-item");
+      if (!btn) return;
+  
+      const tab = btn.dataset.tab;
+  
+      switch (tab) {
+        case "games":
+          state.view = "schedule";
+          saveStateToStorage();
+          applyViewMode();
+          break;
+        case "teams":
+          state.view = "projections";
+          saveStateToStorage();
+          applyViewMode();
+          break;
+        case "betting":
+          // Send user to the win-totals betting page
+          window.location.href = "betting.html";
+          return; // no need to update local nav
+        case "more":
+          // Shortcut to header controls on mobile
+          const headerControls = document.querySelector(".header-controls");
+          const headerToggle = document.getElementById("headerControlsToggle");
+          if (headerControls && headerToggle) {
+            const nowOpen = headerControls.classList.toggle("is-open");
+            headerToggle.textContent = nowOpen
+              ? "Hide Header Controls"
+              : "Show Header Controls";
+            headerToggle.setAttribute(
+              "aria-expanded",
+              nowOpen ? "true" : "false"
+            );
+          }
+          break;
+        default:
+          break;
+      }
+  
+      setActive(tab);
+    });
+  
+    const initialTab = state.view === "projections" ? "teams" : "games";
+    setActive(initialTab);
   }
   
   
@@ -2622,9 +2681,16 @@ function attachEventListeners() {
 // ---------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1) Load state + display mode
+    // 1) Load state + shared display mode
     loadStateFromStorage();
     loadDisplayMode();
+  
+    // If user has never explicitly chosen a display mode, default by viewport
+    if (!localStorage.getItem(DISPLAY_MODE_KEY)) {
+      if (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) {
+        displayMode = "mobile";
+      }
+    }
   
     // 2) Apply theme + display mode before rendering UI
     applyTheme();
@@ -2641,7 +2707,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // 5) View (schedule vs projections) + wiring
     applyViewMode();
     attachEventListeners();
+  
+    // 6) Mobile bottom nav
+    initBottomNav();
   });
+  
   
   
   

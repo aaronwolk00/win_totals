@@ -1208,4 +1208,104 @@ body.mode-mobile .app-header {
       align-items: flex-start;
     }
   }
+
+  /* -------------------------------------------------
+   Mobile-first bottom tab bar + fan layout tweaks
+-------------------------------------------------- */
+
+/* Bottom nav base (hidden by default) */
+.bottom-nav {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    height: 56px;
+    padding: 0 0.75rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.5);
+    backdrop-filter: blur(14px);
+    display: none;
+    align-items: center;
+    justify-content: space-around;
+    gap: 0.4rem;
+    z-index: 40;
+  }
+  
+  body.theme-dark .bottom-nav {
+    background: rgba(15, 23, 42, 0.96);
+    border-color: rgba(30, 64, 175, 0.65);
+  }
+  
+  body.theme-light .bottom-nav {
+    background: rgba(249, 250, 251, 0.96);
+    border-color: rgba(148, 163, 184, 0.8);
+  }
+  
+  /* Only show in explicit mobile view */
+  body.mode-mobile .bottom-nav {
+    display: flex;
+  }
+  
+  /* Tab buttons */
+  .bottom-nav-item {
+    flex: 1;
+    border-radius: 999px;
+    border: none;
+    background: transparent;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    opacity: 0.8;
+  }
+  
+  body.theme-dark .bottom-nav-item {
+    color: #e5e7eb;
+  }
+  
+  body.theme-light .bottom-nav-item {
+    color: #0f172a;
+  }
+  
+  .bottom-nav-item.is-active {
+    opacity: 1;
+    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.6);
+  }
+  
+  body.theme-dark .bottom-nav-item.is-active {
+    background: radial-gradient(circle at top, #0f172a, #020617);
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.8);
+  }
+  
+  body.theme-light .bottom-nav-item.is-active {
+    background: #e0f2fe;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.9);
+  }
+  
+  /* Give the content room above the nav on mobile */
+  body.mode-mobile main.layout {
+    padding-bottom: 5.25rem;
+  }
+  
+  /* Lighten header a bit in mobile mode (more “fan app”) */
+  body.mode-mobile .app-header {
+    padding-block: 0.7rem;
+  }
+  
+  body.mode-mobile .app-title p {
+    font-size: 0.9rem;
+    max-width: 26rem;
+  }
+  
+  /* Make schedule filters feel like horizontal chips on mobile */
+  body.mode-mobile .schedule-filters {
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  body.mode-mobile .schedule-filters .control-group {
+    min-width: 140px;
+  }
+  
   
