@@ -2533,6 +2533,7 @@ function attachEventListeners() {
   }
   
   
+  
   function initScenarioControls() {
     const select = document.getElementById("scenarioSelect");
     const nameInput = document.getElementById("scenarioNameInput");
