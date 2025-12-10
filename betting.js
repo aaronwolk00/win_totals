@@ -868,61 +868,66 @@ function renderBetColumnPicker() {
 // -----------------------
 
 function renderRawMarketsTable() {
-  const container = document.getElementById("rawMarketsContainer");
-  container.innerHTML = "";
-
-  const table = document.createElement("table");
-  table.className = "table";
-
-  const thead = document.createElement("thead");
-  const headerRow = document.createElement("tr");
-  ["Team", "Total", "Over", "Under"].forEach((h) => {
-    const th = document.createElement("th");
-    th.textContent = h;
-    headerRow.appendChild(th);
-  });
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-
-  for (const entry of BET_WIN_TOTALS) {
-    const palette = teamPalettes[entry.teamId] || {};
-    for (const m of entry.markets) {
-      const tr = document.createElement("tr");
-      tr.style.setProperty(
-        "--team-color-main",
-        palette.primary || "#334155"
-      );
-      tr.style.setProperty(
-        "--team-color-alt",
-        palette.secondary || "#64748b"
-      );
-
-      const tdTeam = document.createElement("td");
-      tdTeam.className = "team-cell-heat";
-      tdTeam.textContent = `${entry.teamId} ${entry.teamName}`;
-
-      const tdTotal = document.createElement("td");
-      tdTotal.textContent = m.total.toFixed(1);
-
-      const tdOver = document.createElement("td");
-      tdOver.textContent = (m.over > 0 ? "+" : "") + m.over;
-
-      const tdUnder = document.createElement("td");
-      tdUnder.textContent = (m.under > 0 ? "+" : "") + m.under;
-
-      tr.appendChild(tdTeam);
-      tr.appendChild(tdTotal);
-      tr.appendChild(tdOver);
-      tr.appendChild(tdUnder);
-      tbody.appendChild(tr);
+    const container = document.getElementById("rawMarketsContainer");
+    container.innerHTML = "";
+  
+    const table = document.createElement("table");
+    // key difference: give this its own class so we can style it like the old design
+    table.className = "table raw-markets-table";
+  
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    ["Team", "Total", "Over", "Under"].forEach((h) => {
+      const th = document.createElement("th");
+      th.textContent = h;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+  
+    const tbody = document.createElement("tbody");
+  
+    for (const entry of BET_WIN_TOTALS) {
+      const palette = teamPalettes[entry.teamId] || {};
+      for (const m of entry.markets) {
+        const tr = document.createElement("tr");
+  
+        // these CSS vars power the row gradient, just like the old design
+        tr.style.setProperty(
+          "--team-color-main",
+          palette.primary || "#334155"
+        );
+        tr.style.setProperty(
+          "--team-color-alt",
+          palette.secondary || "#64748b"
+        );
+  
+        const tdTeam = document.createElement("td");
+        tdTeam.className = "team-cell-heat";
+        tdTeam.textContent = `${entry.teamId} ${entry.teamName}`;
+  
+        const tdTotal = document.createElement("td");
+        tdTotal.textContent = m.total.toFixed(1);
+  
+        const tdOver = document.createElement("td");
+        tdOver.textContent = (m.over > 0 ? "+" : "") + m.over;
+  
+        const tdUnder = document.createElement("td");
+        tdUnder.textContent = (m.under > 0 ? "+" : "") + m.under;
+  
+        tr.appendChild(tdTeam);
+        tr.appendChild(tdTotal);
+        tr.appendChild(tdOver);
+        tr.appendChild(tdUnder);
+        tbody.appendChild(tr);
+      }
     }
+  
+    table.appendChild(tbody);
+    container.appendChild(table);
   }
-
-  table.appendChild(tbody);
-  container.appendChild(table);
-}
+  
+  
 
 // -----------------------
 // Detail drawer per team

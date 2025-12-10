@@ -266,4 +266,38 @@
   }
   
   /* Odds + totals monospaced & right aligned via .numeric-cell in JS */
+
+  /* -------------------------------------------
+   Raw markets table – old-school team colors
+   ------------------------------------------- */
+
+.raw-markets-table tbody tr {
+    background-image: linear-gradient(
+      90deg,
+      rgba(15, 23, 42, 0.98) 0%,
+      var(--team-color-main, #334155) 18%,
+      var(--team-color-alt, #64748b) 55%,
+      rgba(15, 23, 42, 0.98) 100%
+    );
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+  }
+  
+  body.theme-light .raw-markets-table tbody tr {
+    background-image: linear-gradient(
+      90deg,
+      rgba(249, 250, 251, 0.98) 0%,
+      var(--team-color-main, #9ca3af) 18%,
+      var(--team-color-alt, #e5e7eb) 55%,
+      rgba(249, 250, 251, 0.98) 100%
+    );
+  }
+  
+  /* Team label style for raw markets (old "heat" cell) */
+  .team-cell-heat {
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  
   
