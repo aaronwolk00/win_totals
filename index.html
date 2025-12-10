@@ -56,7 +56,7 @@
         </button>
 
         <button id="bettingTableBtn" type="button" class="btn secondary">
-            Betting Table
+          Betting Table
         </button>
       </div>
     </header>
@@ -70,6 +70,24 @@
           Spreads are always from the <strong>home team's perspective</strong>.
           Click on a number in the spread band to set the line for that game.
         </p>
+
+        <!-- Filters for week / team / division -->
+        <div class="app-controls schedule-filters">
+          <label class="control-group">
+            <span>Week</span>
+            <select id="filterWeek"></select>
+          </label>
+
+          <label class="control-group">
+            <span>Team</span>
+            <select id="filterTeam"></select>
+          </label>
+
+          <label class="control-group">
+            <span>Division</span>
+            <select id="filterDivision"></select>
+          </label>
+        </div>
 
         <!-- Game cards are injected here by app.js -->
         <div id="scheduleContainer" class="schedule-container"></div>
@@ -106,8 +124,17 @@
     </main>
 
     <!-- Team detail modal -------------------------------------------------- -->
-    <div id="teamDetailOverlay" class="team-detail-overlay hidden" aria-hidden="true">
-      <div class="team-detail-modal" role="dialog" aria-modal="true" aria-labelledby="teamDetailTitle">
+    <div
+      id="teamDetailOverlay"
+      class="team-detail-overlay hidden"
+      aria-hidden="true"
+    >
+      <div
+        class="team-detail-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="teamDetailTitle"
+      >
         <button
           id="teamDetailClose"
           class="btn close-btn"

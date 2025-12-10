@@ -1116,5 +1116,22 @@ body.theme-light {
     color: var(--text-soft-light);
     opacity: 0.95;
   }
+
+  .schedule-filters {
+    margin-top: 0.75rem;
+    gap: 1rem;
+  }
+  
+  .control-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+  }
+  
+  .control-group span {
+    opacity: 0.85;
+  }
+  
   
   
