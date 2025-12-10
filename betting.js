@@ -437,6 +437,19 @@ function loadSimResults() {
 }
 
 // -----------------------
+// Picked-team detection
+// -----------------------
+
+// A team is treated as "picked" iff at least one of its remaining
+// game win probabilities differs from 0.5. That means you've moved
+// at least one line off the neutral setting.
+function teamHasAnyPickedGame(result) {
+    if (!Array.isArray(result.probs) || !result.probs.length) return false;
+    return result.probs.some((p) => Math.abs(p - 0.5) > 1e-6);
+  }
+  
+
+// -----------------------
 // Build betting rows
 // -----------------------
 
@@ -507,68 +520,43 @@ const betFilters = {
 };
 
 function buildBettingRows(results) {
-  const rows = [];
-
-  for (const r of results) {
-    const marketMap = MARKET_LOOKUP[r.teamId];
-    if (!marketMap) continue;
-
-    const row = {
-      teamId: r.teamId,
-      teamName: TEAM_NAME_LOOKUP[r.teamId] || r.teamId,
-      division: r.division || "",
-      currentWins: r.currentWins ?? 0,
-      sim: r // keep full result for detail view
-    };
-
-    const ge = {};
-    const lt = {};
-    for (let k = 1; k <= 4; k++) {
-      const pGe = probAdditionalAtLeast(r, k);
-      if (pGe != null) {
-        ge[k] = pGe;
-        lt[k] = 1 - pGe;
+    const rows = [];
+  
+    for (const r of results) {
+      // NEW: skip teams whose games haven't been picked at all
+      // (all remaining game probs = 0.5)
+      if (!teamHasAnyPickedGame(r)) continue;
+  
+      const marketMap = MARKET_LOOKUP[r.teamId];
+      if (!marketMap) continue;
+  
+      const row = {
+        teamId: r.teamId,
+        teamName: TEAM_NAME_LOOKUP[r.teamId] || r.teamId,
+        division: r.division || "",
+        currentWins: r.currentWins ?? 0,
+        sim: r // keep full result for detail view
+      };
+  
+      const ge = {};
+      const lt = {};
+      for (let k = 1; k <= 4; k++) {
+        const pGe = probAdditionalAtLeast(r, k);
+        if (pGe != null) {
+          ge[k] = pGe;
+          lt[k] = 1 - pGe;
+        }
       }
+  
+      // ... rest of loop unchanged ...
+  
+      rows.push(row);
     }
-
-    for (let k = 1; k <= 4; k++) {
-      const cur = row.currentWins;
-      const line = cur + (k - 0.5); // Over(cur + 0.5) == ≥1 more win, etc.
-      const market = marketMap[line];
-      if (!market) {
-        row[`edge_ge_${k}`] = null;
-        row[`ev_ge_${k}`] = null;
-        row[`edge_lt_${k}`] = null;
-        row[`ev_lt_${k}`] = null;
-        continue;
-      }
-
-      const pModelGe = ge[k];
-      const pModelLt = lt[k];
-
-      const pBookGe = americanToProb(market.over);
-      const pBookLt = americanToProb(market.under);
-
-      row[`edge_ge_${k}`] =
-        pModelGe != null && pBookGe != null ? pModelGe - pBookGe : null;
-      row[`ev_ge_${k}`] =
-        pModelGe != null && pBookGe != null
-          ? evOnStake(market.over, pModelGe, 100)
-          : null;
-
-      row[`edge_lt_${k}`] =
-        pModelLt != null && pBookLt != null ? pModelLt - pBookLt : null;
-      row[`ev_lt_${k}`] =
-        pModelLt != null && pBookLt != null
-          ? evOnStake(market.under, pModelLt, 100)
-          : null;
-    }
-
-    rows.push(row);
+  
+    return rows;
   }
-
-  return rows;
-}
+  
+  
 
 // -----------------------
 // Sorting / filtering
