@@ -1108,7 +1108,60 @@ function applyViewMode() {
       resultsSection.classList.remove("hidden");
       viewToggleBtn.textContent = "Show Schedule & Spreads";
     }
+  
+    // Keep bottom-nav in sync for Games / Teams
+    const navItems = document.querySelectorAll(".bottom-nav-item");
+    navItems.forEach((btn) => {
+      const tab = btn.dataset.tab;
+      const shouldBeActive =
+        (state.view === "schedule" && tab === "games") ||
+        (state.view === "projections" && tab === "teams");
+      // Don't touch the betting / more tabs here
+      if (tab === "betting" || tab === "more") return;
+      btn.classList.toggle("is-active", shouldBeActive);
+    });
   }
+  
+  function setActiveTab(tab) {
+    const navItems = document.querySelectorAll(".bottom-nav-item");
+    navItems.forEach((btn) => {
+      const tabName = btn.dataset.tab;
+      btn.classList.toggle("is-active", tabName === tab);
+    });
+  
+    const scheduleSection = document.getElementById("scheduleSection");
+    const resultsSection = document.getElementById("resultsSection");
+    const bettingSection = document.getElementById("bettingSection");
+  
+    // Default: hide betting section unless explicitly on that tab
+    if (bettingSection) {
+      if (tab === "betting") {
+        bettingSection.classList.remove("hidden");
+      } else {
+        bettingSection.classList.add("hidden");
+      }
+    }
+  
+    if (tab === "games") {
+      state.view = "schedule";
+      saveStateToStorage();
+      applyViewMode();
+    } else if (tab === "teams") {
+      state.view = "projections";
+      saveStateToStorage();
+      applyViewMode();
+    } else if (tab === "betting") {
+      // Betting tab: hide both schedule + projections, show bettingSection only
+      if (scheduleSection) scheduleSection.classList.add("hidden");
+      if (resultsSection) resultsSection.classList.add("hidden");
+    } else if (tab === "more") {
+      // For now just highlight the tab; you can wire a "More" panel later.
+      if (scheduleSection) scheduleSection.classList.add("hidden");
+      if (resultsSection) resultsSection.classList.add("hidden");
+      // bettingSection stays hidden unless you want something here
+    }
+  }
+  
   
 
 // Spread → home win probability
@@ -2467,18 +2520,12 @@ function attachEventListeners() {
         }
       });
     }
-
-    document.querySelectorAll(".bottom-tab").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const tab = btn.dataset.tab;
-          switchMainTab(tab);
-        });
-      });
   
+    // HEADER "Betting Table" → switch to Betting tab instead of navigating
     const bettingBtn = document.getElementById("bettingTableBtn");
     if (bettingBtn) {
       bettingBtn.addEventListener("click", () => {
-        window.location.href = "betting.html";
+        setActiveTab("betting");
       });
     }
   
@@ -2534,7 +2581,6 @@ function attachEventListeners() {
       });
     }
   
-    // Header controls expand / collapse (mobile)
     const headerToggle = document.getElementById("headerControlsToggle");
     const headerControls = document.querySelector(".header-controls");
     if (headerToggle && headerControls) {
@@ -2547,7 +2593,6 @@ function attachEventListeners() {
       });
     }
   
-    // Desktop vs mobile display mode toggle
     const displayModeBtn = document.getElementById("mainDisplayModeToggle");
     if (displayModeBtn) {
       displayModeBtn.addEventListener("click", () => {
@@ -2557,8 +2602,21 @@ function attachEventListeners() {
       });
     }
   
+    // NEW: bottom tab bar wiring (Games / Teams / Betting / More)
+    const bottomNav = document.querySelector(".bottom-nav");
+    if (bottomNav) {
+      bottomNav.querySelectorAll(".bottom-nav-item").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const tab = btn.dataset.tab;
+          if (!tab) return;
+          setActiveTab(tab);
+        });
+      });
+    }
+  
     initScenarioControls();
-  }  
+  }
+  
 
   function initBottomNav() {
     const nav = document.querySelector(".bottom-nav");
@@ -2709,16 +2767,9 @@ function attachEventListeners() {
 // ---------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1) Load state + shared display mode
+    // 1) Load state + display mode
     loadStateFromStorage();
     loadDisplayMode();
-  
-    // If user has never explicitly chosen a display mode, default by viewport
-    if (!localStorage.getItem(DISPLAY_MODE_KEY)) {
-      if (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) {
-        displayMode = "mobile";
-      }
-    }
   
     // 2) Apply theme + display mode before rendering UI
     applyTheme();
@@ -2732,13 +2783,15 @@ document.addEventListener("DOMContentLoaded", () => {
     renderSchedule();
     computeAndRenderResults();
   
-    // 5) View (schedule vs projections) + wiring
+    // 5) View (schedule vs projections)
     applyViewMode();
-    attachEventListeners();
   
-    // 6) Mobile bottom nav
-    initBottomNav();
+    // 6) Tabs + listeners
+    const initialTab = state.view === "projections" ? "teams" : "games";
+    setActiveTab(initialTab);
+    attachEventListeners();
   });
+  
   
   
   
