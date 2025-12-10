@@ -1318,7 +1318,7 @@ function renderTeamTable() {
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
   
-    for (const h of TABLE_HEADERS) {
+    for (const h of header) {
       if (!state.visibleColumns[h.key]) continue;
   
       const th = document.createElement("th");
@@ -1369,7 +1369,7 @@ function renderTeamTable() {
         showTeamDetail(r.teamId);
       });
   
-      for (const h of TABLE_HEADERS) {
+      for (const h of header) {
         if (!state.visibleColumns[h.key]) continue;
   
         const td = document.createElement("td");
@@ -1438,7 +1438,7 @@ function renderTeamTable() {
     const grid = document.createElement("div");
     grid.className = "column-picker-grid";
   
-    TABLE_HEADERS.forEach((h) => {
+    header.forEach((h) => {
       // If you want 'team' & 'division' always on, skip them here:
       // if (h.key === "team" || h.key === "division") return;
   
