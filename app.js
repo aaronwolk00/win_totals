@@ -1193,6 +1193,19 @@ function gameMatchesFilters(game) {
     card.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
+// After the schedule is (re)rendered, re-apply all saved lines
+function rehydratePickedLinesIntoCards() {
+    if (!state.spreads) return;
+  
+    for (const [gameId, spread] of Object.entries(state.spreads)) {
+      if (typeof spread === "number" && Number.isFinite(spread)) {
+        // This no-ops if the card for that game isn't currently in the DOM
+        updateGameCardDisplay(gameId);
+      }
+    }
+  }
+  
+
 
 // Build schedule UI
 function renderSchedule() {
@@ -1238,7 +1251,7 @@ function renderSchedule() {
   
       for (const game of weekGames) {
         const card = document.createElement("div");
-        card.className = "game-card game-card-compact"; // compact row; CSS can expand on hover
+        card.className = "game-card game-card-compact";
         card.dataset.gameId = String(game.id);
   
         // Attach team colors as CSS custom properties for this card
@@ -1375,7 +1388,7 @@ function renderSchedule() {
         card.appendChild(info);
         list.appendChild(card);
   
-        // Initialize display with stored spread, if any
+        // This keeps a brand-new schedule consistent if state.spreads was empty
         updateGameCardDisplay(game.id);
       }
   
@@ -1383,9 +1396,13 @@ function renderSchedule() {
       container.appendChild(weekBlock);
     }
   
+    // >>> NEW: rehydrate any previously picked lines into the freshly rendered cards
+    rehydratePickedLinesIntoCards();
+  
     // After all weeks are rendered, jump back to the last game you touched
     scrollToLastFocusedGame();
   }
+  
   
   
   
