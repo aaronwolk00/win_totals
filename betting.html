@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <title>NFL Win Totals – Betting Edges</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="betting.css" />
+  <meta charset="UTF-8" />
+  <title>NFL Win Totals – Betting Edges</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Hint to the browser that both dark and light themes exist -->
+  <meta name="color-scheme" content="dark light" />
+  <link rel="stylesheet" href="betting.css" />
 </head>
 <body class="theme-dark">
   <header class="app-header">
@@ -12,9 +14,11 @@
       <h1>NFL Win Totals – Betting Edges</h1>
       <p>
         Compares your simulation to posted regular-season win totals.
-        EV numbers assume a <strong>$100 stake</strong> and are net profit (not including stake).
+        EV numbers assume a <strong>$100 stake</strong> and are net profit
+        (not including stake).
       </p>
     </div>
+
     <div class="app-controls">
       <button id="betThemeToggle" type="button" class="btn secondary">
         Switch to Light Theme
@@ -35,6 +39,7 @@
   </header>
 
   <main class="layout">
+    <!-- Main betting EV table -->
     <section id="bettingSection" class="results-section">
       <div class="results-header-row">
         <h2>Betting Table (Additional Wins vs Market)</h2>
@@ -47,7 +52,7 @@
         </button>
       </div>
 
-      <p id="betStatusNote" class="section-note">
+      <p id="betStatusNote" class="section-note" aria-live="polite">
         Loading simulation results from local storage…
       </p>
 
@@ -80,6 +85,7 @@
       <div id="betTableContainer" class="table-container"></div>
     </section>
 
+    <!-- Raw markets table -->
     <section id="rawMarketsSection" class="results-section">
       <h2>Raw Market Win Totals (as posted)</h2>
       <p class="section-note">
