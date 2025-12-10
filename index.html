@@ -14,22 +14,26 @@
     <header class="app-header">
       <div class="app-title">
         <h1>NFL Win Projection Tool</h1>
-        <p>
-          Weeks 15–18, 2025 · Spread-based probabilities (home perspective)
-        </p>
+        <p>Weeks 15–18, 2025 · Spread-based probabilities (home perspective)</p>
       </div>
 
-      <!-- Header-controls toggle (shown in mobile via CSS) -->
+      <!-- Header-controls toggle (only visible in mobile via CSS) -->
       <button
         id="headerControlsToggle"
         type="button"
         class="btn secondary header-toggle-btn"
+        aria-expanded="false"
+        aria-controls="headerControlsBar"
       >
         Show Header Controls
       </button>
 
       <!-- Main header controls -->
-      <div class="app-controls header-controls">
+      <div
+        id="headerControlsBar"
+        class="app-controls header-controls"
+        aria-label="Global controls"
+      >
         <!-- Theme toggle -->
         <button id="themeToggle" type="button" class="btn secondary">
           Switch to Light Theme
@@ -65,7 +69,7 @@
         </button>
 
         <!-- Precision select -->
-        <label class="control-group">
+        <label class="control-group" for="precisionSelect">
           <span>Display precision</span>
           <select id="precisionSelect">
             <option value="2" selected>2 decimals</option>
@@ -145,23 +149,22 @@
 
         <!-- Filters for week / team / division / pick status -->
         <div class="app-controls schedule-filters">
-          <label class="control-group">
+          <label class="control-group" for="filterWeek">
             <span>Week</span>
             <select id="filterWeek"></select>
           </label>
 
-          <label class="control-group">
+          <label class="control-group" for="filterTeam">
             <span>Team</span>
             <select id="filterTeam"></select>
           </label>
 
-          <label class="control-group">
+          <label class="control-group" for="filterDivision">
             <span>Division</span>
             <select id="filterDivision"></select>
           </label>
 
-          <!-- Pick status filter (wired in app.js via filterPickStatus) -->
-          <label class="control-group">
+          <label class="control-group" for="filterPickStatus">
             <span>Pick status</span>
             <select id="filterPickStatus"></select>
           </label>
@@ -169,14 +172,14 @@
 
         <!-- Scenario controls (wired by initScenarioControls in app.js) -->
         <div class="app-controls" style="margin-top: 0.6rem;">
-          <label class="control-group">
+          <label class="control-group" for="scenarioSelect">
             <span>Saved scenarios</span>
             <select id="scenarioSelect">
               <!-- options injected by JS -->
             </select>
           </label>
 
-          <label class="control-group">
+          <label class="control-group" for="scenarioNameInput">
             <span>Name</span>
             <input
               id="scenarioNameInput"

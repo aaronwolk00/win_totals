@@ -62,7 +62,7 @@ function applyDisplayModeMainPage() {
           : "Switch to Mobile View";
     }
   
-    // NEW: sync header controls toggle text
+    // Sync header controls toggle + state
     const headerToggle = document.getElementById("headerControlsToggle");
     const headerControls = document.querySelector(".header-controls");
     if (headerToggle && headerControls) {
@@ -71,12 +71,16 @@ function applyDisplayModeMainPage() {
         headerToggle.textContent = open
           ? "Hide Header Controls"
           : "Show Header Controls";
+        headerToggle.setAttribute("aria-expanded", open ? "true" : "false");
       } else {
-        // On desktop, always show controls (CSS handles layout)
+        // On desktop, just make sure the bar is fully visible; no collapse state
         headerControls.classList.remove("is-open");
+        headerToggle.textContent = "Show Header Controls";
+        headerToggle.setAttribute("aria-expanded", "false");
       }
     }
   }
+  
   
 
 
@@ -916,6 +920,64 @@ const state = {
     scenarios: {},        // { [name]: { spreads, precision, showImpliedOdds } }
     activeScenario: null
   };
+  
+// Render bar chart for a team's win distribution inside the detail modal.
+// mode: "exact" (P(exactly k wins)) or "atLeast" (P(≥k wins)).
+function renderTeamChart(teamId, mode) {
+    const barsContainer = document.getElementById("teamChartBars");
+    if (!barsContainer) return;
+  
+    const result = state.results.find((r) => r.teamId === teamId);
+    if (!result) return;
+  
+    const palette = teamPalettes[teamId] || {};
+    const barColor = palette.primary || "#22c55e";
+    const barColorAlt = palette.secondary || "#16a34a";
+  
+    const exact = result.exact;           // [P(0), P(1), P(2), P(3), P(4)]
+    const cumulative = result.cumulative; // [P(≥0), P(≥1), P(≥2), P(≥3), P(≥4)]
+  
+    let values;
+    if (mode === "atLeast") {
+      // Show P(≥k wins) for k = 0..4
+      values = [0, 1, 2, 3, 4].map((k) => cumulative[k]);
+    } else {
+      // Default "exact" mode
+      values = exact.slice();
+    }
+  
+    const maxVal = Math.max(...values, 0.0001); // avoid divide-by-zero
+    barsContainer.innerHTML = "";
+  
+    values.forEach((prob, k) => {
+      const barWrapper = document.createElement("div");
+      barWrapper.className = "team-detail-chart-bar";
+  
+      const valueLabel = document.createElement("div");
+      valueLabel.className = "team-detail-chart-bar-value";
+      valueLabel.textContent = formatPercent(prob, 1);
+  
+      const track = document.createElement("div");
+      track.className = "team-detail-chart-bar-track";
+  
+      const fill = document.createElement("div");
+      fill.className = "team-detail-chart-bar-fill";
+      fill.style.height = `${(prob / maxVal) * 100}%`;
+      fill.style.background = `linear-gradient(to top, ${barColor}, ${barColorAlt})`;
+  
+      track.appendChild(fill);
+  
+      const xLabel = document.createElement("div");
+      xLabel.className = "team-detail-chart-bar-label";
+      xLabel.textContent = mode === "atLeast" ? `≥${k}` : String(k);
+  
+      barWrapper.appendChild(valueLabel);
+      barWrapper.appendChild(track);
+      barWrapper.appendChild(xLabel);
+  
+      barsContainer.appendChild(barWrapper);
+    });
+  }
   
   
   
@@ -2006,7 +2068,6 @@ function renderDivisionSummary() {
     }
   }
   
-
 // Team detail overlay
 function showTeamDetail(teamId) {
     const overlay = document.getElementById("teamDetailOverlay");
@@ -2032,7 +2093,7 @@ function showTeamDetail(teamId) {
           game,
           spread,
           teamProb,
-          isHome: game.home === teamId
+          isHome: game.home === teamId,
         });
       }
     }
@@ -2040,9 +2101,9 @@ function showTeamDetail(teamId) {
     teamGames.sort((a, b) => a.game.week - b.game.week);
     const precision = state.precision;
   
-    // Basic header
+    // Header + high-level summary
     let html = "";
-    html += `<h3>${teamId} · ${teamInfo.name}</h3>`;
+    html += `<h3 id="teamDetailTitle">${teamId} · ${teamInfo.name}</h3>`;
     html += `<p>Current wins: <strong>${teamInfo.currentWins}</strong> · Expected additional wins: <strong>${formatNumber(
       result.expectedAdditionalWins,
       precision
@@ -2051,9 +2112,50 @@ function showTeamDetail(teamId) {
       precision
     )}</strong></p>`;
   
-    // NEW: short narrative summary (fan-friendly)
+    // Narrative
     html += buildTeamNarrative(teamInfo, result);
   
+    // Chart + toggle
+    html += `
+      <h4>Win distribution (remaining 4 games)</h4>
+      <div class="team-detail-chart" data-team-id="${teamId}">
+        <div class="team-detail-chart-header">
+          <span>Probability by wins</span>
+          <div class="team-detail-chart-toggle">
+            <button
+              type="button"
+              class="btn btn-xs chart-mode-btn active"
+              data-mode="exact"
+            >
+              Exact
+            </button>
+            <button
+              type="button"
+              class="btn btn-xs chart-mode-btn"
+              data-mode="atLeast"
+            >
+              At least
+            </button>
+          </div>
+        </div>
+        <div class="team-detail-chart-bars" id="teamChartBars"></div>
+      </div>
+    `;
+  
+    // Numeric list
+    html += `<ul class="team-detail-dist">`;
+    for (let k = 0; k <= 4; k++) {
+      html += `<li>${k} wins: <strong>${formatPercent(
+        result.exact[k],
+        precision
+      )}</strong> &nbsp;|&nbsp; ≥${k} wins: <strong>${formatPercent(
+        result.cumulative[k],
+        precision
+      )}</strong></li>`;
+    }
+    html += `</ul>`;
+  
+    // Game editor
     html += `<h4>Edit remaining games</h4>`;
     html += `<p class="team-detail-note">Click a preset to set the spread for this game. Changes immediately update projections and the betting view.</p>`;
   
@@ -2095,18 +2197,25 @@ function showTeamDetail(teamId) {
   
     html += `</tbody></table>`;
   
-    html += `<h4>Win distribution (remaining 4 games)</h4>`;
-    html += `<ul class="team-detail-dist">`;
-    for (let k = 0; k <= 4; k++) {
-      html += `<li>${k} wins: <strong>${formatPercent(
-        result.exact[k],
-        precision
-      )}</strong></li>`;
-    }
-    html += `</ul>`;
-  
     content.innerHTML = html;
     overlay.classList.remove("hidden");
+  
+    // Initial chart render (exact mode)
+    renderTeamChart(teamId, "exact");
+  
+    // Wire up chart mode toggle
+    const toggleWrap = content.querySelector(".team-detail-chart-toggle");
+    if (toggleWrap) {
+      const modeButtons = toggleWrap.querySelectorAll(".chart-mode-btn");
+      modeButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const mode = btn.dataset.mode === "atLeast" ? "atLeast" : "exact";
+          modeButtons.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          renderTeamChart(teamId, mode);
+        });
+      });
+    }
   
     // Wire up preset buttons
     content.querySelectorAll(".preset-btn").forEach((btn) => {
@@ -2129,13 +2238,16 @@ function showTeamDetail(teamId) {
         const updatedResult = state.results.find((r) => r.teamId === teamId);
         if (!updatedResult) return;
   
-        // Update distribution list
+        // Update numeric distribution list
         const distLis = content.querySelectorAll(".team-detail-dist li");
         for (let k = 0; k <= 4; k++) {
           const li = distLis[k];
           if (!li) continue;
           li.innerHTML = `${k} wins: <strong>${formatPercent(
             updatedResult.exact[k],
+            precision
+          )}</strong> &nbsp;|&nbsp; ≥${k} wins: <strong>${formatPercent(
+            updatedResult.cumulative[k],
             precision
           )}</strong>`;
         }
@@ -2151,11 +2263,21 @@ function showTeamDetail(teamId) {
         const teamProb = g.home === teamId ? homeProb : 1 - homeProb;
         row.lastElementChild.textContent = formatPercent(teamProb, precision);
   
+        // Re-render chart in whatever mode is currently active
+        const activeBtn = content.querySelector(".chart-mode-btn.active");
+        const currentMode =
+          activeBtn && activeBtn.dataset.mode === "atLeast"
+            ? "atLeast"
+            : "exact";
+        renderTeamChart(teamId, currentMode);
+  
         state.lastFocusedGameId = gameId;
         saveStateToStorage();
       });
     });
   }
+  
+  
   
   function buildTeamNarrative(teamInfo, result) {
     const current = teamInfo.currentWins;
@@ -2383,7 +2505,8 @@ function attachEventListeners() {
         applyMode();
       });
     }
-
+  
+    // Header controls expand / collapse (mobile)
     const headerToggle = document.getElementById("headerControlsToggle");
     const headerControls = document.querySelector(".header-controls");
     if (headerToggle && headerControls) {
@@ -2392,9 +2515,11 @@ function attachEventListeners() {
         headerToggle.textContent = nowOpen
           ? "Hide Header Controls"
           : "Show Header Controls";
+        headerToggle.setAttribute("aria-expanded", nowOpen ? "true" : "false");
       });
     }
-
+  
+    // Desktop vs mobile display mode toggle
     const displayModeBtn = document.getElementById("mainDisplayModeToggle");
     if (displayModeBtn) {
       displayModeBtn.addEventListener("click", () => {
@@ -2406,6 +2531,7 @@ function attachEventListeners() {
   
     initScenarioControls();
   }
+  
   
   function initScenarioControls() {
     const select = document.getElementById("scenarioSelect");
