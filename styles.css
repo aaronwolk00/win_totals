@@ -1048,4 +1048,73 @@
       align-items: flex-start;
     }
   }
+
+
+/* ============================================
+   LIGHT THEME – READABILITY IMPROVEMENTS
+   (append at bottom of file)
+   ============================================ */
+
+/* Make text a touch clearer in light mode */
+body.theme-light {
+    color: var(--text-main-light);
+  }
+  
+  /* 1) Game cards – neutral center with team color accent only on the side bar */
+  body.theme-light .game-card {
+    background: #ffffff; /* clean card */
+    border-color: rgba(148, 163, 184, 0.55);
+  }
+  
+  body.theme-light .game-card::after {
+    opacity: 0.9; /* keep the home/away color bar visible */
+  }
+  
+  /* 2) Tables – remove heavy row gradient in light theme, use clean zebra striping */
+  
+  body.theme-light .table {
+    font-size: 0.98rem;          /* bump size so you don't have to squint */
+  }
+  
+  body.theme-light .table th,
+  body.theme-light .table td {
+    padding: 0.5rem 0.7rem;      /* more tap/scan space */
+  }
+  
+  /* Header: stronger separation & contrast */
+  body.theme-light .table thead {
+    background: #e5e7eb;
+    color: #111827;
+    border-bottom: 1px solid #d1d5db;
+  }
+  
+  /* Rows: plain backgrounds instead of team-color wash */
+  body.theme-light .table tbody tr {
+    background-image: none;      /* kill the full-row team gradient in light mode */
+    background-color: #ffffff;
+  }
+  
+  body.theme-light .table tbody tr:nth-child(even) {
+    background-color: #f9fafb;
+  }
+  
+  body.theme-light .table tbody tr:hover {
+    background-color: #e0f2fe;
+    filter: none;                /* don't double-brighten */
+  }
+  
+  /* 3) Division summary cards – slightly crisper in light mode */
+  
+  body.theme-light .division-card {
+    background: #ffffff;
+    border-color: #d1d5db;
+  }
+  
+  /* 4) Small text (notes) – slightly darker in light so it doesn't fade away */
+  
+  body.theme-light .section-note {
+    color: var(--text-soft-light);
+    opacity: 0.95;
+  }
+  
   
