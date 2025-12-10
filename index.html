@@ -8,13 +8,15 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
 
-  <!-- start in dark + desktop mode; JS will adjust -->
+  <!-- Start in dark + desktop mode; JS will adjust -->
   <body class="theme-dark mode-desktop">
     <!-- Top bar ------------------------------------------------------------ -->
     <header class="app-header">
       <div class="app-title">
         <h1>NFL Win Projection Tool</h1>
-        <p>Weeks 15–18, 2025 · Spread-based probabilities (home perspective)</p>
+        <p>
+          Weeks 15–18, 2025 · Spread-based probabilities (home perspective)
+        </p>
       </div>
 
       <div class="app-controls">
@@ -131,7 +133,7 @@
           </div>
         </div>
 
-        <!-- Filters for week / team / division -->
+        <!-- Filters for week / team / division / pick status -->
         <div class="app-controls schedule-filters">
           <label class="control-group">
             <span>Week</span>
@@ -146,6 +148,12 @@
           <label class="control-group">
             <span>Division</span>
             <select id="filterDivision"></select>
+          </label>
+
+          <!-- NEW: Pick status filter (wired in app.js via filterPickStatus) -->
+          <label class="control-group">
+            <span>Pick status</span>
+            <select id="filterPickStatus"></select>
           </label>
         </div>
 
@@ -164,7 +172,12 @@
               id="scenarioNameInput"
               type="text"
               placeholder="e.g. Chalk, Upsets, Favorites"
-              style="padding: 0.35rem 0.8rem; border-radius: 999px; border: 1px solid currentColor; font-size: 0.9rem;"
+              style="
+                padding: 0.35rem 0.8rem;
+                border-radius: 999px;
+                border: 1px solid currentColor;
+                font-size: 0.9rem;
+              "
             />
           </label>
 

@@ -888,6 +888,7 @@ const state = {
     filterWeek: "ALL",
     filterTeam: "ALL",
     filterDivision: "ALL",
+    filterPickStatus: "ALL",
     lastFocusedGameId: null,
   
     // NEW: fan vs pro mode
@@ -947,6 +948,13 @@ function loadStateFromStorage() {
       if (parsed.filterDivision !== undefined) {
         state.filterDivision = parsed.filterDivision;
       }
+      if (parsed.filterPickStatus &&
+          (parsed.filterPickStatus === "ALL" ||
+           parsed.filterPickStatus === "PICKED" ||
+           parsed.filterPickStatus === "UNPICKED")) {
+        state.filterPickStatus = parsed.filterPickStatus;
+      }
+    
       if (parsed.lastFocusedGameId !== undefined) {
         state.lastFocusedGameId = parsed.lastFocusedGameId;
       }
@@ -969,6 +977,7 @@ function loadStateFromStorage() {
       filterWeek: state.filterWeek,
       filterTeam: state.filterTeam,
       filterDivision: state.filterDivision,
+      filterPickStatus: state.filterPickStatus,
       lastFocusedGameId: state.lastFocusedGameId,
   
       // meta
@@ -1069,7 +1078,12 @@ function formatPercent(prob, decimals) {
 }
 
 function gameMatchesFilters(game) {
-    const { filterWeek, filterTeam, filterDivision } = state;
+    const {
+      filterWeek,
+      filterTeam,
+      filterDivision,
+      filterPickStatus
+    } = state;
   
     // Week filter
     if (filterWeek !== "ALL" && game.week !== filterWeek) return false;
@@ -1092,15 +1106,23 @@ function gameMatchesFilters(game) {
       }
     }
   
+    // NEW: pick-status filter
+    const hasSpread = typeof state.spreads[String(game.id)] === "number";
+  
+    if (filterPickStatus === "PICKED" && !hasSpread) return false;
+    if (filterPickStatus === "UNPICKED" && hasSpread) return false;
+  
     return true;
   }
+  
   
   // Populate the three selects and wire them to state
   function initScheduleFilters() {
     const weekSelect = document.getElementById("filterWeek");
     const teamSelect = document.getElementById("filterTeam");
     const divisionSelect = document.getElementById("filterDivision");
-    if (!weekSelect || !teamSelect || !divisionSelect) return;
+    const pickSelect = document.getElementById("filterPickStatus");
+    if (!weekSelect || !teamSelect || !divisionSelect || !pickSelect) return;
   
     // Weeks
     const weeks = [...new Set(games.map(g => g.week))].sort((a, b) => a - b);
@@ -1147,6 +1169,22 @@ function gameMatchesFilters(game) {
       divisionSelect.appendChild(o);
     });
     divisionSelect.value = state.filterDivision || "ALL";
+
+    // Pick status
+    pickSelect.innerHTML = "";
+    [
+        { value: "ALL",      label: "All games" },
+        { value: "UNPICKED", label: "Only unpicked" },
+        { value: "PICKED",   label: "Only picked" }
+    ].forEach((optDef) => {
+        const o = document.createElement("option");
+        o.value = optDef.value;
+        o.textContent = optDef.label;
+        pickSelect.appendChild(o);
+    });
+
+    pickSelect.value = state.filterPickStatus || "ALL";
+
   
     // Change handlers
     weekSelect.addEventListener("change", (e) => {
@@ -1169,6 +1207,14 @@ function gameMatchesFilters(game) {
       saveStateToStorage();
       renderSchedule();
     });
+
+    pickSelect.addEventListener("change", (e) => {
+        const v = e.target.value;
+        state.filterPickStatus = v;
+        saveStateToStorage();
+        renderSchedule();
+      });
+    
   }
   
   // After rendering, jump back to last interacted game (or first with a spread)
@@ -1212,13 +1258,22 @@ function renderSchedule() {
     const container = document.getElementById("scheduleContainer");
     container.innerHTML = "";
   
-    // Apply filters
     let filteredGames = games.filter(gameMatchesFilters);
-  
-    // If filters yield nothing, fall back to all games so the page is never blank
+
     if (!filteredGames.length) {
-      filteredGames = games;
-    }
+      const noCustomFilters =
+        state.filterWeek === "ALL" &&
+        state.filterTeam === "ALL" &&
+        state.filterDivision === "ALL" &&
+        state.filterPickStatus === "ALL";
+    
+      // Only fall back when literally everything is at default
+      if (noCustomFilters) {
+        filteredGames = games;
+      } else {
+        // otherwise it's fine to show an empty list
+      }
+    }    
   
     // Group by week
     const byWeek = new Map();
@@ -1439,6 +1494,7 @@ function updateOddsToggleButton() {
     state.filterWeek = "ALL";
     state.filterTeam = "ALL";
     state.filterDivision = "ALL";
+    state.filterPickStatus = "ALL";
     state.lastFocusedGameId = null;
     state.results = [];
   
