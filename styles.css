@@ -1,4 +1,8 @@
-:root {
+/* ============================================
+   Root tokens
+   ============================================ */
+
+   :root {
     --bg-dark: #020617;
     --bg-dark-elevated: #020617;
     --bg-dark-card: #0b1120;
@@ -23,9 +27,9 @@
     --spread-dog: #f97316;
   }
   
-  /* -------------------------
+  /* ============================================
      Base / global
-  ------------------------- */
+     ============================================ */
   
   *,
   *::before,
@@ -74,9 +78,15 @@
     border-color: var(--border-subtle-light);
   }
   
-  /* -------------------------
+  /* Utility */
+  
+  .hidden {
+    display: none !important;
+  }
+  
+  /* ============================================
      Header + controls
-  ------------------------- */
+     ============================================ */
   
   .app-header {
     position: sticky;
@@ -121,7 +131,10 @@
     font-size: 0.95rem;
     cursor: pointer;
     background: none;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
       transform 0.05s ease;
   }
   
@@ -160,6 +173,14 @@
     color: var(--text-main-light);
   }
   
+  /* Tiny buttons (used in team editor presets) */
+  .btn.btn-xs {
+    padding: 0.18rem 0.5rem;
+    font-size: 0.76rem;
+  }
+  
+  /* Inputs */
+  
   select,
   input[type="number"] {
     font-size: 0.9rem;
@@ -182,9 +203,22 @@
     color: var(--text-main-light);
   }
   
-  /* -------------------------
+  /* Little label + control groups */
+  
+  .control-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+  }
+  
+  .control-group span {
+    opacity: 0.85;
+  }
+  
+  /* ============================================
      Layout wrappers
-  ------------------------- */
+     ============================================ */
   
   .layout {
     display: flex;
@@ -217,16 +251,23 @@
     opacity: 0.85;
   }
   
-  /* -------------------------
+  /* Filters row under schedule header */
+  
+  .schedule-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+  
+  /* ============================================
      Schedule / weeks
-  ------------------------- */
+     ============================================ */
   
   .schedule-container {
     display: flex;
     flex-direction: column;
-    gap: 1.1rem;
-    max-height: none;
-    overflow: visible;
+    gap: 0.7rem;
     padding-right: 0.25rem;
     width: 100%;
   }
@@ -234,7 +275,7 @@
   .week-block {
     border-radius: 0.9rem;
     border: 1px dashed;
-    padding: 0.9rem 1rem 1rem;
+    padding: 0.8rem 1rem 0.9rem;
     width: 100%;
   }
   
@@ -252,12 +293,12 @@
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.4rem;
   }
   
   .week-header h3 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
   }
   
   .week-header span {
@@ -268,48 +309,44 @@
   .games-list {
     display: flex;
     flex-direction: column;
-    gap: 0.9rem;
+    gap: 0.45rem;
     width: 100%;
   }
   
-  /* -------------------------
-     Game card
-  ------------------------- */
+  /* ============================================
+     Game cards – compact with hover expansion
+     ============================================ */
   
   .game-card {
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 1rem;
-    padding: 1rem 1.4rem;
-    border-radius: 1rem;
+    row-gap: 0.22rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 0.85rem;
     border: 1px solid rgba(148, 163, 184, 0.45);
     align-items: center;
-    font-size: 1.05rem;
+    font-size: 0.98rem;
     overflow: hidden;
     width: 100%;
+    min-height: 48px;
   }
   
-  /* team color heat both sides, neutral middle */
+  /* Gradient heat: away -> neutral -> home */
   
   body.theme-dark .game-card {
     background: linear-gradient(
       90deg,
       var(--away-color-main, #111827) 0%,
-      rgba(15, 23, 42, 0.98) 44%,
-      rgba(15, 23, 42, 0.98) 56%,
+      rgba(15, 23, 42, 0.98) 45%,
+      rgba(15, 23, 42, 0.98) 55%,
       var(--home-color-main, #16a34a) 100%
     );
   }
   
   body.theme-light .game-card {
-    background: linear-gradient(
-      90deg,
-      var(--away-color-main, #9ca3af) 0%,
-      rgba(249, 250, 251, 0.98) 44%,
-      rgba(249, 250, 251, 0.98) 56%,
-      var(--home-color-main, #16a34a) 100%
-    );
+    background: #ffffff;
+    border-color: rgba(148, 163, 184, 0.55);
   }
   
   /* Edge bar: home -> away vertically */
@@ -328,21 +365,17 @@
     );
   }
   
-  /* contents above background */
-  
   .game-card > * {
     position: relative;
   }
   
-  /* -------------------------
-     Game header / labels
-  ------------------------- */
+  /* Header label: week / day */
   
   .game-info-top {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     opacity: 0.9;
@@ -352,27 +385,27 @@
     content: "NFL";
     font-weight: 700;
     font-size: 0.7rem;
-    padding: 0.15rem 0.45rem;
+    padding: 0.1rem 0.4rem;
     border-radius: 999px;
     border: 1px solid rgba(148, 163, 184, 0.8);
   }
   
-  /* Matchup layout – away left / home right */
+  /* Main matchup row */
   
   .game-info-main {
-    margin-top: 0.35rem;
+    margin-top: 0.1rem;
     display: grid;
-    grid-template-columns: 1.3fr auto 1.3fr;
+    grid-template-columns: 1.25fr auto 1.25fr;
     align-items: center;
     column-gap: 0.75rem;
-    font-size: 1.1rem;
+    font-size: 1.02rem;
     font-weight: 600;
   }
   
   .team-slot {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.25rem;
+    gap: 0.24rem;
     align-items: baseline;
   }
   
@@ -396,91 +429,187 @@
     opacity: 0.9;
   }
   
+  /* Center cell: AT + big line pill */
+  
   .game-center {
-    font-size: 0.9rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.45rem;
+    justify-content: center;
+    min-width: 150px;
+  }
+  
+  .game-center-label {
+    font-size: 0.8rem;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-    opacity: 0.75;
+    letter-spacing: 0.16em;
+    opacity: 0.7;
+  }
+  
+  .game-center-spread {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.9rem;
+    border-radius: 999px;
+    min-width: 4.2rem;
     text-align: center;
+    font-variant-numeric: tabular-nums;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    color: #f9fafb;
   }
   
-  /* optional: if you add an inline spread span next to "AT" */
-  .game-center .inline-spread-display {
-    display: inline-block;
-    margin-left: 1.45rem;
-    font-size: 4rem;
-    font-weight: 1800;
-    color: #ffffff;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  body.theme-light .game-center-spread {
+    background: #111827;
+    color: #f9fafb;
   }
   
-  /* Meta row */
+  /* muted look when no line chosen yet */
+  .game-center-spread.is-empty {
+    opacity: 0.6;
+  }
+  
+  /* Meta row (spread band + probs) – hidden when collapsed */
   
   .game-info-meta {
-    margin-top: 0.55rem;
+    margin-top: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    font-size: 0.95rem;
+    gap: 0.45rem;
+    font-size: 0.93rem;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transform: translateY(-4px);
+    transition:
+      max-height 0.18s ease,
+      opacity 0.18s ease,
+      transform 0.18s ease;
   }
   
-  /* -------------------------
-     Spread pill (kept, but subtle)
-  ------------------------- */
+  /* Hover or .expanded card shows full meta */
   
-  .selected-spread {
-    display: inline-flex;
-    align-items: center;
+  .game-card:hover .game-info-meta,
+  .game-card.expanded .game-info-meta {
+    max-height: 500px;
+    opacity: 1;
+    pointer-events: auto;
+    margin-top: 0.3rem;
+    transform: translateY(0);
+  }
+  
+  /* ============================================
+     Spread band
+     ============================================ */
+  
+  .spread-band-wrapper {
+    max-width: 100%;
+  }
+  
+  .spread-band {
+    display: flex;
+    flex-wrap: wrap;
     justify-content: center;
-    gap: 0.4rem;
-    font-size: 0.9rem;
-    font-weight: 500;
+    gap: 0.35rem;
+    padding-bottom: 0.1rem;
+  }
+  
+  .spread-option {
+    flex: 0 0 auto;
+    font-size: 0.88rem;
+    padding: 0.32rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    background: transparent;
+    transition:
+      background 0.12s ease,
+      border-color 0.12s ease,
+      color 0.12s ease,
+      transform 0.05s ease;
+  }
+  
+  body.theme-dark .spread-option {
+    color: var(--text-soft-dark);
+  }
+  
+  body.theme-light .spread-option {
+    color: var(--text-soft-light);
+  }
+  
+  .spread-option.neutral {
+    border-color: var(--spread-neutral);
+  }
+  
+  .spread-option.favorite {
+    border-color: var(--spread-favorite);
+  }
+  
+  .spread-option.underdog {
+    border-color: var(--spread-dog);
+  }
+  
+  .spread-option:hover {
+    transform: translateY(-1px);
+  }
+  
+  /* Selected spread – strong pill */
+  
+  .spread-option.selected {
+    background: rgba(15, 23, 42, 0.9);
+    border-color: var(--accent);
+    color: #f9fafb;
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.7);
+    font-weight: 600;
+  }
+  
+  /* Hide extra-wide spreads unless expanded */
+  
+  .spread-option.extra {
+    display: none;
+  }
+  
+  .game-card.expanded .spread-option.extra {
+    display: inline-flex;
+  }
+  
+  /* Expand / collapse button – more important on mobile */
+  
+  .spread-expand-btn {
+    margin-top: 0.25rem;
+    align-self: flex-start;
+    font-size: 0.76rem;
     padding: 0.2rem 0.7rem;
-    border-radius: 999px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    opacity: 0.85;
   }
   
-  body.theme-dark .selected-spread {
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(148, 163, 184, 0.6);
-    color: var(--text-main-dark);
+  @media (pointer: fine) {
+    .spread-expand-btn {
+      opacity: 0.7;
+    }
   }
   
-  body.theme-light .selected-spread {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(148, 163, 184, 0.7);
-    color: var(--text-main-light);
-  }
-  
-  .selected-spread::before {
-    content: "LINE";
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 0.1rem 0.4rem;
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.18);
-  }
-  
-  /* -------------------------
+  /* ============================================
      Probability boxes
-  ------------------------- */
+     ============================================ */
   
   .selected-prob {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
+    gap: 0.6rem;
     width: 100%;
-    margin-top: 0.2rem;
+    margin-top: 0.25rem;
   }
   
   .prob-box {
     min-width: 130px;
-    padding: 0.45rem 0.9rem;
+    padding: 0.4rem 0.8rem;
     border-radius: 0.7rem;
     border: 1px solid transparent;
-    font-size: 0.95rem;
+    font-size: 0.94rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -489,21 +618,19 @@
   .prob-main {
     display: inline-flex;
     align-items: baseline;
-    gap: 1.55rem;
+    gap: 1.25rem;
   }
   
   .prob-value {
     font-variant-numeric: tabular-nums;
-    font-size: 1.22rem;
+    font-size: 1.16rem;
     font-weight: 700;
   }
   
   .prob-odds {
-    font-size: 1.06rem;
+    font-size: 1rem;
     opacity: 0.95;
   }
-  
-  /* odds position: away (left of %) / home (right of %) */
   
   .prob-box.away .prob-main {
     flex-direction: row; /* odds, then percent */
@@ -529,7 +656,7 @@
     order: 1;
   }
   
-  /* neutral base */
+  /* Neutral base */
   
   body.theme-dark .prob-box {
     background: rgba(15, 23, 42, 0.9);
@@ -543,7 +670,7 @@
     color: var(--text-main-light);
   }
   
-  /* favorite / underdog variations */
+  /* Favorite / underdog variations */
   
   body.theme-dark .prob-box.favorite {
     background: linear-gradient(
@@ -585,87 +712,9 @@
     color: #7c2d12;
   }
   
-  /* -------------------------
-     Spread band
-  ------------------------- */
-  
-  .spread-band {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.4rem;
-    padding-bottom: 0.2rem;
-  }
-  
-  .spread-option {
-    flex: 0 0 auto;
-    font-size: 1rem;
-    padding: 0.4rem 0.8rem;
-    border-radius: 999px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    white-space: nowrap;
-    background: transparent;
-    transition: background 0.12s ease, border-color 0.12s ease,
-      color 0.12s ease, transform 0.05s ease;
-  }
-  
-  body.theme-dark .spread-option {
-    color: var(--text-soft-dark);
-  }
-  
-  body.theme-light .spread-option {
-    color: var(--text-soft-light);
-  }
-  
-  .spread-option.neutral {
-    border-color: var(--spread-neutral);
-  }
-  
-  .spread-option.favorite {
-    border-color: var(--spread-favorite);
-  }
-  
-  .spread-option.underdog {
-    border-color: var(--spread-dog);
-  }
-  
-  .spread-option:hover {
-    transform: translateY(-1px);
-  }
-  
-  /* selected spread – higher contrast so numbers stay visible */
-  
-  .spread-option.selected {
-    background: rgba(15, 23, 42, 0.9);
-    border-color: var(--accent);
-    color: #f9fafb;
-    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.7);
-    font-weight: 600;
-  }
-  
-  /* hide extra wide spreads unless expanded */
-  
-  .spread-option.extra {
-    display: none;
-  }
-  
-  .game-card.expanded .spread-option.extra {
-    display: inline-flex;
-  }
-  
-  /* expand / collapse button */
-  
-  .spread-expand-btn {
-    margin-top: 0.4rem;
-    align-self: flex-start;
-    font-size: 0.8rem;
-    padding: 0.25rem 0.75rem;
-  }
-  
-  /* -------------------------
+  /* ============================================
      Results table
-  ------------------------- */
+     ============================================ */
   
   .results-header-row {
     display: flex;
@@ -694,7 +743,7 @@
   
   body.theme-light .table-container {
     border-color: var(--border-subtle-light);
-    background: rgba(255, 255, 255, 1);
+    background: #ffffff;
   }
   
   .table {
@@ -715,6 +764,8 @@
   
   body.theme-light .table thead {
     background: #e5e7eb;
+    color: #111827;
+    border-bottom: 1px solid #d1d5db;
   }
   
   .table th,
@@ -729,7 +780,7 @@
     text-align: left;
   }
   
-  /* sortable headers */
+  /* Sortable headers */
   
   .table th.sortable {
     cursor: pointer;
@@ -742,7 +793,7 @@
     margin-left: 0.15rem;
   }
   
-  /* full-row team color heat */
+  /* Team-color heat rows */
   
   .table tbody tr {
     --team-color-main: #334155;
@@ -759,13 +810,12 @@
   }
   
   body.theme-light .table tbody tr {
-    background-image: linear-gradient(
-      90deg,
-      rgba(249, 250, 251, 0.98) 0%,
-      var(--team-color-main) 18%,
-      var(--team-color-alt) 55%,
-      rgba(249, 250, 251, 0.98) 100%
-    );
+    background-image: none;
+    background-color: #ffffff;
+  }
+  
+  body.theme-light .table tbody tr:nth-child(even) {
+    background-color: #f9fafb;
   }
   
   .table tbody tr:hover {
@@ -773,10 +823,14 @@
     cursor: pointer;
   }
   
-  /* first column – team code pill */
+  body.theme-light .table tbody tr:hover {
+    filter: none;
+    background-color: #e0f2fe;
+  }
   
-  .team-cell,
-  .team-cell-heat {
+  /* Team cell + division badge */
+  
+  .team-cell {
     position: relative;
     padding: 0.35rem 0.6rem;
     border-radius: 0.45rem;
@@ -785,8 +839,6 @@
     text-transform: uppercase;
   }
   
-  /* division badge */
-  
   .badge-division {
     font-size: 0.8rem;
     border-radius: 999px;
@@ -794,13 +846,7 @@
     border: 1px solid rgba(148, 163, 184, 0.8);
   }
   
-  /* threshold cell highlight */
-  
-  .highlight-threshold {
-    background: rgba(34, 197, 94, 0.12);
-  }
-  
-  /* division note */
+  /* Division note */
   
   .division-note {
     font-size: 0.9rem;
@@ -809,9 +855,9 @@
     opacity: 0.85;
   }
   
-  /* -------------------------
+  /* ============================================
      Column picker
-  ------------------------- */
+     ============================================ */
   
   .column-picker {
     margin-top: 0.6rem;
@@ -848,9 +894,9 @@
     accent-color: var(--accent);
   }
   
-  /* -------------------------
+  /* ============================================
      Division summary cards
-  ------------------------- */
+     ============================================ */
   
   .division-summary-container {
     display: grid;
@@ -873,7 +919,7 @@
   
   body.theme-light .division-card {
     border-color: var(--border-subtle-light);
-    background: radial-gradient(circle at top left, #f3f4f6 0, #ffffff 70%);
+    background: #ffffff;
   }
   
   .division-card-header {
@@ -894,7 +940,7 @@
     opacity: 0.75;
   }
   
-  /* team rows */
+  /* Team rows inside division cards */
   
   .team-row-heat {
     --team-color-main: #4b5563;
@@ -956,9 +1002,9 @@
     font-weight: 600;
   }
   
-  /* -------------------------
-     Team detail overlay
-  ------------------------- */
+  /* ============================================
+     Team detail overlay / mini editor
+     ============================================ */
   
   .team-detail-overlay {
     position: fixed;
@@ -976,7 +1022,7 @@
   }
   
   .team-detail-modal {
-    width: min(520px, 96vw);
+    width: min(560px, 96vw);
     max-height: 90vh;
     overflow: auto;
     border-radius: 0.9rem;
@@ -996,31 +1042,53 @@
     margin-bottom: 0.5rem;
   }
   
-  .team-detail-modal table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
+  .team-detail-note {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
   }
   
-  .team-detail-modal th,
-  .team-detail-modal td {
+  .team-detail-games {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+    margin-bottom: 0.6rem;
+  }
+  
+  .team-detail-games th,
+  .team-detail-games td {
     padding: 0.25rem 0.3rem;
     text-align: right;
     border-bottom: 1px solid rgba(148, 163, 184, 0.3);
   }
   
-  .team-detail-modal th:first-child,
-  .team-detail-modal td:first-child {
+  .team-detail-games th:first-child,
+  .team-detail-games td:first-child {
     text-align: left;
   }
   
-  /* -------------------------
-     Utility / responsive
-  ------------------------- */
-  
-  .hidden {
-    display: none !important;
+  .team-detail-games td:nth-child(2) {
+    text-align: left;
   }
+  
+  .team-detail-spread {
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .team-detail-presets {
+    white-space: nowrap;
+  }
+  
+  .team-detail-dist {
+    margin: 0.4rem 0 0;
+    padding-left: 1rem;
+    font-size: 0.84rem;
+  }
+  
+  /* ============================================
+     Responsive tweaks
+     ============================================ */
   
   @media (max-width: 1960px) {
     .layout {
@@ -1048,227 +1116,4 @@
       align-items: flex-start;
     }
   }
-
-
-/* ============================================
-   LIGHT THEME – READABILITY IMPROVEMENTS
-   (append at bottom of file)
-   ============================================ */
-
-/* Make text a touch clearer in light mode */
-body.theme-light {
-    color: var(--text-main-light);
-  }
-  
-  /* 1) Game cards – neutral center with team color accent only on the side bar */
-  body.theme-light .game-card {
-    background: #ffffff; /* clean card */
-    border-color: rgba(148, 163, 184, 0.55);
-  }
-  
-  body.theme-light .game-card::after {
-    opacity: 0.9; /* keep the home/away color bar visible */
-  }
-  
-  /* 2) Tables – remove heavy row gradient in light theme, use clean zebra striping */
-  
-  body.theme-light .table {
-    font-size: 0.98rem;          /* bump size so you don't have to squint */
-  }
-  
-  body.theme-light .table th,
-  body.theme-light .table td {
-    padding: 0.5rem 0.7rem;      /* more tap/scan space */
-  }
-  
-  /* Header: stronger separation & contrast */
-  body.theme-light .table thead {
-    background: #e5e7eb;
-    color: #111827;
-    border-bottom: 1px solid #d1d5db;
-  }
-  
-  /* Rows: plain backgrounds instead of team-color wash */
-  body.theme-light .table tbody tr {
-    background-image: none;      /* kill the full-row team gradient in light mode */
-    background-color: #ffffff;
-  }
-  
-  body.theme-light .table tbody tr:nth-child(even) {
-    background-color: #f9fafb;
-  }
-  
-  body.theme-light .table tbody tr:hover {
-    background-color: #e0f2fe;
-    filter: none;                /* don't double-brighten */
-  }
-  
-  /* 3) Division summary cards – slightly crisper in light mode */
-  
-  body.theme-light .division-card {
-    background: #ffffff;
-    border-color: #d1d5db;
-  }
-  
-  /* 4) Small text (notes) – slightly darker in light so it doesn't fade away */
-  
-  body.theme-light .section-note {
-    color: var(--text-soft-light);
-    opacity: 0.95;
-  }
-
-  .schedule-filters {
-    margin-top: 0.75rem;
-    gap: 1rem;
-  }
-  
-  .control-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.9rem;
-  }
-  
-  .control-group span {
-    opacity: 0.85;
-  }
-  
-  /* ============================================
-   COMPACT GAME LINES + HOVER EXPANSION
-   ============================================ */
-
-/* Make game cards thin by default */
-.game-card {
-    padding: 0.45rem 0.9rem;
-    border-radius: 0.8rem;
-    border-width: 1px;
-    min-height: 48px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    row-gap: 0.25rem;
-  }
-  
-  /* Slightly reduce spacing between games */
-  .games-list {
-    gap: 0.45rem;
-  }
-  
-  /* Top label and main matchup stay visible even when "collapsed" */
-  .game-info-top {
-    font-size: 0.72rem;
-    letter-spacing: 0.12em;
-  }
-  
-  .game-info-main {
-    margin-top: 0.15rem;
-  }
-  
-  /* Center spread (chosen line) is the star of the compact row */
-  .game-center {
-    font-size: 0.8rem;
-    letter-spacing: 0.16em;
-  }
-  .game-center-spread {
-    display: inline-block;
-    margin-left: 0.35rem;
-    font-weight: 700;
-    font-size: 0.9rem;
-  }
-  
-  /* Meta area (spread band + probs + expand button) is hidden by default */
-  .game-info-meta {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    pointer-events: none;
-    margin-top: 0; /* we add this back when open */
-    transform: translateY(-4px);
-    transition:
-      max-height 0.18s ease,
-      opacity 0.18s ease,
-      transform 0.18s ease;
-  }
-  
-  /* When hovering or "expanded", show the full card */
-  .game-card:hover .game-info-meta,
-  .game-card.expanded .game-info-meta {
-    max-height: 500px; /* enough to show band + probs */
-    opacity: 1;
-    pointer-events: auto;
-    margin-top: 0.4rem;
-    transform: translateY(0);
-  }
-  
-  /* Tighten spread band layout a bit so expanded mode isn’t huge */
-  .spread-band-wrapper {
-    max-width: 100%;
-  }
-  .spread-band {
-    row-gap: 0.25rem;
-  }
-  
-  /* Probability boxes a bit tighter for the compact feel */
-  .selected-prob {
-    margin-top: 0.3rem;
-  }
-  .prob-box {
-    padding: 0.4rem 0.8rem;
-  }
-  
-  /* On desktop we rely on hover for expansion; keep the button mainly for mobile */
-  @media (pointer: fine) {
-    .spread-expand-btn {
-      font-size: 0.72rem;
-      padding: 0.2rem 0.6rem;
-      opacity: 0.7;
-    }
-  }
-  
-  /* On mobile (no hover), the expand button is more important, so give it normal size */
-  @media (max-width: 768px) and (pointer: coarse) {
-    .spread-expand-btn {
-      font-size: 0.8rem;
-      padding: 0.3rem 0.75rem;
-    }
-  }
-
-  /* Center matchup cell (AT + current line) */
-.game-center {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0.45rem;
-    justify-content: center;
-    min-width: 140px;
-  }
-  
-  /* "AT" label stays subtle */
-  .game-center-label {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    opacity: 0.7;
-  }
-  
-  /* Big line number in the middle */
-  .game-center-spread {
-    font-size: 1.1rem;          /* bigger text */
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    padding: 0.2rem 0.8rem;     /* pill feel */
-    border-radius: 999px;
-    min-width: 4rem;
-    text-align: center;
-    background: rgba(15, 23, 42, 0.85); /* dark pill */
-    border: 1px solid rgba(148, 163, 184, 0.45);
-  }
-  
-  /* When no line set yet, make it look muted */
-  .game-center-spread:empty,
-  .game-center-spread::before {
-    content: attr(data-placeholder);
-    opacity: 0.6;
-  }
-  
-  
   

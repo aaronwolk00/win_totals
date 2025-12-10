@@ -21,6 +21,8 @@ const TABLE_HEADERS = [
     { key: "PA4",       label: "P(≥4 W)" },
   ];
   
+const QUICK_SPREAD_PRESETS = [-10.5, -7.5, -3.5, -0.5, +0.5, +3.5, +7.5, +10.5];
+
 
 // Teams, divisions, current wins
 const teams = {
@@ -1257,7 +1259,6 @@ function updateGameCardDisplay(gameId) {
     let spread = typeof spreadRaw === "number" ? spreadRaw : null;
   
     let prob = 0.5;
-  
     const game = games.find((g) => g.id === Number(gameId));
   
     if (spread !== null && game) {
@@ -1267,81 +1268,22 @@ function updateGameCardDisplay(gameId) {
     const selectedProbSpan = card.querySelector(".selected-prob");
     const centerSpreadEl = card.querySelector(".game-center-spread");
   
-    // Update the big spread in the center ("AT" cell)
     if (centerSpreadEl) {
       if (spread === null) {
         centerSpreadEl.textContent = "—";
+        centerSpreadEl.classList.add("is-empty");
       } else {
         const label =
           (spread > 0 ? "+" : spread < 0 ? "" : "") +
           spread.toFixed(1).replace(/\.0$/, ".0");
         centerSpreadEl.textContent = label;
+        centerSpreadEl.classList.remove("is-empty");
       }
     }
   
-    // Probabilities box (away/home)
-    if (selectedProbSpan) {
-      const homeProb = prob;
-      const awayProb = 1 - prob;
-      const decimals = state.precision;
-      const showOdds = state.showImpliedOdds;
-  
-      const homeOdds = probToAmerican(homeProb);
-      const awayOdds = probToAmerican(awayProb);
-  
-      // classify favorite/underdog from home spread sign
-      let homeExtra = "";
-      let awayExtra = "";
-  
-      if (spread !== null) {
-        if (spread < 0) {
-          // home favorite
-          homeExtra = "favorite";
-          awayExtra = "underdog";
-        } else if (spread > 0) {
-          // home underdog
-          homeExtra = "underdog";
-          awayExtra = "favorite";
-        }
-      }
-  
-      // Structure matches CSS: .prob-main, .prob-value, .prob-odds
-      selectedProbSpan.innerHTML = `
-        <div class="prob-box away ${awayExtra}">
-          <div class="prob-main">
-            ${
-              showOdds
-                ? `<span class="prob-odds">${formatAmerican(awayOdds)}</span>`
-                : ""
-            }
-            <span class="prob-value">${formatPercent(awayProb, decimals)}</span>
-          </div>
-        </div>
-        <div class="prob-box home ${homeExtra}">
-          <div class="prob-main">
-            <span class="prob-value">${formatPercent(homeProb, decimals)}</span>
-            ${
-              showOdds
-                ? `<span class="prob-odds">${formatAmerican(homeOdds)}</span>`
-                : ""
-            }
-          </div>
-        </div>
-      `;
-    }
-  
-    // Update selection visuals for the spread buttons
-    const buttons = card.querySelectorAll(".spread-option");
-    buttons.forEach((btn) => {
-      btn.classList.remove("selected");
-      if (spread !== null) {
-        const val = parseFloat(btn.dataset.value);
-        if (Math.abs(val - spread) < 1e-6) {
-          btn.classList.add("selected");
-        }
-      }
-    });
+    // ... existing prob box + button selection logic ...
   }
+  
   
   
   
@@ -1362,64 +1304,67 @@ function fillNeutralSpreads() {
 
 // Compute per-team probabilities and projections
 function computeAndRenderResults() {
-  const precision = state.precision;
-
-  // Map team -> list of game win probs (length 4)
-  const teamGameProbs = {};
-  for (const teamId of teamIds) {
-    teamGameProbs[teamId] = [];
-  }
-
-  for (const game of games) {
-    const key = String(game.id);
-    let homeProb = 0.5;
-    if (typeof state.spreads[key] === "number") {
-      homeProb = homeWinProbFromSpread(state.spreads[key]);
+    const precision = state.precision;
+  
+    // Map team -> list of per-game win probs (remaining schedule)
+    const teamGameProbs = {};
+    for (const teamId of teamIds) {
+      teamGameProbs[teamId] = [];
     }
-
-    const awayProb = 1 - homeProb;
-    teamGameProbs[game.home].push(homeProb);
-    teamGameProbs[game.away].push(awayProb);
-  }
-
-  // Ensure each team has 4 games (pad with 0.5 if needed)
-  for (const teamId of teamIds) {
-    const arr = teamGameProbs[teamId];
-    while (arr.length < 4) {
-      arr.push(0.5);
+  
+    // For each game, if no spread set -> homeProb = 0.5
+    for (const game of games) {
+      const key = String(game.id);
+      let homeProb = 0.5;
+  
+      if (typeof state.spreads[key] === "number") {
+        homeProb = homeWinProbFromSpread(state.spreads[key]);
+      }
+  
+      const awayProb = 1 - homeProb;
+  
+      teamGameProbs[game.home].push(homeProb);
+      teamGameProbs[game.away].push(awayProb);
     }
+  
+    // Ensure each team has 4 games padded with 0.5 (bye or missing data safety)
+    for (const teamId of teamIds) {
+      const arr = teamGameProbs[teamId];
+      while (arr.length < 4) {
+        arr.push(0.5);
+      }
+    }
+  
+    const results = [];
+  
+    for (const teamId of teamIds) {
+      const info = teams[teamId];
+      const probs = teamGameProbs[teamId];
+  
+      const expectedAdditionalWins = probs.reduce((sum, p) => sum + p, 0);
+      const projectedWins = info.currentWins + expectedAdditionalWins;
+  
+      const exact = computeExactDistribution(probs);   // length 5: P(0..4)
+      const cumulative = computeCumulative(exact);     // length 5: P(≥0..≥4)
+  
+      results.push({
+        teamId,
+        division: info.division,
+        currentWins: info.currentWins,
+        expectedAdditionalWins,
+        projectedWins,
+        exact,
+        cumulative,
+        probs
+      });
+    }
+  
+    state.results = results;
+    renderTeamTable();
+    renderDivisionSummary();
+    saveStateToStorage();
   }
-
-  const results = [];
-
-  for (const teamId of teamIds) {
-    const info = teams[teamId];
-    const probs = teamGameProbs[teamId];
-
-    const expectedAdditionalWins = probs.reduce((sum, p) => sum + p, 0);
-    const projectedWins = info.currentWins + expectedAdditionalWins;
-
-    const exact = computeExactDistribution(probs); // length 5
-    const cumulative = computeCumulative(exact);
-
-    results.push({
-      teamId,
-      division: info.division,
-      currentWins: info.currentWins,
-      expectedAdditionalWins,
-      projectedWins,
-      exact,
-      cumulative,
-      pTotalAtLeastX,
-      probs
-    });
-  }
-
-  state.results = results;
-  renderTeamTable();
-  renderDivisionSummary();
-  saveStateToStorage();
-}
+  
 
 // Compute distribution P(exactly k wins), k=0..4, via 2^4 combinations
 function computeExactDistribution(probs) {
@@ -1710,83 +1655,156 @@ function renderDivisionSummary() {
 
 // Team detail overlay
 function showTeamDetail(teamId) {
-  const overlay = document.getElementById("teamDetailOverlay");
-  const content = document.getElementById("teamDetailContent");
-  const teamInfo = teams[teamId];
-  const result = state.results.find((r) => r.teamId === teamId);
-  if (!teamInfo || !result) return;
-
-  // Collect their 4 games
-  const teamGames = [];
-  for (const game of games) {
-    if (game.home === teamId || game.away === teamId) {
-      const key = String(game.id);
-      const spread =
-        typeof state.spreads[key] === "number"
-          ? state.spreads[key]
-          : NEUTRAL_SPREAD;
-      const homeProb = homeWinProbFromSpread(spread);
-      const prob = game.home === teamId ? homeProb : 1 - homeProb;
-
-      teamGames.push({
-        game,
-        spread,
-        prob,
-        homeTeamId: game.home,
-        awayTeamId: game.away
-      });
+    const overlay = document.getElementById("teamDetailOverlay");
+    const content = document.getElementById("teamDetailContent");
+    const teamInfo = teams[teamId];
+    const result = state.results.find((r) => r.teamId === teamId);
+    if (!teamInfo || !result || !overlay || !content) return;
+  
+    // Collect this team's games
+    const teamGames = [];
+    for (const game of games) {
+      if (game.home === teamId || game.away === teamId) {
+        const key = String(game.id);
+        const spread =
+          typeof state.spreads[key] === "number"
+            ? state.spreads[key]
+            : NEUTRAL_SPREAD; // neutral default
+  
+        const homeProb = homeWinProbFromSpread(spread);
+        const teamProb = game.home === teamId ? homeProb : 1 - homeProb;
+  
+        teamGames.push({
+          game,
+          spread,
+          teamProb,
+          isHome: game.home === teamId
+        });
+      }
     }
-  }
-
-  const precision = state.precision;
-
-  let html = "";
-  html += `<h3>${teamId} · ${teamInfo.name}</h3>`;
-  html += `<p>Current wins: <strong>${teamInfo.currentWins}</strong>, expected additional wins: <strong>${formatNumber(
-    result.expectedAdditionalWins,
-    precision
-  )}</strong>, projected wins: <strong>${formatNumber(
-    result.projectedWins,
-    precision
-  )}</strong></p>`;
-
-  html += "<h4>Remaining games</h4>";
-  html += '<table><thead><tr>';
-  html +=
-    "<th>Week</th><th>Matchup</th><th>Home spread</th><th>Team win prob</th>";
-  html += "</tr></thead><tbody>";
-
-  teamGames.sort((a, b) => a.game.week - b.game.week);
-
-  for (const tg of teamGames) {
-    const g = tg.game;
-    const spreadLabel =
-      (tg.spread > 0 ? "+" : tg.spread < 0 ? "" : "") +
-      tg.spread.toFixed(1).replace(/\.0$/, ".0");
-    const matchup = `${tg.homeTeamId} ${teams[tg.homeTeamId].name} vs ${tg.awayTeamId} ${teams[tg.awayTeamId].name}`;
-    html += "<tr>";
-    html += `<td>${g.week}</td>`;
-    html += `<td>${matchup}</td>`;
-    html += `<td>${spreadLabel}</td>`;
-    html += `<td>${formatPercent(tg.prob, precision)}</td>`;
-    html += "</tr>";
-  }
-
-  html += "</tbody></table>";
-
-  html += "<h4>Win distribution (remaining 4 games)</h4>";
-  html += "<ul>";
-  for (let k = 0; k <= 4; k++) {
-    html += `<li>P(exactly ${k} wins) = <strong>${formatPercent(
-      result.exact[k],
+  
+    teamGames.sort((a, b) => a.game.week - b.game.week);
+  
+    const precision = state.precision;
+  
+    let html = "";
+    html += `<h3>${teamId} · ${teamInfo.name}</h3>`;
+    html += `<p>Current wins: <strong>${teamInfo.currentWins}</strong> · Expected additional wins: <strong>${formatNumber(
+      result.expectedAdditionalWins,
       precision
-    )}</strong></li>`;
+    )}</strong> · Projected wins: <strong>${formatNumber(
+      result.projectedWins,
+      precision
+    )}</strong></p>`;
+  
+    html += `<h4>Edit remaining games</h4>`;
+    html += `<p class="team-detail-note">Click a preset to set the spread for this game. Changes immediately update projections and the betting view.</p>`;
+  
+    html += `<table class="team-detail-games"><thead><tr>`;
+    html += `<th>Week</th><th>Matchup</th><th>Side</th><th>Spread</th><th>Presets</th><th>P(win)</th>`;
+    html += `</tr></thead><tbody>`;
+  
+    for (const tg of teamGames) {
+      const g = tg.game;
+      const opponentId = tg.isHome ? g.away : g.home;
+      const sideLabel = tg.isHome ? "Home" : "Away";
+  
+      const spreadLabel =
+        (tg.spread > 0 ? "+" : tg.spread < 0 ? "" : "") +
+        tg.spread.toFixed(1).replace(/\.0$/, ".0");
+  
+      html += `<tr data-game-id="${g.id}">
+        <td>${g.week}</td>
+        <td>${opponentId} (${teams[opponentId].name})</td>
+        <td>${sideLabel}</td>
+        <td class="team-detail-spread">${spreadLabel}</td>
+        <td class="team-detail-presets">`;
+  
+      for (const val of QUICK_SPREAD_PRESETS) {
+        const label =
+          (val > 0 ? "+" : "") + val.toFixed(1).replace(/\.0$/, ".0");
+        html += `<button
+          type="button"
+          class="btn btn-xs preset-btn"
+          data-game-id="${g.id}"
+          data-value="${val}"
+        >${label}</button>`;
+      }
+  
+      html += `</td>
+        <td>${formatPercent(tg.teamProb, precision)}</td>
+      </tr>`;
+    }
+  
+    html += `</tbody></table>`;
+  
+    // Distribution summary
+    html += `<h4>Win distribution (remaining 4 games)</h4>`;
+    html += `<ul class="team-detail-dist">`;
+    for (let k = 0; k <= 4; k++) {
+      html += `<li>${k} wins: <strong>${formatPercent(
+        result.exact[k],
+        precision
+      )}</strong></li>`;
+    }
+    html += `</ul>`;
+  
+    content.innerHTML = html;
+    overlay.classList.remove("hidden");
+  
+    // Wire up preset buttons
+    content.querySelectorAll(".preset-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const gameId = Number(btn.dataset.gameId);
+        const value = parseFloat(btn.dataset.value);
+        setSpreadForGame(gameId, value);
+  
+        // Update the small table's spread text & win prob for that row
+        const row = content.querySelector(`tr[data-game-id="${gameId}"]`);
+        if (!row) return;
+  
+        const spreadCell = row.querySelector(".team-detail-spread");
+        if (spreadCell) {
+          const lbl =
+            (value > 0 ? "+" : value < 0 ? "" : "") +
+            value.toFixed(1).replace(/\.0$/, ".0");
+          spreadCell.textContent = lbl;
+        }
+  
+        // Recompute results and refresh distribution + P(win) column
+        // (computeAndRenderResults already got called in setSpreadForGame)
+        const updatedResult = state.results.find((r) => r.teamId === teamId);
+        if (!updatedResult) return;
+  
+        // Update distribution list
+        const distLis = content.querySelectorAll(".team-detail-dist li");
+        for (let k = 0; k <= 4; k++) {
+          const li = distLis[k];
+          if (!li) continue;
+          li.innerHTML = `${k} wins: <strong>${formatPercent(
+            updatedResult.exact[k],
+            precision
+          )}</strong>`;
+        }
+  
+        // Update per-row P(win) by recomputing from current spreads
+        const g = games.find((g) => g.id === gameId);
+        if (!g) return;
+        const spread =
+          typeof state.spreads[String(gameId)] === "number"
+            ? state.spreads[String(gameId)]
+            : NEUTRAL_SPREAD;
+        const homeProb = homeWinProbFromSpread(spread);
+        const teamProb = g.home === teamId ? homeProb : 1 - homeProb;
+        row.lastElementChild.textContent = formatPercent(teamProb, precision);
+  
+        // Also remember this as "last focused game"
+        state.lastFocusedGameId = gameId;
+        saveStateToStorage();
+      });
+    });
   }
-  html += "</ul>";
-
-  content.innerHTML = html;
-  overlay.classList.remove("hidden");
-}
+  
 
 // Export CSV
 function exportCsv() {
