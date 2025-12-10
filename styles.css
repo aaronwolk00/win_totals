@@ -143,7 +143,9 @@
     margin-top: 0.6rem;
   }
   
-  /* Buttons */
+  /* ==========================================================
+     Buttons
+     ========================================================== */
   
   .btn {
     border-radius: 999px;
@@ -200,7 +202,9 @@
     font-size: 0.76rem;
   }
   
-  /* Inputs */
+  /* ==========================================================
+     Inputs
+     ========================================================== */
   
   select,
   input[type="number"] {
@@ -225,7 +229,6 @@
   }
   
   /* Label + control pair */
-  
   .control-group {
     display: inline-flex;
     align-items: center;
@@ -1127,7 +1130,14 @@
     padding: 0.14rem 0.6rem;
   }
   
-  /* Header controls stack on mobile mode */
+  /* Header in mobile: not sticky, compact, controls collapsible */
+  
+  body.mode-mobile .app-header {
+    position: static; /* let it scroll away */
+    padding: 0.7rem 0.9rem 0.6rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
   
   body.mode-mobile .app-title h1 {
     font-size: 1.3rem;
@@ -1137,20 +1147,15 @@
     font-size: 0.86rem;
   }
   
-  /* Compact / collapsible header controls in mobile mode */
-  
-  body.mode-mobile .app-header {
-    position: static; /* let it scroll away */
-    padding: 0.7rem 0.9rem 0.6rem;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
+  /* Show the toggle button in mobile */
   body.mode-mobile .header-toggle-btn {
     display: inline-flex;
   }
   
-  body.mode-mobile .header-controls {
+  /* Collapsible controls in mobile:
+     - default: collapsed
+     - when body has .header-controls-open: expanded */
+  body.mode-mobile .app-controls {
     width: 100%;
     margin-top: 0.5rem;
     flex-wrap: wrap;
@@ -1166,15 +1171,14 @@
       transform 0.2s ease;
   }
   
-  /* When JS adds this class (e.g., on body), controls expand */
-  body.mode-mobile.header-controls-open .header-controls {
-    max-height: 500px; /* big enough to show all */
+  body.mode-mobile.header-controls-open .app-controls {
+    max-height: 500px; /* large enough to show all controls */
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);
   }
   
-  /* Fallback responsive behavior if user never touches display mode */
+  /* Fallback responsive behavior if user never touches mode toggle */
   
   @media (max-width: 960px) {
     .layout {
@@ -1198,7 +1202,7 @@
   
   @media (max-width: 640px) {
     .app-controls {
-      flex-direction: column;
+      flex-direction: row;
       align-items: flex-start;
     }
   }
