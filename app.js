@@ -1401,11 +1401,6 @@ function computeAndRenderResults() {
 
     const exact = computeExactDistribution(probs); // length 5
     const cumulative = computeCumulative(exact);
-    const pTotalAtLeastX = computeTotalAtLeastX(
-      info.currentWins,
-      exact,
-      threshold
-    );
 
     results.push({
       teamId,
@@ -1459,16 +1454,6 @@ function computeCumulative(exact) {
   return cumulative;
 }
 
-function computeTotalAtLeastX(currentWins, exact, threshold) {
-  let sum = 0;
-  for (let k = 0; k <= 4; k++) {
-    const total = currentWins + k;
-    if (total >= threshold) {
-      sum += exact[k];
-    }
-  }
-  return sum;
-}
 
 // Render main team projections table
 function renderTeamTable() {
@@ -1489,8 +1474,6 @@ function renderTeamTable() {
           return r.projectedWins;
         case "current":
           return r.currentWins;
-        case "threshold":
-          return r.pTotalAtLeastX;
         default:
           return r.projectedWins;
       }
@@ -1517,7 +1500,7 @@ function renderTeamTable() {
       const th = document.createElement("th");
       th.textContent = h.label;
   
-      if (["team", "division", "projected", "current", "threshold"].includes(h.key)) {
+      if (["team", "division", "projected", "current"].includes(h.key)) {
         th.classList.add("sortable");
         const span = document.createElement("span");
         span.className = "sort-indicator";
@@ -1601,11 +1584,6 @@ function renderTeamTable() {
             td.textContent = formatPercent(r.cumulative[k], precision);
             break;
           }
-          case "threshold":
-            td.textContent = formatPercent(r.pTotalAtLeastX, precision);
-            if (r.pTotalAtLeastX >= 0.5) {
-              td.classList.add("highlight-threshold");
-            }
             break;
           default:
             break;
@@ -1872,7 +1850,6 @@ function exportCsv() {
 
 function updateControlsFromState() {
     const precisionSelect = document.getElementById("precisionSelect");
-    const thresholdInput = document.getElementById("thresholdInput");
   
     if (precisionSelect) {
       precisionSelect.value = String(state.precision);
@@ -1892,13 +1869,6 @@ function handlePrecisionChange(value) {
   for (const game of games) {
     updateGameCardDisplay(game.id);
   }
-  computeAndRenderResults();
-}
-
-function handleThresholdChange(value) {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return;
-  saveStateToStorage();
   computeAndRenderResults();
 }
 
