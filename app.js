@@ -1773,6 +1773,27 @@ function computeAndRenderResults() {
     updateProgressUI();
   }
   
+  function switchMainTab(tab) {
+    const scheduleTab = document.getElementById("scheduleTab");
+    const projectionsTab = document.getElementById("projectionsTab");
+    const bettingTab = document.getElementById("bettingTab");
+  
+    const tabs = { schedule: scheduleTab, projections: projectionsTab, betting: bettingTab };
+    Object.values(tabs).forEach(el => el && el.classList.add("hidden"));
+    if (tabs[tab]) tabs[tab].classList.remove("hidden");
+  
+    // update bottom nav button state
+    document.querySelectorAll(".bottom-tab").forEach(btn => {
+      btn.classList.toggle("is-active", btn.dataset.tab === tab);
+    });
+  
+    // keep your existing schedule vs projections toggle in sync if you like:
+    if (tab === "schedule" || tab === "projections") {
+      state.view = tab === "schedule" ? "schedule" : "projections";
+      applyViewMode();
+      saveStateToStorage();
+    }
+  }
   
 
 // Compute distribution P(exactly k wins), k=0..4, via 2^4 combinations
@@ -2446,6 +2467,13 @@ function attachEventListeners() {
         }
       });
     }
+
+    document.querySelectorAll(".bottom-tab").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const tab = btn.dataset.tab;
+          switchMainTab(tab);
+        });
+      });
   
     const bettingBtn = document.getElementById("bettingTableBtn");
     if (bettingBtn) {

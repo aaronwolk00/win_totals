@@ -845,13 +845,13 @@ body.mode-mobile .app-title h1 {
     box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.45);
   }
   
-  /* Core rule: hide everything after the 5th visible column
-     (Team, Div, Curr W, EV ≥1 W, EV ≥2 W) */
-  body.mode-mobile .betting-table thead th:nth-child(n + 6),
-  body.mode-mobile .betting-table tbody td:nth-child(n + 6) {
-    display: none;
-  }
-  
+/* Only shrink to 5 columns when in *Fan* + Mobile mode.
+   In Pro mode, mobile users get the full table. */
+   body.mode-mobile.mode-fan .betting-table thead th:nth-child(n + 6),
+   body.mode-mobile.mode-fan .betting-table tbody td:nth-child(n + 6) {
+     display: none;
+   }
+   
   /* Make the first column (team) pop just a bit more on mobile */
   body.mode-mobile .team-cell-with-bar {
     font-size: 0.95rem;

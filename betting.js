@@ -1266,6 +1266,14 @@ function applyBetMode() {
 function initBettingPage() {
     // --- Load and apply display mode (desktop / mobile) first ---
     loadDisplayMode();
+
+    // If user never explicitly chose, default by viewport size
+    if (!localStorage.getItem(DISPLAY_MODE_KEY)) {
+        if (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) {
+        displayMode = "mobile";
+        }
+    }
+
     applyDisplayMode();
       
     const status = document.getElementById("betStatusNote");
