@@ -374,17 +374,23 @@ function formatNumber(x, decimals = 2) {
 }
 
 function evOnStake(odds, p, stake = 100) {
-  if (odds == null || p == null) return null;
-  let winMult;
-  if (odds > 0) {
-    winMult = odds / 100;
-  } else {
-    winMult = 100 / Math.abs(odds);
+    // validate inputs
+    if (odds == null || p == null) return null;
+  
+    let winMult;
+    if (odds > 0) {
+      // American odds positive
+      winMult = odds / 100;
+    } else {
+      // American odds negative
+      winMult = 100 / Math.abs(odds);
+    }
+  
+    const expectedWin = p * winMult * stake;
+    const expectedLoss = (1 - p) * stake;
+  
+    return expectedWin - expectedLoss;
   }
-  const expectedWin = p * winMult * stake;
-  const expectedLoss = (1 - p) * stake;
-  return expectedWin - expectedLoss;
-}
 
 // P(additional wins >= k) from exact[0..4]
 function probAdditionalAtLeast(result, k) {
@@ -420,16 +426,16 @@ function probUnderLine(result, line) {
 }
 
 // -----------------------
-// Load sim results from localStorage
+// Load sim state from localStorage
 // -----------------------
 
-function loadSimResults() {
+function loadSimState() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed.results)) return parsed.results;
-    return null;
+    if (!Array.isArray(parsed.results)) return null;
+    return parsed; // full state: theme, mode, results, etc.
   } catch (e) {
     console.error("Failed to parse stored state", e);
     return null;
@@ -444,46 +450,45 @@ function loadSimResults() {
 // game win probabilities differs from 0.5. That means you've moved
 // at least one line off the neutral setting.
 function teamHasAnyPickedGame(result) {
-    if (!Array.isArray(result.probs) || !result.probs.length) return false;
-    return result.probs.some((p) => Math.abs(p - 0.5) > 1e-6);
-  }
-  
+  if (!Array.isArray(result.probs) || !result.probs.length) return false;
+  return result.probs.some((p) => Math.abs(p - 0.5) > 1e-6);
+}
 
 // -----------------------
-// Build betting rows
+// Columns / global state
 // -----------------------
 
 const BET_COLUMNS = [
-  { key: "team", label: "Team" },
-  { key: "division", label: "Div" },
+  { key: "team",        label: "Team" },
+  { key: "division",    label: "Div" },
   { key: "currentWins", label: "Curr W" },
 
-  { key: "edge_ge_1", label: "User – NFL ≥1 W" },
-  { key: "ev_ge_1", label: "EV ≥1 W ($100)" },
+  { key: "edge_ge_1",   label: "User – NFL ≥1 W" },
+  { key: "ev_ge_1",     label: "EV ≥1 W ($100)" },
 
-  { key: "edge_ge_2", label: "User – NFL ≥2 W" },
-  { key: "ev_ge_2", label: "EV ≥2 W ($100)" },
+  { key: "edge_ge_2",   label: "User – NFL ≥2 W" },
+  { key: "ev_ge_2",     label: "EV ≥2 W ($100)" },
 
-  { key: "edge_ge_3", label: "User – NFL ≥3 W" },
-  { key: "ev_ge_3", label: "EV ≥3 W ($100)" },
+  { key: "edge_ge_3",   label: "User – NFL ≥3 W" },
+  { key: "ev_ge_3",     label: "EV ≥3 W ($100)" },
 
-  { key: "edge_ge_4", label: "User – NFL ≥4 W" },
-  { key: "ev_ge_4", label: "EV ≥4 W ($100)" },
+  { key: "edge_ge_4",   label: "User – NFL ≥4 W" },
+  { key: "ev_ge_4",     label: "EV ≥4 W ($100)" },
 
-  { key: "edge_lt_1", label: "User – NFL <1 W" },
-  { key: "ev_lt_1", label: "EV <1 W ($100)" },
+  { key: "edge_lt_1",   label: "User – NFL <1 W" },
+  { key: "ev_lt_1",     label: "EV <1 W ($100)" },
 
-  { key: "edge_lt_2", label: "User – NFL <2 W" },
-  { key: "ev_lt_2", label: "EV <2 W ($100)" },
+  { key: "edge_lt_2",   label: "User – NFL <2 W" },
+  { key: "ev_lt_2",     label: "EV <2 W ($100)" },
 
-  { key: "edge_lt_3", label: "User – NFL <3 W" },
-  { key: "ev_lt_3", label: "EV <3 W ($100)" },
+  { key: "edge_lt_3",   label: "User – NFL <3 W" },
+  { key: "ev_lt_3",     label: "EV <3 W ($100)" },
 
-  { key: "edge_lt_4", label: "User – NFL <4 W" },
-  { key: "ev_lt_4", label: "EV <4 W ($100)" }
+  { key: "edge_lt_4",   label: "User – NFL <4 W" },
+  { key: "ev_lt_4",     label: "EV <4 W ($100)" }
 ];
 
-// default visibility
+// default visibility (used as base, then adjusted per mode)
 const betVisibleColumns = {
   team: true,
   division: true,
@@ -516,47 +521,91 @@ const betSortState = {
 
 const betFilters = {
   division: "ALL",
-  positiveEVOnly: false
+  positiveEVOnly: false,
+  minEV: 0,        // minimum EV in dollars
+  minEdgeAbs: 0    // minimum absolute edge (0–1) – we'll treat input as %
 };
 
+// Fan/pro mode on betting page (mirrors index.html if present)
+let betMode = "fan"; // "fan" or "pro"
+
+// Bankroll + Kelly
+const betSettings = {
+  bankroll: 1000,
+  kellyFraction: 0.25 // 0–1
+};
+
+// -----------------------
+// Build betting rows
+// -----------------------
+
 function buildBettingRows(results) {
-    const rows = [];
-  
-    for (const r of results) {
-      // NEW: skip teams whose games haven't been picked at all
-      // (all remaining game probs = 0.5)
-      if (!teamHasAnyPickedGame(r)) continue;
-  
-      const marketMap = MARKET_LOOKUP[r.teamId];
-      if (!marketMap) continue;
-  
-      const row = {
-        teamId: r.teamId,
-        teamName: TEAM_NAME_LOOKUP[r.teamId] || r.teamId,
-        division: r.division || "",
-        currentWins: r.currentWins ?? 0,
-        sim: r // keep full result for detail view
-      };
-  
-      const ge = {};
-      const lt = {};
-      for (let k = 1; k <= 4; k++) {
-        const pGe = probAdditionalAtLeast(r, k);
-        if (pGe != null) {
-          ge[k] = pGe;
-          lt[k] = 1 - pGe;
-        }
+  const rows = [];
+
+  for (const r of results) {
+    // skip teams whose games haven't been picked at all
+    if (!teamHasAnyPickedGame(r)) continue;
+
+    const marketMap = MARKET_LOOKUP[r.teamId];
+    if (!marketMap) continue;
+
+    const row = {
+      teamId: r.teamId,
+      teamName: TEAM_NAME_LOOKUP[r.teamId] || r.teamId,
+      division: r.division || "",
+      currentWins: r.currentWins ?? 0,
+      sim: r // keep full result for detail view
+    };
+
+    const ge = {};
+    const lt = {};
+    for (let k = 1; k <= 4; k++) {
+      const pGe = probAdditionalAtLeast(r, k);
+      if (pGe != null) {
+        ge[k] = pGe;
+        lt[k] = 1 - pGe;
       }
-  
-      // ... rest of loop unchanged ...
-  
-      rows.push(row);
     }
-  
-    return rows;
+
+    // Build per-k edges / EVs
+    for (let k = 1; k <= 4; k++) {
+      const cur = row.currentWins;
+      const line = cur + (k - 0.5); // Over(cur+0.5) == ≥1 more win, etc.
+      const market = marketMap[line];
+      if (!market) {
+        row[`edge_ge_${k}`] = null;
+        row[`ev_ge_${k}`] = null;
+        row[`edge_lt_${k}`] = null;
+        row[`ev_lt_${k}`] = null;
+        continue;
+      }
+
+      const pModelGe = ge[k];
+      const pModelLt = lt[k];
+
+      const pBookGe = americanToProb(market.over);
+      const pBookLt = americanToProb(market.under);
+
+      row[`edge_ge_${k}`] =
+        pModelGe != null && pBookGe != null ? pModelGe - pBookGe : null;
+      row[`ev_ge_${k}`] =
+        pModelGe != null && pBookGe != null
+          ? evOnStake(market.over, pModelGe, 100)
+          : null;
+
+      row[`edge_lt_${k}`] =
+        pModelLt != null && pBookLt != null ? pModelLt - pBookLt : null;
+      row[`ev_lt_${k}`] =
+        pModelLt != null && pBookLt != null
+          ? evOnStake(market.under, pModelLt, 100)
+          : null;
+    }
+
+    rows.push(row);
   }
-  
-  
+
+  return rows;
+}
 
 // -----------------------
 // Sorting / filtering
@@ -599,6 +648,44 @@ function applyBetFilterAndSort(rows) {
     if (betFilters.positiveEVOnly && !rowHasPositiveEV(row)) {
       return false;
     }
+
+    // min EV filter (any side with EV >= threshold)
+    if (betFilters.minEV > 0) {
+      const keys = [
+        "ev_ge_1",
+        "ev_ge_2",
+        "ev_ge_3",
+        "ev_ge_4",
+        "ev_lt_1",
+        "ev_lt_2",
+        "ev_lt_3",
+        "ev_lt_4"
+      ];
+      const hasEV = keys.some(
+        (k) => row[k] != null && row[k] >= betFilters.minEV
+      );
+      if (!hasEV) return false;
+    }
+
+    // min absolute edge filter
+    if (betFilters.minEdgeAbs > 0) {
+      const keys = [
+        "edge_ge_1",
+        "edge_ge_2",
+        "edge_ge_3",
+        "edge_ge_4",
+        "edge_lt_1",
+        "edge_lt_2",
+        "edge_lt_3",
+        "edge_lt_4"
+      ];
+      const hasEdge = keys.some(
+        (k) =>
+          row[k] != null && Math.abs(row[k]) >= betFilters.minEdgeAbs
+      );
+      if (!hasEdge) return false;
+    }
+
     return true;
   });
 
@@ -627,201 +714,201 @@ function applyBetFilterAndSort(rows) {
 // -----------------------
 
 function renderBettingTable(rows) {
-    const container = document.getElementById("betTableContainer");
-    container.innerHTML = "";
-  
-    if (!rows || !rows.length) {
-      const p = document.createElement("p");
-      p.className = "section-note";
-      p.textContent = "No betting rows available.";
-      container.appendChild(p);
-      currentBetViewRows = [];
-      return;
-    }
-  
-    const viewRows = applyBetFilterAndSort(rows);
-    currentBetViewRows = viewRows;
-  
-    // Find top absolute positive & negative EV across visible rows/columns
-    let maxPosEV = null;
-    let maxNegEV = null;
-  
-    for (const row of viewRows) {
-      for (const col of BET_COLUMNS) {
-        if (!betVisibleColumns[col.key]) continue;
-        if (!col.key.startsWith("ev_")) continue;
-        const v = row[col.key];
-        if (v == null) continue;
-  
-        if (v > 0 && (!maxPosEV || v > maxPosEV.value)) {
-          maxPosEV = { teamId: row.teamId, key: col.key, value: v };
-        }
-        if (v < 0 && (!maxNegEV || v < maxNegEV.value)) {
-          maxNegEV = { teamId: row.teamId, key: col.key, value: v };
-        }
-      }
-    }
-  
-    const table = document.createElement("table");
-    table.className = "table betting-table";
-  
-    // ----- Header -----
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
-  
+  const container = document.getElementById("betTableContainer");
+  container.innerHTML = "";
+
+  if (!rows || !rows.length) {
+    const p = document.createElement("p");
+    p.className = "section-note";
+    p.textContent = "No betting rows available.";
+    container.appendChild(p);
+    currentBetViewRows = [];
+    return;
+  }
+
+  const viewRows = applyBetFilterAndSort(rows);
+  currentBetViewRows = viewRows;
+
+  // Find top absolute positive & negative EV across visible rows/columns
+  let maxPosEV = null;
+  let maxNegEV = null;
+
+  for (const row of viewRows) {
     for (const col of BET_COLUMNS) {
       if (!betVisibleColumns[col.key]) continue;
-  
-      const th = document.createElement("th");
-      th.classList.add("sortable");
-  
-      const labelSpan = document.createElement("span");
-      labelSpan.textContent = col.label;
-  
-      const indicator = document.createElement("span");
-      indicator.className = "sort-indicator";
-      if (betSortState.key === col.key) {
-        indicator.textContent = betSortState.direction === "asc" ? "▲" : "▼";
-      } else {
-        indicator.textContent = "◆";
+      if (!col.key.startsWith("ev_")) continue;
+      const v = row[col.key];
+      if (v == null) continue;
+
+      if (v > 0 && (!maxPosEV || v > maxPosEV.value)) {
+        maxPosEV = { teamId: row.teamId, key: col.key, value: v };
       }
-  
-      th.appendChild(labelSpan);
-      th.appendChild(indicator);
-  
-      th.addEventListener("click", () => {
-        if (betSortState.key === col.key) {
-          betSortState.direction =
-            betSortState.direction === "asc" ? "desc" : "asc";
-        } else {
-          betSortState.key = col.key;
-          // strings default asc, numeric data default desc
-          betSortState.direction =
-            col.key === "team" || col.key === "division" ? "asc" : "desc";
-        }
-        renderBettingTable(currentBetRows);
-      });
-  
-      headerRow.appendChild(th);
+      if (v < 0 && (!maxNegEV || v < maxNegEV.value)) {
+        maxNegEV = { teamId: row.teamId, key: col.key, value: v };
+      }
     }
-  
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-  
-    // ----- Body -----
-    const tbody = document.createElement("tbody");
-    let previousDivision = null;
-  
-    for (const row of viewRows) {
-      const tr = document.createElement("tr");
-      tr.dataset.teamId = row.teamId;
-  
-      const palette = teamPalettes[row.teamId] || {};
-      tr.style.setProperty("--team-color-main", palette.primary || "#334155");
-      tr.style.setProperty("--team-color-alt", palette.secondary || "#64748b");
-  
-      // Division grouping divider
-      if (previousDivision !== null && row.division !== previousDivision) {
-        tr.classList.add("division-break");
+  }
+
+  const table = document.createElement("table");
+  table.className = "table betting-table";
+
+  // ----- Header -----
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+
+  for (const col of BET_COLUMNS) {
+    if (!betVisibleColumns[col.key]) continue;
+
+    const th = document.createElement("th");
+    th.classList.add("sortable");
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = col.label;
+
+    const indicator = document.createElement("span");
+    indicator.className = "sort-indicator";
+    if (betSortState.key === col.key) {
+      indicator.textContent = betSortState.direction === "asc" ? "▲" : "▼";
+    } else {
+      indicator.textContent = "◆";
+    }
+
+    th.appendChild(labelSpan);
+    th.appendChild(indicator);
+
+    th.addEventListener("click", () => {
+      if (betSortState.key === col.key) {
+        betSortState.direction =
+          betSortState.direction === "asc" ? "desc" : "asc";
+      } else {
+        betSortState.key = col.key;
+        // strings default asc, numeric data default desc
+        betSortState.direction =
+          col.key === "team" || col.key === "division" ? "asc" : "desc";
       }
-      previousDivision = row.division;
-  
-      tr.addEventListener("click", () => {
-        showBetDetail(row);
-      });
-  
-      for (const col of BET_COLUMNS) {
-        if (!betVisibleColumns[col.key]) continue;
-        const td = document.createElement("td");
-  
-        switch (col.key) {
-          case "team": {
-            td.className = "team-cell-with-bar";
-            td.title = row.teamName || row.teamId;
-  
-            const bar = document.createElement("span");
-            bar.className = "team-color-bar";
-  
-            const code = document.createElement("span");
-            code.className = "team-code";
-            code.textContent = row.teamId;
-  
-            td.appendChild(bar);
-            td.appendChild(code);
-            break;
-          }
-  
-          case "division": {
-            td.innerHTML = `<span class="badge-division">${row.division}</span>`;
-            break;
-          }
-  
-          case "currentWins": {
-            td.classList.add("numeric-cell");
-            td.textContent = row.currentWins.toString();
-            break;
-          }
-  
-          default: {
-            if (col.key.startsWith("edge_")) {
-              // Probability edge: show as muted percentage in parentheses
-              td.classList.add("numeric-cell", "percent-cell");
-              const v = row[col.key];
-              if (v == null) {
-                td.textContent = "—";
-              } else {
-                const pct = formatPercent(v, 2); // can be negative/positive
-                td.textContent = `(${pct})`;
+      renderBettingTable(currentBetRows);
+    });
+
+    headerRow.appendChild(th);
+  }
+
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  // ----- Body -----
+  const tbody = document.createElement("tbody");
+  let previousDivision = null;
+
+  for (const row of viewRows) {
+    const tr = document.createElement("tr");
+    tr.dataset.teamId = row.teamId;
+
+    const palette = teamPalettes[row.teamId] || {};
+    tr.style.setProperty("--team-color-main", palette.primary || "#334155");
+    tr.style.setProperty("--team-color-alt", palette.secondary || "#64748b");
+
+    // Division grouping divider
+    if (previousDivision !== null && row.division !== previousDivision) {
+      tr.classList.add("division-break");
+    }
+    previousDivision = row.division;
+
+    tr.addEventListener("click", () => {
+      showBetDetail(row);
+    });
+
+    for (const col of BET_COLUMNS) {
+      if (!betVisibleColumns[col.key]) continue;
+      const td = document.createElement("td");
+
+      switch (col.key) {
+        case "team": {
+          td.className = "team-cell-with-bar";
+          td.title = row.teamName || row.teamId;
+
+          const bar = document.createElement("span");
+          bar.className = "team-color-bar";
+
+          const code = document.createElement("span");
+          code.className = "team-code";
+          code.textContent = row.teamId;
+
+          td.appendChild(bar);
+          td.appendChild(code);
+          break;
+        }
+
+        case "division": {
+          td.innerHTML = `<span class="badge-division">${row.division}</span>`;
+          break;
+        }
+
+        case "currentWins": {
+          td.classList.add("numeric-cell");
+          td.textContent = row.currentWins.toString();
+          break;
+        }
+
+        default: {
+          if (col.key.startsWith("edge_")) {
+            // Probability edge: show as muted percentage in parentheses
+            td.classList.add("numeric-cell", "percent-cell");
+            const v = row[col.key];
+            if (v == null) {
+              td.textContent = "—";
+            } else {
+              const pct = formatPercent(v, 2); // can be negative/positive
+              td.textContent = `(${pct})`;
+            }
+          } else if (col.key.startsWith("ev_")) {
+            td.classList.add("numeric-cell", "ev-cell");
+            const v = row[col.key];
+
+            if (v == null) {
+              td.textContent = "—";
+            } else {
+              td.textContent = "$" + formatNumber(v, 2);
+
+              if (v > 0) {
+                td.classList.add("ev-positive");
+              } else if (v < 0) {
+                td.classList.add("ev-negative");
               }
-            } else if (col.key.startsWith("ev_")) {
-              td.classList.add("numeric-cell", "ev-cell");
-              const v = row[col.key];
-  
-              if (v == null) {
-                td.textContent = "—";
-              } else {
-                td.textContent = "$" + formatNumber(v, 2);
-  
-                if (v > 0) {
-                  td.classList.add("ev-positive");
-                } else if (v < 0) {
-                  td.classList.add("ev-negative");
-                }
-  
-                // Extreme EV highlighting (global max abs pos/neg)
-                if (
-                  maxPosEV &&
-                  maxPosEV.teamId === row.teamId &&
-                  maxPosEV.key === col.key
-                ) {
-                  td.classList.add("ev-extreme-positive");
-                }
-                if (
-                  maxNegEV &&
-                  maxNegEV.teamId === row.teamId &&
-                  maxNegEV.key === col.key
-                ) {
-                  td.classList.add("ev-extreme-negative");
-                }
+
+              // Extreme EV highlighting (global max abs pos/neg)
+              if (
+                maxPosEV &&
+                maxPosEV.teamId === row.teamId &&
+                maxPosEV.key === col.key
+              ) {
+                td.classList.add("ev-extreme-positive");
+              }
+              if (
+                maxNegEV &&
+                maxNegEV.teamId === row.teamId &&
+                maxNegEV.key === col.key
+              ) {
+                td.classList.add("ev-extreme-negative");
               }
             }
-            break;
           }
+          break;
         }
-  
-        tr.appendChild(td);
       }
-  
-      tbody.appendChild(tr);
+
+      tr.appendChild(td);
     }
-  
-    table.appendChild(tbody);
-    container.appendChild(table);
+
+    tbody.appendChild(tr);
   }
-  
+
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
 
 function renderBetColumnPicker() {
   const picker = document.getElementById("betColumnPicker");
+  if (!picker) return;
   picker.innerHTML = "";
 
   const grid = document.createElement("div");
@@ -856,66 +943,86 @@ function renderBetColumnPicker() {
 // -----------------------
 
 function renderRawMarketsTable() {
-    const container = document.getElementById("rawMarketsContainer");
-    container.innerHTML = "";
-  
-    const table = document.createElement("table");
-    // key difference: give this its own class so we can style it like the old design
-    table.className = "table raw-markets-table";
-  
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
-    ["Team", "Total", "Over", "Under"].forEach((h) => {
-      const th = document.createElement("th");
-      th.textContent = h;
-      headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-  
-    const tbody = document.createElement("tbody");
-  
-    for (const entry of BET_WIN_TOTALS) {
-      const palette = teamPalettes[entry.teamId] || {};
-      for (const m of entry.markets) {
-        const tr = document.createElement("tr");
-  
-        // these CSS vars power the row gradient, just like the old design
-        tr.style.setProperty(
-          "--team-color-main",
-          palette.primary || "#334155"
-        );
-        tr.style.setProperty(
-          "--team-color-alt",
-          palette.secondary || "#64748b"
-        );
-  
-        const tdTeam = document.createElement("td");
-        tdTeam.className = "team-cell-heat";
-        tdTeam.textContent = `${entry.teamId} ${entry.teamName}`;
-  
-        const tdTotal = document.createElement("td");
-        tdTotal.textContent = m.total.toFixed(1);
-  
-        const tdOver = document.createElement("td");
-        tdOver.textContent = (m.over > 0 ? "+" : "") + m.over;
-  
-        const tdUnder = document.createElement("td");
-        tdUnder.textContent = (m.under > 0 ? "+" : "") + m.under;
-  
-        tr.appendChild(tdTeam);
-        tr.appendChild(tdTotal);
-        tr.appendChild(tdOver);
-        tr.appendChild(tdUnder);
-        tbody.appendChild(tr);
-      }
+  const container = document.getElementById("rawMarketsContainer");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const table = document.createElement("table");
+  table.className = "table raw-markets-table";
+
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  ["Team", "Total", "Over", "Under"].forEach((h) => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+
+  for (const entry of BET_WIN_TOTALS) {
+    const palette = teamPalettes[entry.teamId] || {};
+    for (const m of entry.markets) {
+      const tr = document.createElement("tr");
+
+      tr.style.setProperty(
+        "--team-color-main",
+        palette.primary || "#334155"
+      );
+      tr.style.setProperty(
+        "--team-color-alt",
+        palette.secondary || "#64748b"
+      );
+
+      const tdTeam = document.createElement("td");
+      tdTeam.className = "team-cell-heat";
+      tdTeam.textContent = `${entry.teamId} ${entry.teamName}`;
+
+      const tdTotal = document.createElement("td");
+      tdTotal.textContent = m.total.toFixed(1);
+
+      const tdOver = document.createElement("td");
+      tdOver.textContent = (m.over > 0 ? "+" : "") + m.over;
+
+      const tdUnder = document.createElement("td");
+      tdUnder.textContent = (m.under > 0 ? "+" : "") + m.under;
+
+      tr.appendChild(tdTeam);
+      tr.appendChild(tdTotal);
+      tr.appendChild(tdOver);
+      tr.appendChild(tdUnder);
+      tbody.appendChild(tr);
     }
-  
-    table.appendChild(tbody);
-    container.appendChild(table);
   }
-  
-  
+
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
+
+// -----------------------
+// Kelly stake helper
+// -----------------------
+
+function kellyStake(odds, pModel, bankroll, kellyFraction) {
+  if (odds == null || pModel == null) return 0;
+  const p = pModel;
+  const q = 1 - p;
+
+  let b;
+  if (odds > 0) {
+    b = odds / 100;
+  } else {
+    b = 100 / Math.abs(odds);
+  }
+
+  const frac = (b * p - q) / b;
+  if (frac <= 0) return 0;
+
+  const baseKellyStake = frac * bankroll;
+  return baseKellyStake * kellyFraction;
+}
 
 // -----------------------
 // Detail drawer per team
@@ -937,12 +1044,15 @@ function showBetDetail(row) {
     2
   )}</strong></p>`;
 
-  html += "<h4>Market lines vs your model</h4>";
-  html +=
-    "<p>Probabilities and EVs assume a $100 stake. EV is net profit (stake not included).</p>";
+  html += `<p class="bet-detail-note">Probabilities and EVs assume a $100 stake. EV is net profit (stake not included).</p>`;
+  html += `<p class="bet-detail-note">Bankroll: <strong>$${betSettings.bankroll.toFixed(
+    0
+  )}</strong>, Kelly fraction: <strong>${(
+    betSettings.kellyFraction * 100
+  ).toFixed(0)}%</strong>.</p>`;
 
   html +=
-    '<table><thead><tr><th>Total</th><th>Side</th><th>Odds</th><th>Book prob</th><th>Your prob</th><th>Edge</th><th>EV ($100)</th></tr></thead><tbody>';
+    '<table class="bet-detail-table"><thead><tr><th>Total</th><th>Side</th><th>Odds</th><th>Book prob</th><th>Your prob</th><th>Edge</th><th>EV ($100)</th><th>Kelly stake</th></tr></thead><tbody>';
 
   if (entry) {
     for (const m of entry.markets) {
@@ -960,6 +1070,25 @@ function showBetDetail(row) {
       const evOver = evOnStake(m.over, pOver, 100);
       const evUnder = evOnStake(m.under, pUnder, 100);
 
+      const kStakeOver =
+        edgeOver != null
+          ? kellyStake(
+              m.over,
+              pOver,
+              betSettings.bankroll,
+              betSettings.kellyFraction
+            )
+          : 0;
+      const kStakeUnder =
+        edgeUnder != null
+          ? kellyStake(
+              m.under,
+              pUnder,
+              betSettings.bankroll,
+              betSettings.kellyFraction
+            )
+          : 0;
+
       html += `<tr>
         <td rowspan="2">${m.total.toFixed(1)}</td>
         <td>Over</td>
@@ -968,6 +1097,7 @@ function showBetDetail(row) {
         <td>${formatPercent(pOver, 2)}</td>
         <td>${edgeOver == null ? "—" : formatPercent(edgeOver, 2)}</td>
         <td>${evOver == null ? "—" : "$" + formatNumber(evOver, 2)}</td>
+        <td>${kStakeOver <= 0 ? "—" : "$" + formatNumber(kStakeOver, 2)}</td>
       </tr>`;
 
       html += `<tr>
@@ -977,6 +1107,7 @@ function showBetDetail(row) {
         <td>${formatPercent(pUnder, 2)}</td>
         <td>${edgeUnder == null ? "—" : formatPercent(edgeUnder, 2)}</td>
         <td>${evUnder == null ? "—" : "$" + formatNumber(evUnder, 2)}</td>
+        <td>${kStakeUnder <= 0 ? "—" : "$" + formatNumber(kStakeUnder, 2)}</td>
       </tr>`;
     }
   }
@@ -1040,17 +1171,72 @@ function exportBetCsv() {
 }
 
 // -----------------------
+// Mode handling (Fan / Pro)
+// -----------------------
+
+function applyBetMode() {
+  const body = document.body;
+  const btn = document.getElementById("betModeToggle");
+
+  body.classList.toggle("mode-fan", betMode === "fan");
+  body.classList.toggle("mode-pro", betMode === "pro");
+
+  if (btn) {
+    btn.textContent =
+      betMode === "fan" ? "Switch to Pro Mode" : "Switch to Fan Mode";
+  }
+
+  // Fan mode: simpler view
+  if (betMode === "fan") {
+    betVisibleColumns.team = true;
+    betVisibleColumns.division = true;
+    betVisibleColumns.currentWins = true;
+
+    betVisibleColumns.edge_ge_1 = false;
+    betVisibleColumns.ev_ge_1 = true;
+
+    betVisibleColumns.edge_ge_2 = false;
+    betVisibleColumns.ev_ge_2 = true;
+
+    betVisibleColumns.edge_ge_3 = false;
+    betVisibleColumns.ev_ge_3 = false;
+    betVisibleColumns.edge_ge_4 = false;
+    betVisibleColumns.ev_ge_4 = false;
+
+    betVisibleColumns.edge_lt_1 = false;
+    betVisibleColumns.ev_lt_1 = false;
+    betVisibleColumns.edge_lt_2 = false;
+    betVisibleColumns.ev_lt_2 = false;
+    betVisibleColumns.edge_lt_3 = false;
+    betVisibleColumns.ev_lt_3 = false;
+    betVisibleColumns.edge_lt_4 = false;
+    betVisibleColumns.ev_lt_4 = false;
+  } else {
+    // Pro mode: don't hide anything by default
+    BET_COLUMNS.forEach((c) => {
+      if (!(c.key in betVisibleColumns)) {
+        betVisibleColumns[c.key] = true;
+      }
+    });
+  }
+
+  renderBetColumnPicker();
+  renderBettingTable(currentBetRows);
+}
+
+// -----------------------
 // Init / wiring
 // -----------------------
 
 function initBettingPage() {
   const status = document.getElementById("betStatusNote");
 
-  const results = loadSimResults();
+  const simState = loadSimState();
+  const results = simState ? simState.results : null;
+
   if (!results) {
     status.textContent =
-      "No simulation results found in local storage. " +
-      "Open index.html, set spreads, then come back here.";
+      "No simulation results found in local storage. Open index.html, set spreads, then come back here.";
   } else {
     status.textContent =
       "Using saved simulation results from index.html. EVs assume a $100 stake.";
@@ -1059,70 +1245,151 @@ function initBettingPage() {
     renderBettingTable(currentBetRows);
   }
 
+  // Theme from main app
+  const body = document.body;
+  const initialTheme = simState?.theme === "light" ? "light" : "dark";
+  body.classList.toggle("theme-dark", initialTheme === "dark");
+  body.classList.toggle("theme-light", initialTheme === "light");
+
+  // Mode from main app, if present
+  if (simState?.mode === "pro" || simState?.mode === "fan") {
+    betMode = simState.mode;
+  }
+
+  applyBetMode();
   renderRawMarketsTable();
 
   const themeBtn = document.getElementById("betThemeToggle");
-  themeBtn.addEventListener("click", () => {
-    const body = document.body;
-    const isDark = body.classList.contains("theme-dark");
-    body.classList.toggle("theme-dark", !isDark);
-    body.classList.toggle("theme-light", isDark);
-    themeBtn.textContent = isDark
-      ? "Switch to Dark Theme"
-      : "Switch to Light Theme";
-  });
+  if (themeBtn) {
+    themeBtn.addEventListener("click", () => {
+      const isDark = body.classList.contains("theme-dark");
+      body.classList.toggle("theme-dark", !isDark);
+      body.classList.toggle("theme-light", isDark);
+      themeBtn.textContent = isDark
+        ? "Switch to Dark Theme"
+        : "Switch to Light Theme";
+    });
+  }
 
   const backBtn = document.getElementById("betBackBtn");
-  backBtn.addEventListener("click", () => {
-    window.location.href = "index.html";
-  });
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      window.location.href = "index.html";
+    });
+  }
 
   const reloadBtn = document.getElementById("betReloadBtn");
-  reloadBtn.addEventListener("click", () => {
-    const res = loadSimResults();
-    if (!res) {
-      status.textContent =
-        "Still no simulation results in storage. Re-run index.html.";
-      return;
-    }
-    status.textContent = "Simulation results reloaded.";
-    currentBetRows = buildBettingRows(res);
-    renderBettingTable(currentBetRows);
-  });
+  if (reloadBtn) {
+    reloadBtn.addEventListener("click", () => {
+      const st = loadSimState();
+      const res = st ? st.results : null;
+      if (!res) {
+        status.textContent =
+          "Still no simulation results in storage. Re-run index.html.";
+        return;
+      }
+      status.textContent = "Simulation results reloaded.";
+      currentBetRows = buildBettingRows(res);
+      renderBettingTable(currentBetRows);
+    });
+  }
 
   const colBtn = document.getElementById("betToggleColumnPicker");
-  colBtn.addEventListener("click", () => {
-    const picker = document.getElementById("betColumnPicker");
-    picker.classList.toggle("hidden");
-  });
+  if (colBtn) {
+    colBtn.addEventListener("click", () => {
+      const picker = document.getElementById("betColumnPicker");
+      if (!picker) return;
+      picker.classList.toggle("hidden");
+    });
+  }
 
   const divFilter = document.getElementById("betDivisionFilter");
-  divFilter.addEventListener("change", (e) => {
-    betFilters.division = e.target.value;
-    renderBettingTable(currentBetRows);
-  });
+  if (divFilter) {
+    divFilter.addEventListener("change", (e) => {
+      betFilters.division = e.target.value;
+      renderBettingTable(currentBetRows);
+    });
+  }
 
   const posFilter = document.getElementById("betPositiveEVOnly");
-  posFilter.addEventListener("change", (e) => {
-    betFilters.positiveEVOnly = e.target.checked;
-    renderBettingTable(currentBetRows);
-  });
+  if (posFilter) {
+    posFilter.addEventListener("change", (e) => {
+      betFilters.positiveEVOnly = e.target.checked;
+      renderBettingTable(currentBetRows);
+    });
+  }
+
+  const minEVInput = document.getElementById("betMinEV");
+  if (minEVInput) {
+    minEVInput.addEventListener("input", (e) => {
+      const v = parseFloat(e.target.value);
+      betFilters.minEV = Number.isFinite(v) && v > 0 ? v : 0;
+      renderBettingTable(currentBetRows);
+    });
+  }
+
+  const minEdgeInput = document.getElementById("betMinEdge");
+  if (minEdgeInput) {
+    minEdgeInput.addEventListener("input", (e) => {
+      const v = parseFloat(e.target.value);
+      // user inputs percentage points, convert to probability
+      betFilters.minEdgeAbs = Number.isFinite(v) && v > 0 ? v / 100 : 0;
+      renderBettingTable(currentBetRows);
+    });
+  }
+
+  const modeBtn = document.getElementById("betModeToggle");
+  if (modeBtn) {
+    modeBtn.addEventListener("click", () => {
+      betMode = betMode === "fan" ? "pro" : "fan";
+      applyBetMode();
+    });
+  }
+
+  const bankrollInput = document.getElementById("betBankroll");
+  if (bankrollInput) {
+    bankrollInput.value = betSettings.bankroll.toString();
+    bankrollInput.addEventListener("input", (e) => {
+      const v = parseFloat(e.target.value);
+      if (Number.isFinite(v) && v > 0) {
+        betSettings.bankroll = v;
+      }
+    });
+  }
+
+  const kellyInput = document.getElementById("betKellyFraction");
+  if (kellyInput) {
+    kellyInput.value = (betSettings.kellyFraction * 100).toString();
+    kellyInput.addEventListener("input", (e) => {
+      const v = parseFloat(e.target.value);
+      if (Number.isFinite(v) && v >= 0 && v <= 100) {
+        betSettings.kellyFraction = v / 100;
+      }
+    });
+  }
 
   const exportBtn = document.getElementById("betExportBtn");
-  exportBtn.addEventListener("click", () => {
-    exportBetCsv();
-  });
+  if (exportBtn) {
+    exportBtn.addEventListener("click", () => {
+      exportBetCsv();
+    });
+  }
 
   const overlay = document.getElementById("betDetailOverlay");
   const closeBtn = document.getElementById("betDetailClose");
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) {
-      overlay.classList.add("hidden");
-    }
-  });
-  closeBtn.addEventListener("click", () => {
-    overlay.classList.add("hidden");
-  });
+  if (overlay) {
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        overlay.classList.add("hidden");
+      }
+    });
+  }
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      const ol = document.getElementById("betDetailOverlay");
+      if (ol) ol.classList.add("hidden");
+    });
+  }
 }
 
 document.addEventListener("DOMContentLoaded", initBettingPage);

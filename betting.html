@@ -15,7 +15,7 @@
       <p>
         Compares your simulation to posted regular-season win totals.
         EV numbers assume a <strong>$100 stake</strong> and are net profit
-        (not including stake).
+        (stake not included).
       </p>
     </div>
 
@@ -42,21 +42,36 @@
     <!-- Main betting EV table -->
     <section id="bettingSection" class="results-section">
       <div class="results-header-row">
-        <h2>Betting Table (Additional Wins vs Market)</h2>
-        <button
-          id="betToggleColumnPicker"
-          type="button"
-          class="btn secondary results-columns-btn"
-        >
-          Columns
-        </button>
+        <div>
+          <h2>Betting Table (Additional Wins vs Market)</h2>
+          <p class="section-note">
+            Click a row to see full market details, implied probabilities, and Kelly stakes.
+          </p>
+        </div>
+        <div class="results-header-actions">
+          <button
+            id="betModeToggle"
+            type="button"
+            class="btn secondary"
+          >
+            Switch to Pro Mode
+          </button>
+          <button
+            id="betToggleColumnPicker"
+            type="button"
+            class="btn secondary results-columns-btn"
+          >
+            Columns
+          </button>
+        </div>
       </div>
 
       <p id="betStatusNote" class="section-note" aria-live="polite">
         Loading simulation results from local storage…
       </p>
 
-      <div class="app-controls" style="margin-top: 0.4rem;">
+      <!-- Filters / settings row -->
+      <div class="app-controls controls-row" style="margin-top: 0.4rem;">
         <label class="control-group">
           <span>Division</span>
           <select id="betDivisionFilter">
@@ -72,10 +87,62 @@
           </select>
         </label>
 
-        <label class="control-group">
+        <label class="control-group checkbox-group">
           <input id="betPositiveEVOnly" type="checkbox" />
           <span>Only teams with any positive EV</span>
         </label>
+
+        <label class="control-group">
+          <span>Min EV ($)</span>
+          <input
+            id="betMinEV"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="0"
+          />
+        </label>
+
+        <label class="control-group">
+          <span>Min edge (%)</span>
+          <input
+            id="betMinEdge"
+            type="number"
+            min="0"
+            step="0.1"
+            placeholder="0"
+          />
+        </label>
+      </div>
+
+      <div class="app-controls controls-row">
+        <label class="control-group">
+          <span>Bankroll ($)</span>
+          <input
+            id="betBankroll"
+            type="number"
+            min="1"
+            step="50"
+            placeholder="1000"
+          />
+        </label>
+
+        <label class="control-group">
+          <span>Kelly fraction (%)</span>
+          <input
+            id="betKellyFraction"
+            type="number"
+            min="0"
+            max="100"
+            step="5"
+            placeholder="25"
+          />
+        </label>
+
+        <p class="section-note" style="margin-left: auto; max-width: 22rem;">
+          Bankroll and Kelly fraction are used only for suggested stake sizing in the
+          team detail view. They do not affect the EV numbers.
+        </p>
       </div>
 
       <!-- Column selection panel -->
@@ -89,7 +156,7 @@
     <section id="rawMarketsSection" class="results-section">
       <h2>Raw Market Win Totals (as posted)</h2>
       <p class="section-note">
-        Regular-season win totals and alt lines, shown exactly as provided.
+        Regular-season win totals and alternate lines, shown exactly as provided.
       </p>
       <div id="rawMarketsContainer" class="table-container"></div>
     </section>
