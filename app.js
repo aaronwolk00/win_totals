@@ -19,7 +19,6 @@ const TABLE_HEADERS = [
     { key: "PA2",       label: "P(≥2 W)" },
     { key: "PA3",       label: "P(≥3 W)" },
     { key: "PA4",       label: "P(≥4 W)" },
-    { key: "threshold", label: `P(total ≥ X)` } // X is state.threshold
   ];
   
 
@@ -695,7 +694,6 @@ const spreadBandValues = (() => {
 const state = {
     theme: "dark",
     precision: 2,
-    threshold: 10,
     spreads: {}, // gameId -> spread number
     results: [], // computed per-team
     currentSort: { key: "projected", direction: "desc" },
@@ -716,7 +714,6 @@ const state = {
       PA2: true,
       PA3: true,
       PA4: true,
-      threshold: true
     },
   
     // NEW: schedule filters + scroll memory
@@ -741,9 +738,6 @@ function loadStateFromStorage() {
       }
       if (typeof parsed.precision === "number") {
         state.precision = parsed.precision;
-      }
-      if (typeof parsed.threshold === "number") {
-        state.threshold = parsed.threshold;
       }
       if (parsed.spreads && typeof parsed.spreads === "object") {
         state.spreads = parsed.spreads;
@@ -783,7 +777,6 @@ function loadStateFromStorage() {
     const toSave = {
       theme: state.theme,
       precision: state.precision,
-      threshold: state.threshold,
       spreads: state.spreads,
       view: state.view,
       showImpliedOdds: state.showImpliedOdds,
@@ -1237,7 +1230,6 @@ function updateOddsToggleButton() {
   
     state.spreads = {};
     state.precision = 2;
-    state.threshold = 10;
     state.showImpliedOdds = false;
   
     // NEW
@@ -1370,7 +1362,6 @@ function fillNeutralSpreads() {
 
 // Compute per-team probabilities and projections
 function computeAndRenderResults() {
-  const threshold = state.threshold;
   const precision = state.precision;
 
   // Map team -> list of game win probs (length 4)
@@ -1823,9 +1814,6 @@ function showTeamDetail(teamId) {
 function exportCsv() {
   const rows = [];
   const headerRow = TABLE_HEADERS.map(h => {
-    if (h.key === "threshold") {
-      return `P_totalAtLeast_${state.threshold}`;
-    }
     return h.label.replace(/\s+/g, "");
   });
   rows.push(headerRow);
@@ -1846,7 +1834,6 @@ function exportCsv() {
       r.cumulative[2],
       r.cumulative[3],
       r.cumulative[4],
-      r.pTotalAtLeastX
     ]);
   }
 
@@ -1890,9 +1877,6 @@ function updateControlsFromState() {
     if (precisionSelect) {
       precisionSelect.value = String(state.precision);
     }
-    if (thresholdInput) {
-      thresholdInput.value = String(state.threshold);
-    }
   
     updateOddsToggleButton();
   }
@@ -1914,7 +1898,6 @@ function handlePrecisionChange(value) {
 function handleThresholdChange(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return;
-  state.threshold = num;
   saveStateToStorage();
   computeAndRenderResults();
 }
@@ -1972,13 +1955,6 @@ function attachEventListeners() {
   if (precisionSelect) {
     precisionSelect.addEventListener("change", (e) => {
       handlePrecisionChange(e.target.value);
-    });
-  }
-
-  const thresholdInput = document.getElementById("thresholdInput");
-  if (thresholdInput) {
-    thresholdInput.addEventListener("change", (e) => {
-      handleThresholdChange(e.target.value);
     });
   }
 
