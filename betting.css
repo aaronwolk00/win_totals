@@ -804,3 +804,82 @@
     }
   }
   
+
+  /* -------------------------------------------
+   SUPER-MOBILE BETTING TABLE
+   In explicit Mobile View (body.mode-mobile):
+   – Show only the first 5 columns:
+     1. Team
+     2. Div
+     3. Curr W
+     4. EV ≥1 W ($100)
+     5. EV ≥2 W ($100)
+   – Hide all remaining columns for a clean phone layout
+------------------------------------------- */
+
+/* Slightly tighter header + text for mobile view */
+body.mode-mobile .app-title h1 {
+    font-size: 1.25rem;
+  }
+  
+  body.mode-mobile .app-title p {
+    font-size: 0.88rem;
+  }
+  
+  /* Even tighter card/table spacing in mobile mode */
+  body.mode-mobile .table {
+    border-spacing: 0 2px;
+  }
+  
+  body.mode-mobile .betting-table thead th,
+  body.mode-mobile .betting-table tbody td {
+    padding: 0.35rem 0.5rem;
+  }
+  
+  /* Keep rows clickable but visually calmer on mobile */
+  body.mode-mobile .betting-table tbody tr {
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.45);
+  }
+  
+  body.theme-light.mode-mobile .betting-table tbody tr {
+    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.45);
+  }
+  
+  /* Core rule: hide everything after the 5th visible column
+     (Team, Div, Curr W, EV ≥1 W, EV ≥2 W) */
+  body.mode-mobile .betting-table thead th:nth-child(n + 6),
+  body.mode-mobile .betting-table tbody td:nth-child(n + 6) {
+    display: none;
+  }
+  
+  /* Make the first column (team) pop just a bit more on mobile */
+  body.mode-mobile .team-cell-with-bar {
+    font-size: 0.95rem;
+    gap: 0.45rem;
+  }
+  
+  body.mode-mobile .team-color-bar {
+    width: 6px;
+    height: 1.3rem;
+  }
+  
+  /* Division badge a bit smaller on mobile */
+  body.mode-mobile .badge-division {
+    font-size: 0.78rem;
+    padding: 0.08rem 0.45rem;
+  }
+  
+  /* Numeric cells slightly smaller but still mono */
+  body.mode-mobile .numeric-cell {
+    font-size: 0.9rem;
+  }
+  
+  /* Detail drawer: nudge font down a bit on small screens in mobile mode */
+  body.mode-mobile .team-detail-modal {
+    padding: 0.75rem 0.85rem 0.9rem;
+  }
+  
+  body.mode-mobile .team-detail-modal table {
+    font-size: 0.85rem;
+  }
+  
