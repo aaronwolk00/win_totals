@@ -1,0 +1,269 @@
+/* betting.css
+   Visual redesign for betting.html tables:
+   - Neutral row backgrounds (no full-row team colors)
+   - Team color bar + abbrev
+   - Monospaced numeric data
+   - EV highlighting + extreme EV callouts
+   - Division grouping dividers
+*/
+
+/* -------------------------
+   Variables
+------------------------- */
+
+:root {
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
+  
+    --bet-row-divider-dark: #1f2937;
+    --bet-row-divider-light: #e5e7eb;
+    --bet-division-divider-dark: #4b5563;
+    --bet-division-divider-light: #9ca3af;
+  
+    --bet-ev-positive: #3c9f40;
+    --bet-ev-negative: #d64545;
+    --bet-ev-extreme-positive-bg: rgba(34, 197, 94, 0.18);
+    --bet-ev-extreme-negative-bg: rgba(220, 38, 38, 0.16);
+  }
+  
+  /* -------------------------
+     Layout tweaks (betting page only)
+  ------------------------- */
+  
+  #bettingSection.results-section,
+  #rawMarketsSection.results-section {
+    /* keep same card style from styles.css, just bump padding slightly for data */
+    padding-top: 1.1rem;
+    padding-bottom: 1.1rem;
+  }
+  
+  /* Make the betting header feel like a trading panel */
+  #bettingSection .results-header-row h2 {
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  
+  /* -------------------------
+     Base table styling
+  ------------------------- */
+  
+  /* Apply only to betting + raw market tables so we don't touch index.html tables */
+  #bettingSection .table,
+  #rawMarketsSection .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem; /* ~14px for data */
+  }
+  
+  /* Header cells – all caps, semibold, high contrast */
+  #bettingSection .table thead th,
+  #rawMarketsSection .table thead th {
+    font-size: 0.875rem;        /* 14px */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.55rem 0.75rem;
+  }
+  
+  /* Body cells – more vertical padding so rows don’t feel cramped */
+  #bettingSection .table tbody td,
+  #rawMarketsSection .table tbody td {
+    padding: 0.6rem 0.75rem;    /* ~10–12px vertical */
+  }
+  
+  /* Neutral row backgrounds – dark theme */
+  body.theme-dark #bettingSection .table tbody tr,
+  body.theme-dark #rawMarketsSection .table tbody tr {
+    background-image: none;
+    background-color: #111827; /* slightly lighter than base bg */
+  }
+  
+  /* Neutral row backgrounds – light theme */
+  body.theme-light #bettingSection .table tbody tr,
+  body.theme-light #rawMarketsSection .table tbody tr {
+    background-image: none;
+    background-color: #f9fafb;
+  }
+  
+  /* Very light striping for visual rhythm */
+  body.theme-dark #bettingSection .table tbody tr:nth-child(even),
+  body.theme-dark #rawMarketsSection .table tbody tr:nth-child(even) {
+    background-color: #0f172a;
+  }
+  
+  body.theme-light #bettingSection .table tbody tr:nth-child(even),
+  body.theme-light #rawMarketsSection .table tbody tr:nth-child(even) {
+    background-color: #f3f4f6;
+  }
+  
+  /* Thin horizontal row dividers between all rows */
+  #bettingSection .table tbody tr td,
+  #rawMarketsSection .table tbody tr td {
+    border-bottom: 1px solid transparent;
+  }
+  
+  body.theme-dark #bettingSection .table tbody tr td,
+  body.theme-dark #rawMarketsSection .table tbody tr td {
+    border-bottom-color: var(--bet-row-divider-dark);
+  }
+  
+  body.theme-light #bettingSection .table tbody tr td,
+  body.theme-light #rawMarketsSection .table tbody tr td {
+    border-bottom-color: var(--bet-row-divider-light);
+  }
+  
+  /* -------------------------
+     Division grouping
+  ------------------------- */
+  
+  /* Extra divider at division boundaries */
+  #bettingSection .table tbody tr.division-break td {
+    border-top-width: 2px;
+  }
+  
+  body.theme-dark #bettingSection .table tbody tr.division-break td {
+    border-top-style: solid;
+    border-top-color: var(--bet-division-divider-dark);
+  }
+  
+  body.theme-light #bettingSection .table tbody tr.division-break td {
+    border-top-style: solid;
+    border-top-color: var(--bet-division-divider-light);
+  }
+  
+  /* -------------------------
+     Team cell + color bar
+  ------------------------- */
+  
+  /* Team cell: color bar + abbrev.
+     This assumes betting.js uses class "team-cell-with-bar" for the team column. */
+  #bettingSection .team-cell-with-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;        /* 16px – biggest text in row */
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  
+  /* Narrow vertical team color bar, full row height */
+  #bettingSection .team-color-bar {
+    width: 8px;
+    align-self: stretch;
+    border-radius: 999px;
+    background: linear-gradient(
+      180deg,
+      var(--team-color-main, #4b5563),
+      var(--team-color-alt, #9ca3af)
+    );
+  }
+  
+  /* Team code text */
+  #bettingSection .team-code {
+    white-space: nowrap;
+  }
+  
+  /* Division badge – subtle pill */
+  #bettingSection .badge-division {
+    font-size: 0.75rem;
+    border-radius: 999px;
+    padding: 0.05rem 0.5rem;
+    border: 1px solid rgba(148, 163, 184, 0.8);
+  }
+  
+  /* -------------------------
+     Numeric data styling
+  ------------------------- */
+  
+  /* All numeric/stat cells: monospaced + right-aligned */
+  #bettingSection .numeric-cell,
+  #rawMarketsSection .numeric-cell {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    text-align: right;
+  }
+  
+  /* Probability/percentage edge cells – muted text */
+  body.theme-dark #bettingSection .percent-cell {
+    color: var(--text-soft-dark);
+  }
+  
+  body.theme-light #bettingSection .percent-cell {
+    color: var(--text-soft-light);
+  }
+  
+  /* -------------------------
+     EV highlighting
+  ------------------------- */
+  
+  #bettingSection .ev-cell {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    text-align: right;
+  }
+  
+  /* Positive EV (profitable) */
+  #bettingSection .ev-cell.ev-positive {
+    color: var(--bet-ev-positive);
+  }
+  
+  /* Negative EV (unprofitable) */
+  #bettingSection .ev-cell.ev-negative {
+    color: var(--bet-ev-negative);
+  }
+  
+  /* Highest absolute positive EV cell */
+  #bettingSection .ev-cell.ev-extreme-positive {
+    background-color: var(--bet-ev-extreme-positive-bg);
+    border-radius: 0.35rem;
+  }
+  
+  /* Highest absolute negative EV cell */
+  #bettingSection .ev-cell.ev-extreme-negative {
+    background-color: var(--bet-ev-extreme-negative-bg);
+    border-radius: 0.35rem;
+  }
+  
+  /* -------------------------
+     Column width hints
+     (These are soft; browsers may not obey strictly,
+      but they guide layout toward the requested proportions.)
+  ------------------------- */
+  
+  /* Team/Div chunk: ~15% total */
+  #bettingSection .team-cell-with-bar {
+    min-width: 14%;
+  }
+  
+  #bettingSection td:nth-child(2) { /* typically division column if visible */
+    min-width: 6%;
+  }
+  
+  /* Current wins: narrow column (~5%) */
+  #bettingSection td:nth-child(3) {
+    min-width: 5%;
+  }
+  
+  /* Edge (probability) columns: thinner (~10%) */
+  #bettingSection .edge-cell {
+    min-width: 9%;
+  }
+  
+  /* EV columns: wider (~15%) */
+  #bettingSection .ev-cell {
+    min-width: 13%;
+  }
+  
+  /* -------------------------
+     Raw markets table tweaks
+  ------------------------- */
+  
+  /* Team+name in raw markets still left-aligned, but odds/totals numeric */
+  #rawMarketsSection .table tbody td:first-child {
+    text-align: left;
+  }
+  
+  /* Odds + totals monospaced & right aligned via .numeric-cell in JS */
+  

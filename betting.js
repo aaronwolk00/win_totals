@@ -639,117 +639,198 @@ function applyBetFilterAndSort(rows) {
 // -----------------------
 
 function renderBettingTable(rows) {
-  const container = document.getElementById("betTableContainer");
-  container.innerHTML = "";
-
-  if (!rows || !rows.length) {
-    const p = document.createElement("p");
-    p.className = "section-note";
-    p.textContent = "No betting rows available.";
-    container.appendChild(p);
-    currentBetViewRows = [];
-    return;
-  }
-
-  const viewRows = applyBetFilterAndSort(rows);
-  currentBetViewRows = viewRows;
-
-  const table = document.createElement("table");
-  table.className = "table";
-
-  const thead = document.createElement("thead");
-  const headerRow = document.createElement("tr");
-
-  for (const col of BET_COLUMNS) {
-    if (!betVisibleColumns[col.key]) continue;
-
-    const th = document.createElement("th");
-
-    // make everything sortable – it’s just convenient
-    th.classList.add("sortable");
-
-    const labelSpan = document.createElement("span");
-    labelSpan.textContent = col.label;
-
-    const indicator = document.createElement("span");
-    indicator.className = "sort-indicator";
-    if (betSortState.key === col.key) {
-      indicator.textContent = betSortState.direction === "asc" ? "▲" : "▼";
-    } else {
-      indicator.textContent = "◆";
+    const container = document.getElementById("betTableContainer");
+    container.innerHTML = "";
+  
+    if (!rows || !rows.length) {
+      const p = document.createElement("p");
+      p.className = "section-note";
+      p.textContent = "No betting rows available.";
+      container.appendChild(p);
+      currentBetViewRows = [];
+      return;
     }
-
-    th.appendChild(labelSpan);
-    th.appendChild(indicator);
-
-    th.addEventListener("click", () => {
-      if (betSortState.key === col.key) {
-        betSortState.direction =
-          betSortState.direction === "asc" ? "desc" : "asc";
-      } else {
-        betSortState.key = col.key;
-        // strings default asc, numbers default desc
-        betSortState.direction =
-          col.key === "team" || col.key === "division" ? "asc" : "desc";
+  
+    const viewRows = applyBetFilterAndSort(rows);
+    currentBetViewRows = viewRows;
+  
+    // Find top absolute positive & negative EV across visible rows/columns
+    let maxPosEV = null;
+    let maxNegEV = null;
+  
+    for (const row of viewRows) {
+      for (const col of BET_COLUMNS) {
+        if (!betVisibleColumns[col.key]) continue;
+        if (!col.key.startsWith("ev_")) continue;
+        const v = row[col.key];
+        if (v == null) continue;
+  
+        if (v > 0 && (!maxPosEV || v > maxPosEV.value)) {
+          maxPosEV = { teamId: row.teamId, key: col.key, value: v };
+        }
+        if (v < 0 && (!maxNegEV || v < maxNegEV.value)) {
+          maxNegEV = { teamId: row.teamId, key: col.key, value: v };
+        }
       }
-      renderBettingTable(currentBetRows);
-    });
-
-    headerRow.appendChild(th);
-  }
-
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-
-  for (const row of viewRows) {
-    const tr = document.createElement("tr");
-    tr.dataset.teamId = row.teamId;
-
-    const palette = teamPalettes[row.teamId] || {};
-    tr.style.setProperty("--team-color-main", palette.primary || "#334155");
-    tr.style.setProperty("--team-color-alt", palette.secondary || "#64748b");
-
-    tr.addEventListener("click", () => {
-      showBetDetail(row);
-    });
-
+    }
+  
+    const table = document.createElement("table");
+    table.className = "table betting-table";
+  
+    // ----- Header -----
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+  
     for (const col of BET_COLUMNS) {
       if (!betVisibleColumns[col.key]) continue;
-      const td = document.createElement("td");
-
-      switch (col.key) {
-        case "team":
-          td.className = "team-cell-heat";
-          td.textContent = row.teamId;
-          break;
-        case "division":
-          td.innerHTML = `<span class="badge-division">${row.division}</span>`;
-          break;
-        case "currentWins":
-          td.textContent = row.currentWins.toString();
-          break;
-        default:
-          if (col.key.startsWith("edge_")) {
-            const v = row[col.key];
-            td.textContent = v == null ? "—" : formatPercent(v, 2);
-          } else if (col.key.startsWith("ev_")) {
-            const v = row[col.key];
-            td.textContent = v == null ? "—" : "$" + formatNumber(v, 2);
-          }
-          break;
+  
+      const th = document.createElement("th");
+      th.classList.add("sortable");
+  
+      const labelSpan = document.createElement("span");
+      labelSpan.textContent = col.label;
+  
+      const indicator = document.createElement("span");
+      indicator.className = "sort-indicator";
+      if (betSortState.key === col.key) {
+        indicator.textContent = betSortState.direction === "asc" ? "▲" : "▼";
+      } else {
+        indicator.textContent = "◆";
       }
-
-      tr.appendChild(td);
+  
+      th.appendChild(labelSpan);
+      th.appendChild(indicator);
+  
+      th.addEventListener("click", () => {
+        if (betSortState.key === col.key) {
+          betSortState.direction =
+            betSortState.direction === "asc" ? "desc" : "asc";
+        } else {
+          betSortState.key = col.key;
+          // strings default asc, numeric data default desc
+          betSortState.direction =
+            col.key === "team" || col.key === "division" ? "asc" : "desc";
+        }
+        renderBettingTable(currentBetRows);
+      });
+  
+      headerRow.appendChild(th);
     }
-
-    tbody.appendChild(tr);
+  
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+  
+    // ----- Body -----
+    const tbody = document.createElement("tbody");
+    let previousDivision = null;
+  
+    for (const row of viewRows) {
+      const tr = document.createElement("tr");
+      tr.dataset.teamId = row.teamId;
+  
+      const palette = teamPalettes[row.teamId] || {};
+      tr.style.setProperty("--team-color-main", palette.primary || "#334155");
+      tr.style.setProperty("--team-color-alt", palette.secondary || "#64748b");
+  
+      // Division grouping divider
+      if (previousDivision !== null && row.division !== previousDivision) {
+        tr.classList.add("division-break");
+      }
+      previousDivision = row.division;
+  
+      tr.addEventListener("click", () => {
+        showBetDetail(row);
+      });
+  
+      for (const col of BET_COLUMNS) {
+        if (!betVisibleColumns[col.key]) continue;
+        const td = document.createElement("td");
+  
+        switch (col.key) {
+          case "team": {
+            td.className = "team-cell-with-bar";
+            td.title = row.teamName || row.teamId;
+  
+            const bar = document.createElement("span");
+            bar.className = "team-color-bar";
+  
+            const code = document.createElement("span");
+            code.className = "team-code";
+            code.textContent = row.teamId;
+  
+            td.appendChild(bar);
+            td.appendChild(code);
+            break;
+          }
+  
+          case "division": {
+            td.innerHTML = `<span class="badge-division">${row.division}</span>`;
+            break;
+          }
+  
+          case "currentWins": {
+            td.classList.add("numeric-cell");
+            td.textContent = row.currentWins.toString();
+            break;
+          }
+  
+          default: {
+            if (col.key.startsWith("edge_")) {
+              // Probability edge: show as muted percentage in parentheses
+              td.classList.add("numeric-cell", "percent-cell");
+              const v = row[col.key];
+              if (v == null) {
+                td.textContent = "—";
+              } else {
+                const pct = formatPercent(v, 2); // can be negative/positive
+                td.textContent = `(${pct})`;
+              }
+            } else if (col.key.startsWith("ev_")) {
+              td.classList.add("numeric-cell", "ev-cell");
+              const v = row[col.key];
+  
+              if (v == null) {
+                td.textContent = "—";
+              } else {
+                td.textContent = "$" + formatNumber(v, 2);
+  
+                if (v > 0) {
+                  td.classList.add("ev-positive");
+                } else if (v < 0) {
+                  td.classList.add("ev-negative");
+                }
+  
+                // Extreme EV highlighting (global max abs pos/neg)
+                if (
+                  maxPosEV &&
+                  maxPosEV.teamId === row.teamId &&
+                  maxPosEV.key === col.key
+                ) {
+                  td.classList.add("ev-extreme-positive");
+                }
+                if (
+                  maxNegEV &&
+                  maxNegEV.teamId === row.teamId &&
+                  maxNegEV.key === col.key
+                ) {
+                  td.classList.add("ev-extreme-negative");
+                }
+              }
+            }
+            break;
+          }
+        }
+  
+        tr.appendChild(td);
+      }
+  
+      tbody.appendChild(tr);
+    }
+  
+    table.appendChild(tbody);
+    container.appendChild(table);
   }
-
-  table.appendChild(tbody);
-  container.appendChild(table);
-}
+  
 
 function renderBetColumnPicker() {
   const picker = document.getElementById("betColumnPicker");

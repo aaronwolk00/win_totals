@@ -407,9 +407,9 @@
   /* optional: if you add an inline spread span next to "AT" */
   .game-center .inline-spread-display {
     display: inline-block;
-    margin-left: 0.45rem;
+    margin-left: 1.45rem;
     font-size: 4rem;
-    font-weight: 800;
+    font-weight: 1800;
     color: #ffffff;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
   }
@@ -489,7 +489,7 @@
   .prob-main {
     display: inline-flex;
     align-items: baseline;
-    gap: 0.55rem;
+    gap: 1.55rem;
   }
   
   .prob-value {
