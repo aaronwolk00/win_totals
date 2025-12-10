@@ -681,7 +681,24 @@ const state = {
     results: [], // computed per-team
     currentSort: { key: "projected", direction: "desc" },
     view: "schedule", // "schedule" or "projections"
-    showImpliedOdds: false // global toggle for showing American odds
+    showImpliedOdds: false, // global toggle for showing American odds
+    visibleColumns: {
+        team: true,
+        division: true,
+        current: true,
+        expected: true,
+        projected: true,
+        P0: true,
+        P1: true,
+        P2: true,
+        P3: true,
+        P4: true,
+        PA1: true,
+        PA2: true,
+        PA3: true,
+        PA4: true,
+        threshold: true
+      }
   };
   
   
@@ -711,27 +728,35 @@ function loadStateFromStorage() {
       if (typeof parsed.showImpliedOdds === "boolean") {
         state.showImpliedOdds = parsed.showImpliedOdds;
       }
+      // NEW: if results were persisted, restore them
+      if (Array.isArray(parsed.results)) {
+        state.results = parsed.results;
+      }
     } catch (err) {
       console.warn("Failed to load state:", err);
     }
-}
+  }
+  
   
 
 function saveStateToStorage() {
     const toSave = {
-        theme: state.theme,
-        precision: state.precision,
-        threshold: state.threshold,
-        spreads: state.spreads,
-        view: state.view,
-        showImpliedOdds: state.showImpliedOdds
+      theme: state.theme,
+      precision: state.precision,
+      threshold: state.threshold,
+      spreads: state.spreads,
+      view: state.view,
+      showImpliedOdds: state.showImpliedOdds,
+      // NEW: persist the current computed results so betting page can read them
+      results: state.results
     };
     try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
     } catch (err) {
-        console.warn("Failed to save state:", err);
+      console.warn("Failed to save state:", err);
     }
-}
+  }
+  
 
   
 
@@ -885,67 +910,70 @@ function renderSchedule() {
         infoMain.className = "game-info-main";
         const awayTeam = teams[game.away];
         const homeTeam = teams[game.home];
-  
+        
         infoMain.innerHTML = `
           <div class="team-slot team-away">
             <span class="team-code">${game.away}</span>
             <span class="team-name">${awayTeam.name}</span>
           </div>
-          <div class="game-center">AT</div>
+          <div class="game-center">
+            <span class="game-center-label">AT</span>
+            <span class="game-center-spread" data-game-id="${game.id}">—</span>
+          </div>
           <div class="team-slot team-home">
             <span class="team-code">${game.home}</span>
             <span class="team-name">${homeTeam.name}</span>
           </div>
         `;
+        
   
         const infoMeta = document.createElement("div");
         infoMeta.className = "game-info-meta";
   
-        // LINE pill + spread bar row
+        // Spread band row (no separate LINE pill anymore)
         const lineRow = document.createElement("div");
         lineRow.className = "line-row";
-  
-        const selectedSpreadSpan = document.createElement("span");
-        selectedSpreadSpan.className = "selected-spread";
-  
+
         const bandWrapper = document.createElement("div");
         bandWrapper.className = "spread-band-wrapper";
-  
+
         const band = document.createElement("div");
         band.className = "spread-band";
-  
-        for (const value of spreadBandValues) {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "spread-option";
-          btn.dataset.value = String(value);
-  
-          const label =
+
+        // Flip so high negatives are closer to the home team (right side),
+        // high positives closer to the away team (left side).
+        for (const value of [...spreadBandValues].reverse()) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "spread-option";
+        btn.dataset.value = String(value);
+
+        const label =
             (value > 0 ? "+" : "") + value.toFixed(1).replace(/\.0$/, ".0");
-          btn.textContent = label;
-  
-          if (Math.abs(value - NEUTRAL_SPREAD) < 1e-6) {
+        btn.textContent = label;
+
+        if (Math.abs(value - NEUTRAL_SPREAD) < 1e-6) {
             btn.classList.add("neutral");
-          } else if (value < 0) {
+        } else if (value < 0) {
             btn.classList.add("favorite");
-          } else {
+        } else {
             btn.classList.add("underdog");
-          }
-  
-          if (Math.abs(value) > 10.5) {
-            btn.classList.add("extra");
-          }
-  
-          btn.addEventListener("click", () => {
-            setSpreadForGame(game.id, value);
-          });
-  
-          band.appendChild(btn);
         }
-  
+
+        if (Math.abs(value) > 10.5) {
+            btn.classList.add("extra");
+        }
+
+        btn.addEventListener("click", () => {
+            setSpreadForGame(game.id, value);
+        });
+
+        band.appendChild(btn);
+        }
+
         bandWrapper.appendChild(band);
-        lineRow.appendChild(selectedSpreadSpan);
         lineRow.appendChild(bandWrapper);
+
   
         // Probabilities row
         const selectedProbSpan = document.createElement("div");
@@ -1011,7 +1039,7 @@ function resetAllState() {
 
     // keep theme & view, reset all modeling inputs
     state.spreads = {};
-    state.precision = 4;
+    state.precision = 2;
     state.threshold = 10;
     state.showImpliedOdds = false;
 
@@ -1035,25 +1063,29 @@ function updateGameCardDisplay(gameId) {
     let spread = typeof spreadRaw === "number" ? spreadRaw : null;
   
     let prob = 0.5;
-    let spreadText = "Spread: — (treated as neutral for now)";
   
     const game = games.find((g) => g.id === Number(gameId));
   
     if (spread !== null && game) {
       prob = homeWinProbFromSpread(spread);
-      const label =
-        (spread > 0 ? "+" : spread < 0 ? "" : "") +
-        spread.toFixed(1).replace(/\.0$/, ".0");
-      spreadText = `Spread (home perspective): ${label}`;
     }
   
-    const selectedSpreadSpan = card.querySelector(".selected-spread");
     const selectedProbSpan = card.querySelector(".selected-prob");
+    const centerSpreadEl = card.querySelector(".game-center-spread");
   
-    if (selectedSpreadSpan) {
-      selectedSpreadSpan.textContent = spreadText;
+    // Update the big spread in the center ("AT" cell)
+    if (centerSpreadEl) {
+      if (spread === null) {
+        centerSpreadEl.textContent = "—";
+      } else {
+        const label =
+          (spread > 0 ? "+" : spread < 0 ? "" : "") +
+          spread.toFixed(1).replace(/\.0$/, ".0");
+        centerSpreadEl.textContent = label;
+      }
     }
   
+    // Probabilities box (away/home)
     if (selectedProbSpan) {
       const homeProb = prob;
       const awayProb = 1 - prob;
@@ -1079,20 +1111,21 @@ function updateGameCardDisplay(gameId) {
         }
       }
   
+      // Structure matches CSS: .prob-main, .prob-value, .prob-odds
       selectedProbSpan.innerHTML = `
         <div class="prob-box away ${awayExtra}">
-          <div class="prob-values">
-            <strong>${formatPercent(awayProb, decimals)}</strong>
+          <div class="prob-main">
             ${
               showOdds
                 ? `<span class="prob-odds">${formatAmerican(awayOdds)}</span>`
                 : ""
             }
+            <span class="prob-value">${formatPercent(awayProb, decimals)}</span>
           </div>
         </div>
         <div class="prob-box home ${homeExtra}">
-          <div class="prob-values">
-            <strong>${formatPercent(homeProb, decimals)}</strong>
+          <div class="prob-main">
+            <span class="prob-value">${formatPercent(homeProb, decimals)}</span>
             ${
               showOdds
                 ? `<span class="prob-odds">${formatAmerican(homeOdds)}</span>`
@@ -1115,6 +1148,7 @@ function updateGameCardDisplay(gameId) {
       }
     });
   }
+  
   
   
   
@@ -1196,6 +1230,7 @@ function computeAndRenderResults() {
   state.results = results;
   renderTeamTable();
   renderDivisionSummary();
+  saveStateToStorage();
 }
 
 // Compute distribution P(exactly k wins), k=0..4, via 2^4 combinations
@@ -1248,7 +1283,6 @@ function renderTeamTable() {
     container.innerHTML = "";
   
     const resultsCopy = [...state.results];
-  
     const { key, direction } = state.currentSort;
     const dir = direction === "asc" ? 1 : -1;
   
@@ -1284,27 +1318,12 @@ function renderTeamTable() {
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
   
-    const headers = [
-      { key: "team", label: "Team" },
-      { key: "division", label: "Div" },
-      { key: "current", label: "Curr W" },
-      { key: "expected", label: "Exp add W" },
-      { key: "projected", label: "Proj W" },
-      { key: "P0", label: "P(0)" },
-      { key: "P1", label: "P(1)" },
-      { key: "P2", label: "P(2)" },
-      { key: "P3", label: "P(3)" },
-      { key: "P4", label: "P(4)" },
-      { key: "PA1", label: "P(≥1)" },
-      { key: "PA2", label: "P(≥2)" },
-      { key: "PA3", label: "P(≥3)" },
-      { key: "PA4", label: "P(≥4)" },
-      { key: "threshold", label: `P(total ≥ X)` }
-    ];
+    for (const h of TABLE_HEADERS) {
+      if (!state.visibleColumns[h.key]) continue;
   
-    for (const h of headers) {
       const th = document.createElement("th");
       th.textContent = h.label;
+  
       if (["team", "division", "projected", "current", "threshold"].includes(h.key)) {
         th.classList.add("sortable");
         const span = document.createElement("span");
@@ -1329,6 +1348,7 @@ function renderTeamTable() {
           renderTeamTable();
         });
       }
+  
       headerRow.appendChild(th);
     }
   
@@ -1341,57 +1361,65 @@ function renderTeamTable() {
       const tr = document.createElement("tr");
       tr.dataset.teamId = r.teamId;
   
-      // NEW: feed palette into CSS vars for table-row heat
       const palette = teamPalettes[r.teamId] || {};
-      tr.style.setProperty("--team-color-main", palette.primary || "#4b5563");
-      tr.style.setProperty("--team-color-alt", palette.secondary || "#9ca3af");
+      tr.style.setProperty("--team-color-main", palette.primary || "#334155");
+      tr.style.setProperty("--team-color-alt", palette.secondary || "#64748b");
   
       tr.addEventListener("click", () => {
         showTeamDetail(r.teamId);
       });
   
-      // Team cell with heat background
-      const tdTeam = document.createElement("td");
-      tdTeam.textContent = r.teamId;
-      tdTeam.className = "team-cell-heat";
-      tr.appendChild(tdTeam);
+      for (const h of TABLE_HEADERS) {
+        if (!state.visibleColumns[h.key]) continue;
   
-      const tdDiv = document.createElement("td");
-      tdDiv.innerHTML = `<span class="badge-division">${r.division}</span>`;
-      tr.appendChild(tdDiv);
-  
-      const tdCurr = document.createElement("td");
-      tdCurr.textContent = r.currentWins.toString();
-      tr.appendChild(tdCurr);
-  
-      const tdExp = document.createElement("td");
-      tdExp.textContent = formatNumber(r.expectedAdditionalWins, precision);
-      tr.appendChild(tdExp);
-  
-      const tdProj = document.createElement("td");
-      tdProj.textContent = formatNumber(r.projectedWins, precision);
-      tr.appendChild(tdProj);
-  
-      // P(0..4)
-      for (let k = 0; k <= 4; k++) {
         const td = document.createElement("td");
-        td.textContent = formatPercent(r.exact[k], precision);
+  
+        switch (h.key) {
+          case "team":
+            td.className = "team-cell";
+            td.textContent = r.teamId;
+            break;
+          case "division":
+            td.innerHTML = `<span class="badge-division">${r.division}</span>`;
+            break;
+          case "current":
+            td.textContent = r.currentWins.toString();
+            break;
+          case "expected":
+            td.textContent = formatNumber(r.expectedAdditionalWins, precision);
+            break;
+          case "projected":
+            td.textContent = formatNumber(r.projectedWins, precision);
+            break;
+          case "P0":
+          case "P1":
+          case "P2":
+          case "P3":
+          case "P4": {
+            const k = Number(h.key.slice(1));
+            td.textContent = formatPercent(r.exact[k], precision);
+            break;
+          }
+          case "PA1":
+          case "PA2":
+          case "PA3":
+          case "PA4": {
+            const k = Number(h.key.slice(2));
+            td.textContent = formatPercent(r.cumulative[k], precision);
+            break;
+          }
+          case "threshold":
+            td.textContent = formatPercent(r.pTotalAtLeastX, precision);
+            if (r.pTotalAtLeastX >= 0.5) {
+              td.classList.add("highlight-threshold");
+            }
+            break;
+          default:
+            break;
+        }
+  
         tr.appendChild(td);
       }
-  
-      // P(>=1..>=4)
-      for (let k = 1; k <= 4; k++) {
-        const td = document.createElement("td");
-        td.textContent = formatPercent(r.cumulative[k], precision);
-        tr.appendChild(td);
-      }
-  
-      const tdThreshold = document.createElement("td");
-      tdThreshold.textContent = formatPercent(r.pTotalAtLeastX, precision);
-      if (r.pTotalAtLeastX >= 0.5) {
-        tdThreshold.classList.add("highlight-threshold");
-      }
-      tr.appendChild(tdThreshold);
   
       tbody.appendChild(tr);
     }
@@ -1400,6 +1428,46 @@ function renderTeamTable() {
     container.appendChild(table);
   }
   
+  
+  function renderColumnPicker() {
+    const picker = document.getElementById("columnPicker");
+    if (!picker) return;
+  
+    picker.innerHTML = "";
+  
+    const grid = document.createElement("div");
+    grid.className = "column-picker-grid";
+  
+    TABLE_HEADERS.forEach((h) => {
+      // If you want 'team' & 'division' always on, skip them here:
+      // if (h.key === "team" || h.key === "division") return;
+  
+      const wrap = document.createElement("label");
+      wrap.className = "column-toggle";
+  
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = state.visibleColumns[h.key] !== false;
+  
+      input.addEventListener("change", () => {
+        state.visibleColumns[h.key] = input.checked;
+        saveStateToStorage();
+        renderTeamTable();
+      });
+  
+      const span = document.createElement("span");
+      span.textContent = h.label;
+  
+      wrap.appendChild(input);
+      wrap.appendChild(span);
+      grid.appendChild(wrap);
+    });
+  
+    picker.appendChild(grid);
+  }
+  
+
+
 
 // Division summaries + tie note
 function renderDivisionSummary() {
@@ -1678,6 +1746,15 @@ function attachEventListeners() {
       applyViewMode();
     });
   }
+  const colBtn = document.getElementById("toggleColumnPicker");
+  if (colBtn) {
+    colBtn.addEventListener("click", () => {
+        const picker = document.getElementById("columnPicker");
+        if (!picker) return;
+        picker.classList.toggle("hidden");
+    });
+    }
+
 
   const oddsBtn = document.getElementById("toggleOddsBtn");
   if (oddsBtn) {
@@ -1690,6 +1767,15 @@ function attachEventListeners() {
       }
     });
   }
+
+  const bettingBtn = document.getElementById("bettingTableBtn");
+  if (bettingBtn) {
+    bettingBtn.addEventListener("click", () => {
+      // Navigate to your betting table page
+      window.location.href = "betting.html";
+    });
+  }
+
 
   const precisionSelect = document.getElementById("precisionSelect");
   if (precisionSelect) {
@@ -1767,3 +1853,4 @@ document.addEventListener("DOMContentLoaded", () => {
     attachEventListeners();
 });
   
+
