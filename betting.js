@@ -4,51 +4,6 @@
 const STORAGE_KEY = "nflWinProjectionState";
 
 // -----------------------
-// Team color palettes (same as app.js)
-// -----------------------
-const teamPalettes = {
-  BUF: { primary: "#00338D", secondary: "#C60C30" },
-  MIA: { primary: "#008E97", secondary: "#FC4C02" },
-  NE:  { primary: "#002244", secondary: "#C60C30" },
-  NYJ: { primary: "#125740", secondary: "#000000" },
-
-  BAL: { primary: "#241773", secondary: "#9E7C0C" },
-  CIN: { primary: "#FB4F14", secondary: "#000000" },
-  CLE: { primary: "#311D00", secondary: "#FF3C00" },
-  PIT: { primary: "#101820", secondary: "#FFB612" },
-
-  HOU: { primary: "#03202F", secondary: "#A71930" },
-  IND: { primary: "#002C5F", secondary: "#A2AAAD" },
-  JAX: { primary: "#006778", secondary: "#9F792C" },
-  TEN: { primary: "#0C2340", secondary: "#4B92DB" },
-
-  DEN: { primary: "#FB4F14", secondary: "#0C2340" },
-  KC:  { primary: "#E31837", secondary: "#FFB81C" },
-  LV:  { primary: "#000000", secondary: "#A5ACAF" },
-  LAC: { primary: "#0080C6", secondary: "#FFC20E" },
-
-  DAL: { primary: "#003594", secondary: "#869397" },
-  NYG: { primary: "#0B2265", secondary: "#A71930" },
-  PHI: { primary: "#004C54", secondary: "#A5ACAF" },
-  WAS: { primary: "#5A1414", secondary: "#FFB612" },
-
-  CHI: { primary: "#0B162A", secondary: "#C83803" },
-  DET: { primary: "#0076B6", secondary: "#B0B7BC" },
-  GB:  { primary: "#203731", secondary: "#FFB612" },
-  MIN: { primary: "#4F2683", secondary: "#FFC62F" },
-
-  ATL: { primary: "#000000", secondary: "#A71930" },
-  CAR: { primary: "#0085CA", secondary: "#101820" },
-  NO:  { primary: "#D3BC8D", secondary: "#101820" },
-  TB:  { primary: "#D50A0A", secondary: "#34302B" },
-
-  ARI: { primary: "#97233F", secondary: "#000000" },
-  LAR: { primary: "#003594", secondary: "#FFA300" },
-  SF:  { primary: "#AA0000", secondary: "#B3995D" },
-  SEA: { primary: "#002244", secondary: "#69BE28" }
-};
-
-// -----------------------
 // Market board (as provided)
 // -----------------------
 const BET_WIN_TOTALS = [
@@ -343,8 +298,6 @@ for (const entry of BET_WIN_TOTALS) {
 // -----------------------
 // Helpers
 // -----------------------
-const DISPLAY_MODE_KEY = "nflDisplayMode"; // "desktop" | "mobile"
-let displayMode = "desktop";
 
 function loadDisplayMode() {
   try {
@@ -383,29 +336,6 @@ function americanToProb(odds) {
   if (odds == null) return null;
   if (odds > 0) return 100 / (odds + 100);
   return -odds / (-odds + 100);
-}
-
-function probToAmerican(probRaw) {
-  const p = Math.min(0.9999, Math.max(0.0001, probRaw));
-  if (p >= 0.5) {
-    return -Math.round((p / (1 - p)) * 100);
-  }
-  return Math.round(((1 - p) / p) * 100);
-}
-
-function formatAmerican(odds) {
-  if (!Number.isFinite(odds)) return "";
-  return odds > 0 ? `+${odds}` : String(odds);
-}
-
-function formatPercent(p, decimals = 2) {
-  if (p == null) return "—";
-  return (p * 100).toFixed(decimals) + "%";
-}
-
-function formatNumber(x, decimals = 2) {
-  if (x == null) return "—";
-  return x.toFixed(decimals);
 }
 
 function evOnStake(odds, p, stake = 100) {
@@ -1282,15 +1212,16 @@ function initBettingPage() {
     const results = simState ? simState.results : null;
   
     if (!results) {
-      status.textContent =
-        "No simulation results found in local storage. Open index.html, set spreads, then come back here.";
-    } else {
-      status.textContent =
-        "Using saved simulation results from index.html. EVs assume a $100 stake.";
-      currentBetRows = buildBettingRows(results);
-      renderBetColumnPicker();
-      renderBettingTable(currentBetRows);
-    }
+        status.textContent =
+          "No simulation results found yet. Set some spreads on the Games tab and run projections to unlock betting edges.";
+      } else {
+        status.textContent =
+          "Using your latest saved projections. EVs assume a $100 stake.";
+        currentBetRows = buildBettingRows(results);
+        renderBetColumnPicker();
+        renderBettingTable(currentBetRows);
+      }
+      
   
     // Theme from main app
     const body = document.body;
@@ -1450,8 +1381,6 @@ function initBettingPage() {
       });
     }
   }
-  
-  document.addEventListener("DOMContentLoaded", initBettingPage);
   
 
 document.addEventListener("DOMContentLoaded", initBettingPage);
