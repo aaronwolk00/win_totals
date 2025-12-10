@@ -407,8 +407,8 @@
   /* optional: if you add an inline spread span next to "AT" */
   .game-center .inline-spread-display {
     display: inline-block;
-    margin-left: 0.35rem;
-    font-size: 1.3rem;
+    margin-left: 0.45rem;
+    font-size: 4rem;
     font-weight: 800;
     color: #ffffff;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
