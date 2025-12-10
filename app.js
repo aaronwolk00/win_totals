@@ -727,7 +727,7 @@ const spreadProbTable = {
 // ---------------------------
 // Mode handling (Fan / Pro)
 // ---------------------------
-function applyMode() {
+function applyMode({ resetColumns = false } = {}) {
     const body = document.body;
     const btn = document.getElementById("modeToggleBtn");
   
@@ -739,48 +739,49 @@ function applyMode() {
         state.mode === "fan" ? "Switch to Pro Mode" : "Switch to Fan Mode";
     }
   
-    // Column presets per mode (can still be overridden via column picker)
-    if (state.mode === "fan") {
-      state.visibleColumns = {
-        team: true,
-        division: true,
-        current: true,
-        expected: true,
-        projected: true,
-        P0: false,
-        P1: false,
-        P2: false,
-        P3: false,
-        P4: false,
-        PA1: false,
-        PA2: false,
-        PA3: false,
-        PA4: false
-      };
-    } else {
-      // Pro mode: show everything by default
-      state.visibleColumns = {
-        team: true,
-        division: true,
-        current: true,
-        expected: true,
-        projected: true,
-        P0: true,
-        P1: true,
-        P2: true,
-        P3: true,
-        P4: true,
-        PA1: true,
-        PA2: true,
-        PA3: true,
-        PA4: true
-      };
+    if (resetColumns) {
+      if (state.mode === "fan") {
+        state.visibleColumns = {
+          team: true,
+          division: true,
+          current: true,
+          expected: true,
+          projected: true,
+          P0: false,
+          P1: false,
+          P2: false,
+          P3: false,
+          P4: false,
+          PA1: false,
+          PA2: false,
+          PA3: false,
+          PA4: false,
+        };
+      } else {
+        state.visibleColumns = {
+          team: true,
+          division: true,
+          current: true,
+          expected: true,
+          projected: true,
+          P0: true,
+          P1: true,
+          P2: true,
+          P3: true,
+          P4: true,
+          PA1: true,
+          PA2: true,
+          PA3: true,
+          PA4: true,
+        };
+      }
     }
   
     saveStateToStorage();
     renderTeamTable();
     renderColumnPicker();
   }
+  
   
   // ---------------------------
   // Progress indicators
@@ -1038,6 +1039,20 @@ function loadStateFromStorage() {
       if (parsed.lastFocusedGameId !== undefined) {
         state.lastFocusedGameId = parsed.lastFocusedGameId;
       }
+
+      // mode + scenarios
+      if (parsed.mode === "fan" || parsed.mode === "pro") {
+        state.mode = parsed.mode;
+        }
+
+        if (parsed.scenarios && typeof parsed.scenarios === "object") {
+        state.scenarios = parsed.scenarios;
+        }
+
+        if (typeof parsed.activeScenario === "string") {
+        state.activeScenario = parsed.activeScenario;
+        }
+
     } catch (err) {
       console.warn("Failed to load state:", err);
     }
@@ -1822,27 +1837,6 @@ function computeAndRenderResults() {
     updateProgressUI();
   }
   
-  function switchMainTab(tab) {
-    const scheduleTab = document.getElementById("scheduleTab");
-    const projectionsTab = document.getElementById("projectionsTab");
-    const bettingTab = document.getElementById("bettingTab");
-  
-    const tabs = { schedule: scheduleTab, projections: projectionsTab, betting: bettingTab };
-    Object.values(tabs).forEach(el => el && el.classList.add("hidden"));
-    if (tabs[tab]) tabs[tab].classList.remove("hidden");
-  
-    // update bottom nav button state
-    document.querySelectorAll(".bottom-tab").forEach(btn => {
-      btn.classList.toggle("is-active", btn.dataset.tab === tab);
-    });
-  
-    // keep your existing schedule vs projections toggle in sync if you like:
-    if (tab === "schedule" || tab === "projections") {
-      state.view = tab === "schedule" ? "schedule" : "projections";
-      applyViewMode();
-      saveStateToStorage();
-    }
-  }
   
 
 // Compute distribution P(exactly k wins), k=0..4, via 2^4 combinations
@@ -2458,9 +2452,10 @@ function updateControlsFromState() {
     }
   
     updateOddsToggleButton();
-    applyMode(); 
-    updateProgressUI(); 
+    applyMode({ resetColumns: false });
+    updateProgressUI();
   }
+  
   
   
 
@@ -2573,7 +2568,7 @@ function attachEventListeners() {
       modeToggle.addEventListener("click", () => {
         state.mode = state.mode === "fan" ? "pro" : "fan";
         saveStateToStorage();
-        applyMode();
+        applyMode({ resetColumns: true });
       });
     }
   
@@ -2612,67 +2607,6 @@ function attachEventListeners() {
   
     // Scenario controls (unchanged)
     initScenarioControls();
-  }
-  
-  
-
-  function initBottomNav() {
-    const nav = document.querySelector(".bottom-nav");
-    if (!nav) return;
-  
-    const items = nav.querySelectorAll(".bottom-nav-item");
-  
-    function setActive(tab) {
-      items.forEach((btn) => {
-        btn.classList.toggle("is-active", btn.dataset.tab === tab);
-      });
-    }
-  
-    nav.addEventListener("click", (e) => {
-      const btn = e.target.closest(".bottom-nav-item");
-      if (!btn) return;
-  
-      const tab = btn.dataset.tab;
-  
-      switch (tab) {
-        case "games":
-          state.view = "schedule";
-          saveStateToStorage();
-          applyViewMode();
-          break;
-        case "teams":
-          state.view = "projections";
-          saveStateToStorage();
-          applyViewMode();
-          break;
-        case "betting":
-          // Send user to the win-totals betting page
-          window.location.href = "betting.html";
-          return; // no need to update local nav
-        case "more":
-          // Shortcut to header controls on mobile
-          const headerControls = document.querySelector(".header-controls");
-          const headerToggle = document.getElementById("headerControlsToggle");
-          if (headerControls && headerToggle) {
-            const nowOpen = headerControls.classList.toggle("is-open");
-            headerToggle.textContent = nowOpen
-              ? "Hide Header Controls"
-              : "Show Header Controls";
-            headerToggle.setAttribute(
-              "aria-expanded",
-              nowOpen ? "true" : "false"
-            );
-          }
-          break;
-        default:
-          break;
-      }
-  
-      setActive(tab);
-    });
-  
-    const initialTab = state.view === "projections" ? "teams" : "games";
-    setActive(initialTab);
   }
   
   
