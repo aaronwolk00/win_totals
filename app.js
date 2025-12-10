@@ -3,6 +3,25 @@
 
 const NEUTRAL_SPREAD = -0.5; // gives 0.5000 for home team
 const LOCAL_STORAGE_KEY = "nflWinProjectionState";
+// Column definitions for main projections table
+const TABLE_HEADERS = [
+    { key: "team",      label: "Team" },
+    { key: "division",  label: "Div" },
+    { key: "current",   label: "Current W" },
+    { key: "expected",  label: "Exp. addl W" },
+    { key: "projected", label: "Proj. W" },
+    { key: "P0",        label: "P(0 W)" },
+    { key: "P1",        label: "P(1 W)" },
+    { key: "P2",        label: "P(2 W)" },
+    { key: "P3",        label: "P(3 W)" },
+    { key: "P4",        label: "P(4 W)" },
+    { key: "PA1",       label: "P(≥1 W)" },
+    { key: "PA2",       label: "P(≥2 W)" },
+    { key: "PA3",       label: "P(≥3 W)" },
+    { key: "PA4",       label: "P(≥4 W)" },
+    { key: "threshold", label: `P(total ≥ X)` } // X is state.threshold
+  ];
+  
 
 // Teams, divisions, current wins
 const teams = {
@@ -1620,24 +1639,13 @@ function showTeamDetail(teamId) {
 // Export CSV
 function exportCsv() {
   const rows = [];
-  const TABLE_HEADERS = [
-    "Team",
-    "Division",
-    "CurrentWins",
-    "ExpectedAdditionalWins",
-    "ProjectedWins",
-    "P0",
-    "P1",
-    "P2",
-    "P3",
-    "P4",
-    "P_atLeast1",
-    "P_atLeast2",
-    "P_atLeast3",
-    "P_atLeast4",
-    `P_totalAtLeast_${state.threshold}`
-  ];
-  rows.push(TABLE_HEADERS);
+  const headerRow = TABLE_HEADERS.map(h => {
+    if (h.key === "threshold") {
+      return `P_totalAtLeast_${state.threshold}`;
+    }
+    return h.label.replace(/\s+/g, "");
+  });
+  rows.push(headerRow);
 
   for (const r of state.results) {
     rows.push([
