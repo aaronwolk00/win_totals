@@ -1013,22 +1013,20 @@ function gameMatchesFilters(game) {
   }
 
 
-  // Build schedule UI
-  function renderSchedule() {
+// Build schedule UI
+function renderSchedule() {
     const container = document.getElementById("scheduleContainer");
     container.innerHTML = "";
   
-    // Apply filters first
-    const filteredGames = games.filter(gameMatchesFilters);
+    // Apply filters
+    let filteredGames = games.filter(gameMatchesFilters);
   
+    // If filters yield nothing, fall back to all games so the page is never blank
     if (!filteredGames.length) {
-      const p = document.createElement("p");
-      p.className = "section-note";
-      p.textContent = "No games match the current filters.";
-      container.appendChild(p);
-      return;
+      filteredGames = games;
     }
   
+    // Group by week
     const byWeek = new Map();
     for (const game of filteredGames) {
       if (!byWeek.has(game.week)) byWeek.set(game.week, []);
@@ -1042,6 +1040,7 @@ function gameMatchesFilters(game) {
       const weekBlock = document.createElement("div");
       weekBlock.className = "week-block";
   
+      // Week header
       const header = document.createElement("div");
       header.className = "week-header";
       const h3 = document.createElement("h3");
@@ -1052,14 +1051,16 @@ function gameMatchesFilters(game) {
       header.appendChild(span);
       weekBlock.appendChild(header);
   
+      // Games list
       const list = document.createElement("div");
       list.className = "games-list";
   
       for (const game of weekGames) {
         const card = document.createElement("div");
-        card.className = "game-card";
+        card.className = "game-card game-card-compact"; // compact row; CSS can expand on hover
         card.dataset.gameId = String(game.id);
   
+        // Attach team colors as CSS custom properties for this card
         const homePalette = teamPalettes[game.home] || {};
         const awayPalette = teamPalettes[game.away] || {};
   
@@ -1080,12 +1081,23 @@ function gameMatchesFilters(game) {
           awayPalette.secondary || "#ea580c"
         );
   
-        const info = document.createElement("div");
+        // Optional: hover-expanded class for your CSS to use
+        card.addEventListener("mouseenter", () => {
+          card.classList.add("hover-expanded");
+        });
+        card.addEventListener("mouseleave", () => {
+          card.classList.remove("hover-expanded");
+        });
   
+        const info = document.createElement("div");
+        info.className = "game-info";
+  
+        // Top row: week / day
         const infoTop = document.createElement("div");
         infoTop.className = "game-info-top";
         infoTop.textContent = `Week ${game.week} · ${game.day}`;
   
+        // Matchup row – away left, home right
         const infoMain = document.createElement("div");
         infoMain.className = "game-info-main";
         const awayTeam = teams[game.away];
@@ -1106,6 +1118,7 @@ function gameMatchesFilters(game) {
           </div>
         `;
   
+        // Meta row: spread band + probabilities + expand button
         const infoMeta = document.createElement("div");
         infoMeta.className = "game-info-meta";
   
@@ -1118,6 +1131,7 @@ function gameMatchesFilters(game) {
         const band = document.createElement("div");
         band.className = "spread-band";
   
+        // Build spread buttons (reversed so big negatives are near the home side)
         for (const value of [...spreadBandValues].reverse()) {
           const btn = document.createElement("button");
           btn.type = "button";
@@ -1132,11 +1146,66 @@ function gameMatchesFilters(game) {
             btn.classList.add("neutral");
           } else if (value < 0) {
             btn.classList.add("favorite");
+          } else {
+            btn.classList.add("underdog");
           }
+  
+          if (Math.abs(value) > 10.5) {
+            btn.classList.add("extra");
+          }
+  
+          btn.addEventListener("click", () => {
+            setSpreadForGame(game.id, value);
+          });
+  
+          band.appendChild(btn);
         }
+  
+        bandWrapper.appendChild(band);
+        lineRow.appendChild(bandWrapper);
+  
+        // Probabilities box (filled in by updateGameCardDisplay)
+        const selectedProbSpan = document.createElement("div");
+        selectedProbSpan.className = "selected-prob";
+  
+        infoMeta.appendChild(lineRow);
+        infoMeta.appendChild(selectedProbSpan);
+  
+        // Expand/collapse for extra spreads
+        const expandBtn = document.createElement("button");
+        expandBtn.type = "button";
+        expandBtn.className = "btn spread-expand-btn";
+        expandBtn.textContent = "Expand spreads";
+  
+        expandBtn.addEventListener("click", () => {
+          card.classList.toggle("expanded");
+          expandBtn.textContent = card.classList.contains("expanded")
+            ? "Collapse spreads"
+            : "Expand spreads";
+        });
+  
+        infoMeta.appendChild(expandBtn);
+  
+        // Assemble card
+        info.appendChild(infoTop);
+        info.appendChild(infoMain);
+        info.appendChild(infoMeta);
+  
+        card.appendChild(info);
+        list.appendChild(card);
+  
+        // Initialize display with stored spread, if any
+        updateGameCardDisplay(game.id);
+      }
+  
+      weekBlock.appendChild(list);
+      container.appendChild(weekBlock);
     }
-    }
-}
+  
+    // After all weeks are rendered, jump back to the last game you touched
+    scrollToLastFocusedGame();
+  }
+  
   
   
 
