@@ -29,6 +29,26 @@ const TABLE_HEADERS = [
   
 const QUICK_SPREAD_PRESETS = [-10.5, -7.5, -3.5, -0.5, +0.5, +3.5, +7.5, +10.5];
 
+// Spread → favorite probability mapping (absolute spread)
+const spreadProbTable = {
+    0.5: 0.5,
+    1.5: 0.509,
+    2.5: 0.5544,
+    3.5: 0.6368,
+    4.5: 0.6514,
+    5.5: 0.6522,
+    6.5: 0.6796,
+    7.5: 0.7377,
+    8.5: 0.7477,
+    9.5: 0.7667,
+    10.5: 0.8042,
+    11.5: 0.8097,
+    12.5: 0.8117,
+    13.5: 0.825,
+    14.5: 0.8541
+  };
+
+
 // Team color palettes (primary + secondary) – 2025
 const teamPalettes = {
     // AFC EAST
@@ -950,16 +970,22 @@ function saveDisplayMode() {
 }
 
 function applyDisplayMode() {
-  const body = document.body;
-  body.classList.toggle("mode-mobile", displayMode === "mobile");
-  body.classList.toggle("mode-desktop", displayMode !== "mobile");
-
-  const btn = document.getElementById("betDisplayModeToggle");
-  if (btn) {
-    btn.textContent =
-      displayMode === "mobile" ? "Switch to Desktop View" : "Switch to Mobile View";
+    const body = document.body;
+    body.classList.toggle("mode-mobile", displayMode === "mobile");
+    body.classList.toggle("mode-desktop", displayMode !== "mobile");
+  
+    const btn =
+      document.getElementById("mainDisplayModeToggle") ||
+      document.getElementById("betDisplayModeToggle"); // fallback for old id
+  
+    if (btn) {
+      btn.textContent =
+        displayMode === "mobile"
+          ? "Switch to Desktop View"
+          : "Switch to Mobile View";
+    }
   }
-}
+  
 
 function americanToProb(odds) {
   if (odds == null) return null;

@@ -7,26 +7,6 @@
 
 const teamIds = Object.keys(teams);
 
-// Spread → favorite probability mapping (absolute spread)
-const spreadProbTable = {
-  0.5: 0.5,
-  1.5: 0.509,
-  2.5: 0.5544,
-  3.5: 0.6368,
-  4.5: 0.6514,
-  5.5: 0.6522,
-  6.5: 0.6796,
-  7.5: 0.7377,
-  8.5: 0.7477,
-  9.5: 0.7667,
-  10.5: 0.8042,
-  11.5: 0.8097,
-  12.5: 0.8117,
-  13.5: 0.825,
-  14.5: 0.8541
-};
-
-
 // ---------------------------
 // Mode handling (Fan / Pro)
 // ---------------------------
@@ -494,14 +474,6 @@ function homeWinProbFromSpread(spread) {
   return 0.5;
 }
 
-// Formatting helpers
-function formatNumber(value, decimals) {
-  return value.toFixed(decimals);
-}
-
-function formatPercent(prob, decimals) {
-  return (prob * 100).toFixed(decimals) + "%";
-}
 
 function gameMatchesFilters(game) {
     const {
