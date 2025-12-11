@@ -308,7 +308,13 @@
 
     <!-- SCRIPTS -->
     <script src="shared.js"></script>
-    <script src="app.js"></script>
+    <!-- split former app.js into these four in this order -->
+    <script src="state_core.js"></script>
+    <script src="schedule_view.js"></script>
+    <script src="projections_view.js"></script>
+    <!-- betting still lives here -->
     <script src="betting.js"></script>
+    <!-- shell / tabs / more-menu bootstrapping -->
+    <script src="ui_shell.js"></script>
   </body>
 </html>
