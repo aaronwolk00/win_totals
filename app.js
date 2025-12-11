@@ -6,7 +6,7 @@
 // -----------------------
 
 const teamIds = Object.keys(teams);
-
+let activeMainTab = "games";
 // ---------------------------
 // Mode handling (Fan / Pro)
 // ---------------------------
@@ -358,21 +358,26 @@ function applyTheme() {
 // Show/hide schedule vs projections
 function applyViewMode() {
     const scheduleSection = document.getElementById("scheduleSection");
-    const resultsSection = document.getElementById("resultsSection");
-    const viewToggleBtn = document.getElementById("viewToggleBtn");
+    const resultsSection  = document.getElementById("resultsSection");
+    const viewToggleBtn   = document.getElementById("viewToggleBtn"); // may be null now
   
-    if (!scheduleSection || !resultsSection || !viewToggleBtn) return;
+    if (!scheduleSection || !resultsSection) return;
   
     if (state.view === "schedule") {
       scheduleSection.classList.remove("hidden");
       resultsSection.classList.add("hidden");
-      viewToggleBtn.textContent = "Show Team Projections";
+      if (viewToggleBtn) {
+        viewToggleBtn.textContent = "Show Team Projections";
+      }
     } else {
       scheduleSection.classList.add("hidden");
       resultsSection.classList.remove("hidden");
-      viewToggleBtn.textContent = "Show Schedule & Spreads";
+      if (viewToggleBtn) {
+        viewToggleBtn.textContent = "Show Games & Spreads";
+      }
     }
   }
+  
   
   
   function setActiveTab(tab) {
@@ -380,44 +385,55 @@ function applyViewMode() {
     const resultsSection    = document.getElementById("resultsSection");
     const bettingSection    = document.getElementById("bettingSection");
     const rawMarketsSection = document.getElementById("rawMarketsSection");
+    const moreMenu          = document.getElementById("moreMenu");
   
-    // Highlight correct bottom-nav button
-    document
-      .querySelectorAll(".bottom-nav-item")
-      .forEach((btn) => {
-        btn.classList.toggle("is-active", btn.dataset.tab === tab);
-      });
+    // "More" is not a real content tab – it just toggles the menu.
+    if (tab === "more") {
+      toggleMoreMenu();
+      return;
+    }
   
-    // Hide everything by default; we'll re-show what we want
+    activeMainTab = tab;
+  
+    // Hide the More menu whenever we switch main tabs
+    if (moreMenu) {
+      moreMenu.classList.add("hidden");
+    }
+  
+    // Update bottom-nav active state for main tabs only
+    document.querySelectorAll(".bottom-nav-item").forEach((btn) => {
+      const btnTab = btn.dataset.tab;
+      if (!btnTab || btnTab === "more") return;
+      btn.classList.toggle("is-active", btnTab === tab);
+    });
+  
+    // Hide all sections
     if (scheduleSection)   scheduleSection.classList.add("hidden");
     if (resultsSection)    resultsSection.classList.add("hidden");
     if (bettingSection)    bettingSection.classList.add("hidden");
     if (rawMarketsSection) rawMarketsSection.classList.add("hidden");
   
+    // Show the right content and keep state.view in sync
     if (tab === "games") {
-      // Games = schedule view
       state.view = "schedule";
       saveStateToStorage();
-      applyViewMode(); // shows scheduleSection
-  
+      applyViewMode(); // handles schedule vs results visibility
     } else if (tab === "teams") {
-      // Teams = projections view
       state.view = "projections";
       saveStateToStorage();
-      applyViewMode(); // shows resultsSection
-  
+      applyViewMode();
     } else if (tab === "betting") {
-      // Betting tab: show both betting sections
       if (bettingSection)    bettingSection.classList.remove("hidden");
       if (rawMarketsSection) rawMarketsSection.classList.remove("hidden");
-      // betting.js will have already drawn the tables on DOMContentLoaded
-    } else if (tab === "more") {
-      // For now, "More" can just leave things as-is or later show a dedicated section.
-      // Easiest behaviour: default back to schedule if nothing else.
-      if (scheduleSection) scheduleSection.classList.remove("hidden");
-      state.view = "schedule";
-      saveStateToStorage();
     }
+  }
+  
+  function toggleMoreMenu() {
+    const moreMenu = document.getElementById("moreMenu");
+    if (!moreMenu) return;
+  
+    const isHidden = moreMenu.classList.contains("hidden");
+    moreMenu.classList.toggle("hidden", !isHidden);
   }
   
   
@@ -1722,6 +1738,7 @@ function attachEventListeners() {
       themeToggle.addEventListener("click", () => {
         state.theme = state.theme === "dark" ? "light" : "dark";
         saveStateToStorage();
+        closeMoreMenu();
         applyTheme();
       });
     }
@@ -1749,6 +1766,7 @@ function attachEventListeners() {
       oddsBtn.addEventListener("click", () => {
         state.showImpliedOdds = !state.showImpliedOdds;
         saveStateToStorage();
+        closeMoreMenu();
         updateOddsToggleButton();
         for (const game of games) {
           updateGameCardDisplay(game.id);
@@ -1756,7 +1774,6 @@ function attachEventListeners() {
       });
     }
   
-    // HEADER "Betting Table" → go to Betting tab (no navigation)
     const bettingBtn = document.getElementById("bettingTableBtn");
     if (bettingBtn) {
       bettingBtn.addEventListener("click", () => {
@@ -1774,6 +1791,7 @@ function attachEventListeners() {
     const fillEvenBtn = document.getElementById("fillEvenBtn");
     if (fillEvenBtn) {
       fillEvenBtn.addEventListener("click", () => {
+        closeMoreMenu();
         fillNeutralSpreads();
       });
     }
@@ -1781,6 +1799,7 @@ function attachEventListeners() {
     const resetBtn = document.getElementById("resetStateBtn");
     if (resetBtn) {
       resetBtn.addEventListener("click", () => {
+        closeMoreMenu();
         resetAllState();
       });
     }
@@ -1788,6 +1807,7 @@ function attachEventListeners() {
     const exportBtn = document.getElementById("exportCSV");
     if (exportBtn) {
       exportBtn.addEventListener("click", () => {
+        closeMoreMenu();
         exportCsv();
       });
     }
@@ -1812,19 +1832,8 @@ function attachEventListeners() {
       modeToggle.addEventListener("click", () => {
         state.mode = state.mode === "fan" ? "pro" : "fan";
         saveStateToStorage();
+        closeMoreMenu();
         applyMode({ resetColumns: true });
-      });
-    }
-  
-    const headerToggle = document.getElementById("headerControlsToggle");
-    const headerControls = document.querySelector(".header-controls");
-    if (headerToggle && headerControls) {
-      headerToggle.addEventListener("click", () => {
-        const nowOpen = headerControls.classList.toggle("is-open");
-        headerToggle.textContent = nowOpen
-          ? "Hide Header Controls"
-          : "Show Header Controls";
-        headerToggle.setAttribute("aria-expanded", nowOpen ? "true" : "false");
       });
     }
   
@@ -1833,6 +1842,7 @@ function attachEventListeners() {
       displayModeBtn.addEventListener("click", () => {
         displayMode = displayMode === "mobile" ? "desktop" : "mobile";
         saveDisplayMode();
+        closeMoreMenu();
         applyDisplayMode();
       });
     }
@@ -1840,14 +1850,26 @@ function attachEventListeners() {
     // Bottom tab bar wiring (Games / Teams / Betting / More)
     const bottomNav = document.querySelector(".bottom-nav");
     if (bottomNav) {
-      bottomNav.querySelectorAll(".bottom-nav-item").forEach((btn) => {
+    bottomNav.querySelectorAll(".bottom-nav-item").forEach((btn) => {
         btn.addEventListener("click", () => {
-          const tab = btn.dataset.tab;
-          if (!tab) return;
-          setActiveTab(tab);
+        const tab = btn.dataset.tab;
+        if (!tab) return;
+
+        if (tab === "more") {
+            toggleMoreMenu();
+        } else {
+            setActiveTab(tab);
+        }
         });
-      });
+    });
     }
+    const moreMenu = document.getElementById("moreMenu");
+    function closeMoreMenu() {
+        if (moreMenu) moreMenu.classList.add("hidden");
+    }
+
+
+
   
     // Scenario controls (unchanged)
     initScenarioControls();
