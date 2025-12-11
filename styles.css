@@ -1395,3 +1395,39 @@ body.theme-light .bottom-nav-item.is-active {
 .cell-delta-down::after {
   background: linear-gradient(90deg, transparent, var(--danger), transparent);
 }
+
+/* ==========================================================
+   Header – visually title only
+   ========================================================== */
+
+/* If any old header controls are still present, hide them */
+.app-header .app-controls,
+.header-toggle-btn {
+  display: none !important;
+}
+
+/* ==========================================================
+   More tab options list
+   ========================================================== */
+
+.more-options-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.6rem 0 1.2rem;
+}
+
+.more-options-list .btn {
+  flex: 1 1 220px;
+  justify-content: flex-start;
+}
+
+/* Optional: make the danger/reset button stand out a bit more */
+.more-options-list #resetStateBtn {
+  order: 98; /* appears near the end */
+}
+
+/* Optional: pin Export to CSV as the last item */
+.more-options-list #exportCSV {
+  order: 99;
+}
