@@ -147,15 +147,113 @@
       <!-- Betting -->
       <section id="bettingSection" class="results-section hidden">
         <div class="results-header-row">
-          <h2>Betting Edges</h2>
-          <button id="betToggleColumnPicker" class="btn secondary">
-            Columns
-          </button>
+          <div>
+            <h2>Betting Table (Additional Wins vs Market)</h2>
+            <p class="section-note">
+              Click a row to see full market details, implied probabilities, and Kelly stakes.
+            </p>
+          </div>
+          <div class="results-header-actions">
+            <button
+              id="betModeToggle"
+              type="button"
+              class="btn secondary"
+            >
+              Switch to Pro Mode
+            </button>
+            <button
+              id="betToggleColumns"
+              type="button"
+              class="btn secondary results-columns-btn"
+            >
+              Columns
+            </button>
+          </div>
         </div>
-        <p id="betStatusNote" class="section-note">
-          Run a projection first, then return here to view edges.
+
+        <p id="betStatusNote" class="section-note" aria-live="polite">
+          Loading simulation results from local storage…
         </p>
+
+        <!-- Filters / settings row -->
+        <div class="app-controls controls-row" style="margin-top: 0.4rem;">
+          <label class="control-group">
+            <span>Division</span>
+            <select id="betDivisionFilter">
+              <option value="ALL">All</option>
+              <option value="AE">AE</option>
+              <option value="AW">AW</option>
+              <option value="AN">AN</option>
+              <option value="AS">AS</option>
+              <option value="NE">NE</option>
+              <option value="NN">NN</option>
+              <option value="NS">NS</option>
+              <option value="NW">NW</option>
+            </select>
+          </label>
+
+          <label class="control-group checkbox-group">
+            <input id="betPositiveEVOnly" type="checkbox" />
+            <span>Only teams with any positive EV</span>
+          </label>
+
+          <label class="control-group">
+            <span>Min EV ($)</span>
+            <input
+              id="betMinEV"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="0"
+            />
+          </label>
+
+          <label class="control-group">
+            <span>Min edge (%)</span>
+            <input
+              id="betMinEdge"
+              type="number"
+              min="0"
+              step="0.1"
+              placeholder="0"
+            />
+          </label>
+        </div>
+
+        <div class="app-controls controls-row">
+          <label class="control-group">
+            <span>Bankroll ($)</span>
+            <input
+              id="betBankroll"
+              type="number"
+              min="1"
+              step="50"
+              placeholder="1000"
+            />
+          </label>
+
+          <label class="control-group">
+            <span>Kelly fraction (%)</span>
+            <input
+              id="betKellyFraction"
+              type="number"
+              min="0"
+              max="100"
+              step="5"
+              placeholder="25"
+            />
+          </label>
+
+          <p class="section-note" style="margin-left: auto; max-width: 22rem;">
+            Bankroll and Kelly fraction are used only for suggested stake sizing in the
+            team detail view. They do not affect the EV numbers.
+          </p>
+        </div>
+
+        <!-- Column selection panel -->
         <div id="betColumnPicker" class="column-picker hidden"></div>
+
+        <!-- Main betting table -->
         <div id="betTableContainer" class="table-container"></div>
       </section>
 
