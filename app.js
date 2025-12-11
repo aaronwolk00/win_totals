@@ -1197,7 +1197,7 @@ function renderTeamTable() {
   
     for (const r of resultsCopy) {
 
-      if (!resultHasAnyPickedGame(r.teamId)) {
+      if (!resultHasAnyPickedGame(r)) {
           continue;
         }
       const tr = document.createElement("tr");
@@ -1313,7 +1313,7 @@ function renderDivisionSummary() {
   
     const resultsByDiv = {};
     for (const r of state.results) {
-      if (!resultHasAnyPickedGame(r.teamId)) continue;
+      if (!resultHasAnyPickedGame(r)) continue;
     
       if (!resultsByDiv[r.division]) resultsByDiv[r.division] = [];
       resultsByDiv[r.division].push(r);
@@ -1635,7 +1635,7 @@ function exportCsv() {
   rows.push(headerRow);
 
   for (const r of state.results) {
-    if (!resultHasAnyPickedGame(r.teamId)) continue;
+    if (!resultHasAnyPickedGame(r)) continue;
   
     rows.push([
       r.teamId,

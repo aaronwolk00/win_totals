@@ -172,7 +172,7 @@
   
     for (const r of results) {
       // skip teams whose games haven't been picked at all
-      if (!betResultHasAnyPickedGame(r)) continue;
+      if (!resultHasAnyPickedGame(r)) continue;
   
       const marketMap = MARKET_LOOKUP[r.teamId];
       if (!marketMap) continue;
