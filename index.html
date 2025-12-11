@@ -5,296 +5,344 @@
     <title>NFL Win Projection Tool</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
-
-    <!-- Styles -->
     <link rel="stylesheet" href="styles.css" />
+    <!-- Optional: betting-specific styles if still separate -->
     <link rel="stylesheet" href="betting.css" />
   </head>
 
+  <!-- Start in dark + desktop mode; JS will adjust -->
   <body class="theme-dark mode-desktop">
-    <!-- HEADER -->
+    <!-- Top bar ------------------------------------------------------------ -->
     <header class="app-header">
       <div class="app-title">
         <h1>NFL Win Projection Tool</h1>
         <p>Weeks 15–18, 2025 · Spread-based probabilities (home perspective)</p>
       </div>
-      <!-- header controls removed; everything lives under the More tab -->
+
+      <!-- Header-controls toggle (only visible in mobile via CSS) -->
+      <button
+        id="headerControlsToggle"
+        type="button"
+        class="btn secondary header-toggle-btn"
+        aria-expanded="false"
+        aria-controls="headerControlsBar"
+      >
+        Show Header Controls
+      </button>
+
+      <!-- Main header controls -->
+      <div
+        id="headerControlsBar"
+        class="app-controls header-controls"
+        aria-label="Global controls"
+      >
+        <!-- Theme toggle -->
+        <button id="themeToggle" type="button" class="btn secondary">
+          Switch to Light Theme
+        </button>
+
+        <!-- Desktop vs Mobile display (uses body.mode-desktop / body.mode-mobile) -->
+        <button
+          id="mainDisplayModeToggle"
+          type="button"
+          class="btn secondary"
+        >
+          Switch to Mobile View
+        </button>
+
+        <!-- Fan vs Pro mode (column presets + styling) -->
+        <button id="modeToggleBtn" type="button" class="btn secondary">
+          Switch to Pro Mode
+        </button>
+
+        <!-- View toggle: schedule vs projections -->
+        <button id="viewToggleBtn" type="button" class="btn secondary">
+          Show Team Projections
+        </button>
+
+        <!-- Toggle implied odds on game cards -->
+        <button id="toggleOddsBtn" type="button" class="btn secondary">
+          Show Implied Odds
+        </button>
+
+        <!-- Precision select -->
+        <label class="control-group" for="precisionSelect">
+          <span>Display precision</span>
+          <select id="precisionSelect">
+            <option value="2" selected>2 decimals</option>
+            <option value="3">3 decimals</option>
+            <option value="4">4 decimals</option>
+          </select>
+        </label>
+
+        <!-- Fill neutrals -->
+        <button id="fillEvenBtn" type="button" class="btn secondary">
+          Fill empty games with neutral spread
+        </button>
+
+        <!-- Reset -->
+        <button id="resetStateBtn" type="button" class="btn danger">
+          Reset all spreads
+        </button>
+
+        <!-- Export -->
+        <button id="exportCSV" type="button" class="btn primary">
+          Export projections as CSV
+        </button>
+      </div>
     </header>
 
-    <!-- MAIN CONTENT -->
+    <!-- Main content ------------------------------------------------------- -->
     <main class="layout">
-      <!-- Schedule -->
+      <!-- Schedule / spreads ---------------------------------------------- -->
       <section id="scheduleSection" class="schedule-section">
         <h2>Schedule &amp; Spread Inputs</h2>
         <p class="section-note">
           Spreads are always from the <strong>home team's perspective</strong>.
-          Click a number in the spread band to set the line for that game.
+          Click on a number in the spread band to set the line for that game.
         </p>
 
-        <!-- Progress -->
+        <!-- Progress UI (wired by updateProgressUI in app.js) -->
         <div class="section-note">
-          <div id="step1ProgressText">Games with your line: 0/64 (0%)</div>
-          <div id="step2ProgressText">Teams touched: 0/32 (0%)</div>
-          <div id="step3ProgressText">Set some spreads to unlock betting edges</div>
-          <div class="progress-bar-bg">
-            <div id="globalProgressBar" class="progress-bar-fill"></div>
+          <div id="step1ProgressText">
+            Games with your line: 0/64 (0%)
           </div>
-          <div id="globalProgressLabel" class="progress-label">0% complete</div>
+          <div id="step2ProgressText">
+            Teams touched: 0/32 (0%)
+          </div>
+          <div id="step3ProgressText">
+            Set some spreads to unlock betting edges
+          </div>
+
+          <div
+            style="
+              margin-top: 0.4rem;
+              width: 100%;
+              max-width: 420px;
+              height: 8px;
+              border-radius: 999px;
+              background: rgba(148, 163, 184, 0.35);
+              overflow: hidden;
+            "
+          >
+            <div
+              id="globalProgressBar"
+              style="
+                width: 0%;
+                height: 100%;
+                border-radius: inherit;
+                background: linear-gradient(90deg, #22c55e, #0ea5e9);
+                transition: width 0.18s ease;
+              "
+            ></div>
+          </div>
+          <div
+            id="globalProgressLabel"
+            style="margin-top: 0.2rem; font-size: 0.85rem; opacity: 0.85;"
+          >
+            0% complete
+          </div>
         </div>
 
-        <!-- Filters -->
+        <!-- Filters for week / team / division / pick status -->
         <div class="app-controls schedule-filters">
           <label class="control-group" for="filterWeek">
             <span>Week</span>
             <select id="filterWeek"></select>
           </label>
+
           <label class="control-group" for="filterTeam">
             <span>Team</span>
             <select id="filterTeam"></select>
           </label>
+
           <label class="control-group" for="filterDivision">
             <span>Division</span>
             <select id="filterDivision"></select>
           </label>
+
           <label class="control-group" for="filterPickStatus">
             <span>Pick status</span>
             <select id="filterPickStatus"></select>
           </label>
         </div>
 
-        <!-- Scenarios -->
+        <!-- Scenario controls (wired by initScenarioControls in app.js) -->
         <div class="app-controls" style="margin-top: 0.6rem;">
           <label class="control-group" for="scenarioSelect">
             <span>Saved scenarios</span>
-            <select id="scenarioSelect"></select>
+            <select id="scenarioSelect">
+              <!-- options injected by JS -->
+            </select>
           </label>
+
           <label class="control-group" for="scenarioNameInput">
             <span>Name</span>
             <input
               id="scenarioNameInput"
               type="text"
               placeholder="e.g. Chalk, Upsets, Favorites"
+              style="
+                padding: 0.35rem 0.8rem;
+                border-radius: 999px;
+                border: 1px solid currentColor;
+                font-size: 0.9rem;
+              "
             />
           </label>
+
           <button id="scenarioSaveBtn" type="button" class="btn secondary">
             Save scenario
           </button>
+
           <button id="scenarioDeleteBtn" type="button" class="btn danger">
             Delete scenario
           </button>
         </div>
 
+        <!-- Game cards are injected here by app.js -->
         <div id="scheduleContainer" class="schedule-container"></div>
       </section>
 
-      <!-- Projections -->
+      <!-- Projections view (hidden by default, toggled in JS) -------------- -->
       <section id="resultsSection" class="results-section hidden">
         <div class="results-header-row">
           <h2>Team Projections</h2>
-          <button id="toggleColumnPicker" class="btn secondary">Columns</button>
-        </div>
-        <div id="divisionNote" class="division-note"></div>
-        <div id="columnPicker" class="column-picker hidden"></div>
-        <div id="teamTableContainer" class="table-container"></div>
-        <h3>Division Summaries</h3>
-        <div id="divisionSummaryContainer" class="division-summary-container"></div>
-      </section>
-
-      <!-- Betting -->
-      <section id="bettingSection" class="results-section hidden">
-        <div class="results-header-row">
-          <div>
-            <h2>Betting Table (Additional Wins vs Market)</h2>
-            <p class="section-note">
-              Click a row to see full market details, implied probabilities, and Kelly stakes.
-            </p>
-          </div>
-          <div class="results-header-actions">
-            <button
-              id="betModeToggle"
-              type="button"
-              class="btn secondary"
-            >
-              Switch to Pro Mode
-            </button>
-            <button
-              id="betToggleColumnPicker"
-              type="button"
-              class="btn secondary results-columns-btn"
-            >
-              Columns
-            </button>
-          </div>
-        </div>
-
-        <p id="betStatusNote" class="section-note" aria-live="polite">
-          Loading simulation results from local storage…
-        </p>
-
-        <!-- Filters / settings row -->
-        <div class="app-controls controls-row" style="margin-top: 0.4rem;">
-          <label class="control-group">
-            <span>Division</span>
-            <select id="betDivisionFilter">
-              <option value="ALL">All</option>
-              <option value="AE">AE</option>
-              <option value="AW">AW</option>
-              <option value="AN">AN</option>
-              <option value="AS">AS</option>
-              <option value="NE">NE</option>
-              <option value="NN">NN</option>
-              <option value="NS">NS</option>
-              <option value="NW">NW</option>
-            </select>
-          </label>
-
-          <label class="control-group checkbox-group">
-            <input id="betPositiveEVOnly" type="checkbox" />
-            <span>Only teams with any positive EV</span>
-          </label>
-
-          <label class="control-group">
-            <span>Min EV ($)</span>
-            <input
-              id="betMinEV"
-              type="number"
-              min="0"
-              step="1"
-              placeholder="0"
-            />
-          </label>
-
-          <label class="control-group">
-            <span>Min edge (%)</span>
-            <input
-              id="betMinEdge"
-              type="number"
-              min="0"
-              step="0.1"
-              placeholder="0"
-            />
-          </label>
-        </div>
-
-        <div class="app-controls controls-row">
-          <label class="control-group">
-            <span>Bankroll ($)</span>
-            <input
-              id="betBankroll"
-              type="number"
-              min="1"
-              step="50"
-              placeholder="1000"
-            />
-          </label>
-
-          <label class="control-group">
-            <span>Kelly fraction (%)</span>
-            <input
-              id="betKellyFraction"
-              type="number"
-              min="0"
-              max="100"
-              step="5"
-              placeholder="25"
-            />
-          </label>
 
           <button
-            id="betExportBtn"
+            id="toggleColumnPicker"
             type="button"
-            class="btn primary"
-            style="margin-left: auto;"
+            class="btn secondary results-columns-btn"
           >
-            Export CSV
+            Columns
           </button>
-
-          <p class="section-note" style="margin-left: auto; max-width: 22rem;">
-            Bankroll and Kelly fraction are used only for suggested stake sizing in the
-            team detail view. They do not affect the EV numbers.
-          </p>
         </div>
 
-        <!-- Column selection panel -->
+        <div id="divisionNote" class="division-note"></div>
+
+        <!-- Column selection panel (options injected in JS) -->
+        <div id="columnPicker" class="column-picker hidden"></div>
+
+        <!-- Main projections table (injected in JS) -->
+        <div id="teamTableContainer" class="table-container"></div>
+
+        <h3>Division Summaries</h3>
+        <div
+          id="divisionSummaryContainer"
+          class="division-summary-container"
+        ></div>
+      </section>
+
+      <!-- Betting view (inline, used when Betting tab is active) ----------- -->
+      <section id="bettingSection" class="results-section hidden">
+        <div class="results-header-row">
+          <h2>Betting Edges</h2>
+          <button
+            id="betToggleColumns"
+            type="button"
+            class="btn secondary results-columns-btn"
+          >
+            Columns
+          </button>
+        </div>
+
+        <p id="betStatusNote" class="section-note">
+          Run a projection first, then come back here to see edges vs the
+          market.
+        </p>
+
         <div id="betColumnPicker" class="column-picker hidden"></div>
 
-        <!-- Main betting table -->
+        <!-- Main betting EV table -->
         <div id="betTableContainer" class="table-container"></div>
       </section>
 
-      <!-- More / Markets -->
+      <!-- Optional raw markets table under betting ------------------------- -->
       <section id="rawMarketsSection" class="results-section hidden">
         <div class="results-header-row">
-          <div>
-            <h2>More</h2>
-            <p class="section-note">
-              Global display options and market win totals.
-            </p>
-          </div>
+          <h2>Market Win Totals</h2>
         </div>
+        <p class="section-note">
+          These are the raw win totals and odds from the book side, without your
+          model applied.
+        </p>
 
-        <!-- Global options moved from header -->
-        <div class="more-options-list">
-          <button id="themeToggle" type="button" class="btn secondary">
-            Switch to Light Theme
-          </button>
-          <button id="mainDisplayModeToggle" type="button" class="btn secondary">
-            Switch to Mobile View
-          </button>
-          <button id="modeToggleBtn" type="button" class="btn secondary">
-            Switch to Pro Mode
-          </button>
-          <button id="toggleOddsBtn" type="button" class="btn secondary">
-            Show Implied Odds
-          </button>
-          <button id="fillEvenBtn" type="button" class="btn secondary">
-            Fill empty games with neutral spread
-          </button>
-          <button id="resetStateBtn" type="button" class="btn danger">
-            Reset predictions
-          </button>
-          <button id="exportCSV" type="button" class="btn primary">
-            Export projections as CSV
-          </button>
-        </div>
-
-        <h3>Market Win Totals</h3>
         <div id="rawMarketsContainer" class="table-container"></div>
       </section>
     </main>
 
-    <!-- MODALS -->
-    <div id="teamDetailOverlay" class="team-detail-overlay hidden">
-      <div class="team-detail-modal">
-        <button id="teamDetailClose" class="btn close-btn">×</button>
+    <!-- Team detail modal -------------------------------------------------- -->
+    <div
+      id="teamDetailOverlay"
+      class="team-detail-overlay hidden"
+      aria-hidden="true"
+    >
+      <div
+        class="team-detail-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="teamDetailTitle"
+      >
+        <button
+          id="teamDetailClose"
+          class="btn close-btn"
+          type="button"
+          aria-label="Close team detail"
+        >
+          ×
+        </button>
         <div id="teamDetailContent"></div>
       </div>
     </div>
 
-    <div id="betDetailOverlay" class="team-detail-overlay hidden">
-      <div class="team-detail-modal">
-        <button id="betDetailClose" class="btn close-btn">×</button>
+    <!-- Betting detail drawer (for betting table rows) --------------------- -->
+    <div
+      id="betDetailOverlay"
+      class="team-detail-overlay hidden"
+      aria-hidden="true"
+    >
+      <div
+        class="team-detail-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="betDetailTitle"
+      >
+        <button
+          id="betDetailClose"
+          class="btn close-btn"
+          type="button"
+          aria-label="Close betting detail"
+        >
+          ×
+        </button>
         <div id="betDetailContent"></div>
       </div>
     </div>
 
-    <!-- NAV -->
-    <nav class="bottom-nav">
-      <button class="bottom-nav-item is-active" data-tab="games">
+    <!-- Bottom tab bar – mobile-first fan navigation ---------------------- -->
+    <nav class="bottom-nav" aria-label="Primary navigation">
+      <button
+        class="bottom-nav-item is-active"
+        data-tab="games"
+        type="button"
+      >
         <span class="bottom-nav-label">Games</span>
       </button>
-      <button class="bottom-nav-item" data-tab="teams">
+
+      <button class="bottom-nav-item" data-tab="teams" type="button">
         <span class="bottom-nav-label">Teams</span>
       </button>
-      <button class="bottom-nav-item" data-tab="betting">
+
+      <button class="bottom-nav-item" data-tab="betting" type="button">
         <span class="bottom-nav-label">Betting</span>
       </button>
-      <button class="bottom-nav-item" data-tab="more">
+
+      <button class="bottom-nav-item" data-tab="more" type="button">
         <span class="bottom-nav-label">More</span>
       </button>
     </nav>
 
-    <!-- SCRIPTS -->
+    <!-- Main app + betting logic -->
     <script src="shared.js"></script>
     <script src="app.js"></script>
     <script src="betting.js"></script>
