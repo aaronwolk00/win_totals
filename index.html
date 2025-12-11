@@ -18,7 +18,7 @@
         <h1>NFL Win Projection Tool</h1>
         <p>Weeks 15–18, 2025 · Spread-based probabilities (home perspective)</p>
       </div>
-      <!-- Header controls removed: everything lives in the More tab now -->
+      <!-- header controls removed; everything lives under the More tab -->
     </header>
 
     <!-- MAIN CONTENT -->
@@ -128,7 +128,7 @@
         </div>
 
         <p id="betStatusNote" class="section-note" aria-live="polite">
-          Run a projection first, then return here to view edges.
+          Loading simulation results from local storage…
         </p>
 
         <!-- Filters / settings row -->
@@ -206,7 +206,7 @@
             class="btn primary"
             style="margin-left: auto;"
           >
-            Export betting table as CSV
+            Export CSV
           </button>
 
           <p class="section-note" style="margin-left: auto; max-width: 22rem;">
@@ -222,13 +222,13 @@
         <div id="betTableContainer" class="table-container"></div>
       </section>
 
-      <!-- More (global controls + raw markets) -->
+      <!-- More / Markets -->
       <section id="rawMarketsSection" class="results-section hidden">
         <div class="results-header-row">
           <div>
             <h2>More</h2>
             <p class="section-note">
-              Global display options, exports, and market win totals.
+              Global display options and market win totals.
             </p>
           </div>
         </div>
@@ -259,9 +259,6 @@
         </div>
 
         <h3>Market Win Totals</h3>
-        <p class="section-note">
-          Regular-season win totals and alternate lines, shown exactly as provided.
-        </p>
         <div id="rawMarketsContainer" class="table-container"></div>
       </section>
     </main>
