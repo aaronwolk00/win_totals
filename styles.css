@@ -97,6 +97,11 @@
     gap: 0.5rem;
   }
   
+  /* Checkbox group in betting filters */
+  .checkbox-group {
+    gap: 0.35rem;
+  }
+  
   /* ==========================================================
      Header + controls
      ========================================================== */
@@ -207,7 +212,8 @@
      ========================================================== */
   
   select,
-  input[type="number"] {
+  input[type="number"],
+  input[type="text"] {
     font-size: 0.9rem;
     border-radius: 999px;
     padding: 0.35rem 0.8rem;
@@ -217,13 +223,15 @@
   }
   
   body.theme-dark select,
-  body.theme-dark input[type="number"] {
+  body.theme-dark input[type="number"],
+  body.theme-dark input[type="text"] {
     border-color: var(--border-subtle-dark);
     color: var(--text-main-dark);
   }
   
   body.theme-light select,
-  body.theme-light input[type="number"] {
+  body.theme-light input[type="number"],
+  body.theme-light input[type="text"] {
     border-color: var(--border-subtle-light);
     color: var(--text-main-light);
   }
@@ -1096,7 +1104,7 @@
     font-size: 0.8rem;
   }
   
-  /* Probability pill – slightly smaller on mobile */
+  /* Probability pill – slightly smaller on mobile + desktop tweak */
   body.mode-mobile .selected-prob,
   body.mode-desktop .selected-prob {
     display: inline-flex;
@@ -1185,7 +1193,7 @@
      Mobile-first bottom tab bar + fan layout tweaks
      ========================================================== */
   
-  /* Bottom nav base (hidden by default) */
+  /* Bottom nav base – always visible */
   .bottom-nav {
     position: fixed;
     inset-inline: 0;
@@ -1194,7 +1202,7 @@
     padding: 0 0.75rem;
     border-top: 1px solid rgba(148, 163, 184, 0.5);
     backdrop-filter: blur(14px);
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: space-around;
     gap: 0.4rem;
@@ -1209,11 +1217,6 @@
   body.theme-light .bottom-nav {
     background: rgba(249, 250, 251, 0.96);
     border-color: rgba(148, 163, 184, 0.8);
-  }
-  
-  /* Only show in explicit mobile view */
-  body.mode-mobile .bottom-nav {
-    display: flex;
   }
   
   /* Tab buttons */
@@ -1254,12 +1257,12 @@
     box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.9);
   }
   
-  /* Give the content room above the nav on mobile */
-  body.mode-mobile main.layout {
+  /* Give the content room above the nav on both desktop and mobile */
+  main.layout {
     padding-bottom: 5.25rem;
   }
   
-  /* Lighten header a bit in mobile mode (more “fan app”) */
+  /* Lighten header a bit in mobile mode (keep your existing tweaks) */
   body.mode-mobile .app-header {
     padding-block: 0.7rem;
   }
