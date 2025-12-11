@@ -73,108 +73,110 @@ const state = {
 // Persistence (localStorage)
 // ---------------------------
 
+// Utility: load/save state to localStorage
 function loadStateFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-
-    if (parsed.theme === "light" || parsed.theme === "dark") {
-      state.theme = parsed.theme;
-    }
-    if (typeof parsed.precision === "number") {
-      state.precision = parsed.precision;
-    }
-
-    // spreads – normalize and coerce to numbers
-    if (parsed.spreads && typeof parsed.spreads === "object") {
-      state.spreads = {};
-      for (const [key, val] of Object.entries(parsed.spreads)) {
-        let n = typeof val === "number" ? val : parseFloat(val);
-        if (Number.isFinite(n)) {
-          state.spreads[String(key)] = n;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+  
+      if (parsed.theme === "light" || parsed.theme === "dark") {
+        state.theme = parsed.theme;
+      }
+      if (typeof parsed.precision === "number") {
+        state.precision = parsed.precision;
+      }
+  
+      // spreads – normalize and coerce to numbers
+      if (parsed.spreads && typeof parsed.spreads === "object") {
+        state.spreads = {};
+        for (const [key, val] of Object.entries(parsed.spreads)) {
+          let n = typeof val === "number" ? val : parseFloat(val);
+          if (Number.isFinite(n)) {
+            state.spreads[String(key)] = n;
+          }
         }
       }
+  
+      if (parsed.view === "schedule" || parsed.view === "projections") {
+        state.view = parsed.view;
+      }
+      if (typeof parsed.showImpliedOdds === "boolean") {
+        state.showImpliedOdds = parsed.showImpliedOdds;
+      }
+      if (Array.isArray(parsed.results)) {
+        state.results = parsed.results;
+      }
+  
+      // filters + last focused game
+      if (parsed.filterWeek !== undefined) {
+        state.filterWeek = parsed.filterWeek;
+      }
+      if (parsed.filterTeam !== undefined) {
+        state.filterTeam = parsed.filterTeam;
+      }
+      if (parsed.filterDivision !== undefined) {
+        state.filterDivision = parsed.filterDivision;
+      }
+      if (
+        parsed.filterPickStatus &&
+        (parsed.filterPickStatus === "ALL" ||
+          parsed.filterPickStatus === "PICKED" ||
+          parsed.filterPickStatus === "UNPICKED")
+      ) {
+        state.filterPickStatus = parsed.filterPickStatus;
+      }
+  
+      if (parsed.lastFocusedGameId !== undefined) {
+        state.lastFocusedGameId = parsed.lastFocusedGameId;
+      }
+  
+      // mode + scenarios
+      if (parsed.mode === "fan" || parsed.mode === "pro") {
+        state.mode = parsed.mode;
+      }
+  
+      if (parsed.scenarios && typeof parsed.scenarios === "object") {
+        state.scenarios = parsed.scenarios;
+      }
+  
+      if (typeof parsed.activeScenario === "string") {
+        state.activeScenario = parsed.activeScenario;
+      }
+    } catch (err) {
+      console.warn("Failed to load state:", err);
     }
-
-    if (parsed.view === "schedule" || parsed.view === "projections") {
-      state.view = parsed.view;
-    }
-    if (typeof parsed.showImpliedOdds === "boolean") {
-      state.showImpliedOdds = parsed.showImpliedOdds;
-    }
-    if (Array.isArray(parsed.results)) {
-      state.results = parsed.results;
-    }
-
-    // filters + last focused game
-    if (parsed.filterWeek !== undefined) {
-      state.filterWeek = parsed.filterWeek;
-    }
-    if (parsed.filterTeam !== undefined) {
-      state.filterTeam = parsed.filterTeam;
-    }
-    if (parsed.filterDivision !== undefined) {
-      state.filterDivision = parsed.filterDivision;
-    }
-    if (
-      parsed.filterPickStatus &&
-      (parsed.filterPickStatus === "ALL" ||
-        parsed.filterPickStatus === "PICKED" ||
-        parsed.filterPickStatus === "UNPICKED")
-    ) {
-      state.filterPickStatus = parsed.filterPickStatus;
-    }
-
-    if (parsed.lastFocusedGameId !== undefined) {
-      state.lastFocusedGameId = parsed.lastFocusedGameId;
-    }
-
-    // mode + scenarios
-    if (parsed.mode === "fan" || parsed.mode === "pro") {
-      state.mode = parsed.mode;
-    }
-
-    if (parsed.scenarios && typeof parsed.scenarios === "object") {
-      state.scenarios = parsed.scenarios;
-    }
-
-    if (typeof parsed.activeScenario === "string") {
-      state.activeScenario = parsed.activeScenario;
-    }
-  } catch (err) {
-    console.warn("Failed to load state:", err);
   }
-}
-
-function saveStateToStorage() {
-  const toSave = {
-    theme: state.theme,
-    precision: state.precision,
-    spreads: state.spreads,
-    view: state.view,
-    showImpliedOdds: state.showImpliedOdds,
-    results: state.results,
-
-    // filters + scroll memory
-    filterWeek: state.filterWeek,
-    filterTeam: state.filterTeam,
-    filterDivision: state.filterDivision,
-    filterPickStatus: state.filterPickStatus,
-    lastFocusedGameId: state.lastFocusedGameId,
-
-    // meta
-    mode: state.mode,
-    scenarios: state.scenarios,
-    activeScenario: state.activeScenario,
-  };
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  } catch (err) {
-    console.warn("Failed to save state:", err);
+  
+  function saveStateToStorage() {
+    const toSave = {
+      theme: state.theme,
+      precision: state.precision,
+      spreads: state.spreads,
+      view: state.view,
+      showImpliedOdds: state.showImpliedOdds,
+      results: state.results,
+  
+      // filters + scroll memory
+      filterWeek: state.filterWeek,
+      filterTeam: state.filterTeam,
+      filterDivision: state.filterDivision,
+      filterPickStatus: state.filterPickStatus,
+      lastFocusedGameId: state.lastFocusedGameId,
+  
+      // meta
+      mode: state.mode,
+      scenarios: state.scenarios,
+      activeScenario: state.activeScenario,
+    };
+  
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    } catch (err) {
+      console.warn("Failed to save state:", err);
+    }
   }
-}
+  
 
 // ---------------------------
 // Theme & mode & view handling
