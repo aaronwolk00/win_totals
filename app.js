@@ -120,20 +120,7 @@ function applyMode({ resetColumns = false } = {}) {
       barLabelEl.textContent = `${overall}% complete`;
     }
   }
-  
 
-// Has the user picked at least one spread for this team's games?
-function teamHasAnyPickedGame(teamId) {
-    for (const game of games) {
-      if (game.home === teamId || game.away === teamId) {
-        if (typeof state.spreads[String(game.id)] === "number") {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-  
 // Spread band values: from -20.5 to +20.5 in 1-point increments
 const spreadBandValues = (() => {
   const arr = [];
@@ -1210,7 +1197,7 @@ function renderTeamTable() {
   
     for (const r of resultsCopy) {
 
-      if (!teamHasAnyPickedGame(r.teamId)) {
+      if (!resultHasAnyPickedGame(r.teamId)) {
           continue;
         }
       const tr = document.createElement("tr");
@@ -1326,7 +1313,7 @@ function renderDivisionSummary() {
   
     const resultsByDiv = {};
     for (const r of state.results) {
-      if (!teamHasAnyPickedGame(r.teamId)) continue;
+      if (!resultHasAnyPickedGame(r.teamId)) continue;
     
       if (!resultsByDiv[r.division]) resultsByDiv[r.division] = [];
       resultsByDiv[r.division].push(r);
@@ -1648,7 +1635,7 @@ function exportCsv() {
   rows.push(headerRow);
 
   for (const r of state.results) {
-    if (!teamHasAnyPickedGame(r.teamId)) continue;
+    if (!resultHasAnyPickedGame(r.teamId)) continue;
   
     rows.push([
       r.teamId,

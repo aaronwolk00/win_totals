@@ -1,22 +1,5 @@
 // betting.js – win totals betting table for NFL Win Projection Tool
 // ------------------------------------------------------------
-//
-// This file assumes the following globals already exist
-// (defined in your main app/shared script):
-//
-//   const STORAGE_KEY
-//   const DISPLAY_MODE_KEY
-//   let   displayMode
-//   const teamPalettes
-//   function loadDisplayMode()
-//   function saveDisplayMode()
-//   function applyDisplayMode()
-//   function americanToProb(odds)
-//   function formatPercent(p, decimals)
-//   function formatNumber(x, decimals)
-//   function formatAmerican(odds)
-//
-// UI is a tab inside index.html (no navigation to a separate page).
   
   // lookups
   const MARKET_LOOKUP = {};
@@ -97,17 +80,6 @@
       console.error("Failed to parse stored state", e);
       return null;
     }
-  }
-  
-  // -----------------------
-  // Picked-team detection
-  // -----------------------
-  
-  // A team is treated as "picked" iff at least one of its remaining
-  // game win probabilities differs from 0.5.
-  function teamHasAnyPickedGame(result) {
-    if (!Array.isArray(result.probs) || !result.probs.length) return false;
-    return result.probs.some((p) => Math.abs(p - 0.5) > 1e-6);
   }
   
   // -----------------------
@@ -200,7 +172,7 @@
   
     for (const r of results) {
       // skip teams whose games haven't been picked at all
-      if (!teamHasAnyPickedGame(r)) continue;
+      if (!betResultHasAnyPickedGame(r)) continue;
   
       const marketMap = MARKET_LOOKUP[r.teamId];
       if (!marketMap) continue;
@@ -995,7 +967,7 @@
       });
     }
   
-    const colBtn = document.getElementById("betToggleColumnPicker");
+    const colBtn = document.getElementById("betToggleColumns");
     if (colBtn) {
       colBtn.addEventListener("click", () => {
         const picker = document.getElementById("betColumnPicker");

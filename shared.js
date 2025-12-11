@@ -1015,3 +1015,10 @@ function formatNumber(x, decimals = 2) {
   if (x == null) return "—";
   return x.toFixed(decimals);
 }
+
+// Result-level helper: does this team have any non-coinflip games?
+function resultHasAnyPickedGame(result) {
+    if (!Array.isArray(result.probs) || !result.probs.length) return false;
+    return result.probs.some((p) => Math.abs(p - 0.5) > 1e-6);
+  }
+  
