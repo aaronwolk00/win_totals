@@ -79,11 +79,15 @@
         <div class="section-note">
           <div id="step1ProgressText">Games with your line: 0/64 (0%)</div>
           <div id="step2ProgressText">Teams touched: 0/32 (0%)</div>
-          <div id="step3ProgressText">Set some spreads to unlock betting edges</div>
+          <div id="step3ProgressText">
+            Set some spreads to unlock betting edges
+          </div>
           <div class="progress-bar-bg">
             <div id="globalProgressBar" class="progress-bar-fill"></div>
           </div>
-          <div id="globalProgressLabel" class="progress-label">0% complete</div>
+          <div id="globalProgressLabel" class="progress-label">
+            0% complete
+          </div>
         </div>
 
         <!-- Filters -->
@@ -135,13 +139,18 @@
       <section id="resultsSection" class="results-section hidden">
         <div class="results-header-row">
           <h2>Team Projections</h2>
-          <button id="toggleColumnPicker" class="btn secondary">Columns</button>
+          <button id="toggleColumnPicker" class="btn secondary">
+            Columns
+          </button>
         </div>
         <div id="divisionNote" class="division-note"></div>
         <div id="columnPicker" class="column-picker hidden"></div>
         <div id="teamTableContainer" class="table-container"></div>
         <h3>Division Summaries</h3>
-        <div id="divisionSummaryContainer" class="division-summary-container"></div>
+        <div
+          id="divisionSummaryContainer"
+          class="division-summary-container"
+        ></div>
       </section>
 
       <!-- Betting -->
@@ -150,7 +159,8 @@
           <div>
             <h2>Betting Table (Additional Wins vs Market)</h2>
             <p class="section-note">
-              Click a row to see full market details, implied probabilities, and Kelly stakes.
+              Click a row to see full market details, implied probabilities, and
+              Kelly stakes.
             </p>
           </div>
           <div class="results-header-actions">
@@ -254,8 +264,8 @@
           </button>
 
           <p class="section-note" style="margin-left: auto; max-width: 22rem;">
-            Bankroll and Kelly fraction are used only for suggested stake sizing in the
-            team detail view. They do not affect the EV numbers.
+            Bankroll and Kelly fraction are used only for suggested stake sizing
+            in the team detail view. They do not affect the EV numbers.
           </p>
         </div>
 
@@ -266,9 +276,16 @@
         <div id="betTableContainer" class="table-container"></div>
       </section>
 
+      <!-- Raw markets table -->
       <section id="rawMarketsSection" class="results-section hidden">
         <div class="results-header-row">
-          <h2>Market Win Totals</h2>
+          <div>
+            <h2>Raw Market Win Totals (as posted)</h2>
+            <p class="section-note">
+              Regular-season win totals and alternate lines, shown exactly as
+              provided.
+            </p>
+          </div>
         </div>
         <div id="rawMarketsContainer" class="table-container"></div>
       </section>
@@ -284,7 +301,9 @@
 
     <div id="betDetailOverlay" class="team-detail-overlay hidden">
       <div class="team-detail-modal">
-        <button id="betDetailClose" class="btn close-btn">×</button>
+        <button id="betDetailClose" class="btn close-btn" type="button">
+          ×
+        </button>
         <div id="betDetailContent"></div>
       </div>
     </div>

@@ -1,34 +1,66 @@
 /* ==========================================================
-   Root tokens
+   Modern Fintech Theme – Core Tokens
    ========================================================== */
 
    :root {
-    --bg-dark: #020617;
-    --bg-dark-elevated: #020617;
-    --bg-dark-card: #0b1120;
-    --bg-light: #f9fafb;
-    --bg-light-card: #ffffff;
+    /* Brand + surfaces (dark-first) */
+    --bg-body-dark: #020617;         /* Very deep navy/black */
+    --bg-surface-dark: #020617;      /* Base surface */
+    --bg-elevated-dark: #0b1120;     /* Cards */
+    --bg-elevated-soft-dark: #0f172a;/* Softer card / panels */
+    --bg-overlay-dark: rgba(15, 23, 42, 0.75);
   
-    --border-subtle-dark: #1f2937;
-    --border-subtle-light: #e5e7eb;
+    --bg-body-light: #f8fafc;
+    --bg-surface-light: #e5e7eb;
+    --bg-elevated-light: #ffffff;
+    --bg-elevated-soft-light: #f9fafb;
+    --bg-overlay-light: rgba(15, 23, 42, 0.3);
   
-    --text-main-dark: #e5e7eb;
-    --text-soft-dark: #9ca3af;
-    --text-main-light: #111827;
-    --text-soft-light: #6b7280;
+    /* Borders */
+    --border-subtle-dark: #1e293b;
+    --border-strong-dark: #334155;
+    --border-subtle-light: #e2e8f0;
+    --border-strong-light: #cbd5f5;
   
-    --accent: #22c55e;
-    --accent-soft: rgba(34, 197, 94, 0.16);
+    /* Text */
+    --text-main-dark: #e2e8f0;
+    --text-soft-dark: #94a3b8;
+    --text-faint-dark: #64748b;
+  
+    --text-main-light: #0f172a;
+    --text-soft-light: #64748b;
+    --text-faint-light: #94a3b8;
+  
+    /* Accent / state */
+    --accent: #38bdf8;               /* Cyan / fintech blue */
+    --accent-soft: rgba(56, 189, 248, 0.14);
+    --accent-strong: #0ea5e9;
+  
+    --success: #22c55e;
     --danger: #ef4444;
+    --danger-soft: rgba(248, 113, 113, 0.15);
     --muted: #4b5563;
   
+    /* Spreads */
     --spread-neutral: #64748b;
-    --spread-favorite: #16a34a;
+    --spread-favorite: #22c55e;
     --spread-dog: #f97316;
+  
+    /* Shadows */
+    --shadow-soft-dark: 0 18px 40px rgba(15, 23, 42, 0.7);
+    --shadow-soft-light: 0 18px 40px rgba(15, 23, 42, 0.16);
+  
+    /* Radii */
+    --radius-lg: 12px;
+    --radius-md: 10px;
+    --radius-pill: 999px;
+  
+    /* Sizing */
+    --control-min-height: 44px;      /* Mobile-friendly tap target */
   }
   
   /* ==========================================================
-     Base / reset
+     Base / Reset
      ========================================================== */
   
   *,
@@ -42,8 +74,8 @@
     margin: 0;
     padding: 0;
     width: 100%;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-      sans-serif;
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", sans-serif;
     font-size: 16px;
   }
   
@@ -56,12 +88,12 @@
      ========================================================== */
   
   body.theme-dark {
-    background: radial-gradient(circle at top left, #111827 0, #020617 45%);
+    background: radial-gradient(circle at 0% 0%, #111827 0, #020617 55%);
     color: var(--text-main-dark);
   }
   
   body.theme-light {
-    background: radial-gradient(circle at top left, #e5e7eb 0, #f9fafb 45%);
+    background: radial-gradient(circle at 0% 0%, #e5e7eb 0, #f8fafc 55%);
     color: var(--text-main-light);
   }
   
@@ -69,7 +101,7 @@
   body.theme-dark .schedule-section,
   body.theme-dark .results-section,
   body.theme-dark .team-detail-modal {
-    background-color: rgba(15, 23, 42, 0.96);
+    background-color: rgba(15, 23, 42, 0.86);
     border-color: var(--border-subtle-dark);
   }
   
@@ -77,7 +109,7 @@
   body.theme-light .schedule-section,
   body.theme-light .results-section,
   body.theme-light .team-detail-modal {
-    background-color: rgba(255, 255, 255, 0.96);
+    background-color: rgba(255, 255, 255, 0.94);
     border-color: var(--border-subtle-light);
   }
   
@@ -89,7 +121,6 @@
     display: none !important;
   }
   
-  /* little flex row helper used in header controls */
   .controls-row {
     display: flex;
     flex-wrap: wrap;
@@ -97,13 +128,61 @@
     gap: 0.5rem;
   }
   
-  /* Checkbox group in betting filters */
-  .checkbox-group {
-    gap: 0.35rem;
+  .mono {
+    font-variant-numeric: tabular-nums;
   }
   
   /* ==========================================================
-     Header + controls
+     Layout
+     ========================================================== */
+  
+  .layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.2rem 1.6rem 5.2rem; /* extra bottom for bottom-nav */
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+  
+  .schedule-section,
+  .results-section {
+    border-radius: var(--radius-lg);
+    border: 1px solid;
+    padding: 1.2rem 1.4rem 1.6rem;
+    width: 100%;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  
+  body.theme-dark .schedule-section,
+  body.theme-dark .results-section {
+    box-shadow: var(--shadow-soft-dark);
+  }
+  
+  body.theme-light .schedule-section,
+  body.theme-light .results-section {
+    box-shadow: var(--shadow-soft-light);
+  }
+  
+  .schedule-section h2,
+  .results-section h2,
+  .results-section h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.01em;
+  }
+  
+  .section-note {
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+    color: inherit;
+    opacity: 0.9;
+  }
+  
+  /* ==========================================================
+     Header + Controls
      ========================================================== */
   
   .app-header {
@@ -114,22 +193,23 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    padding: 0.85rem 1.75rem;
+    gap: 0.75rem 1.5rem;
+    padding: 0.85rem 1.6rem;
     border-bottom: 1px solid;
     backdrop-filter: blur(16px);
-    width: 100%;
+    -webkit-backdrop-filter: blur(16px);
   }
   
   .app-title h1 {
     margin: 0;
-    font-size: 1.6rem;
-    letter-spacing: 0.02em;
+    font-size: 1.5rem;
+    letter-spacing: 0.01em;
   }
   
   .app-title p {
     margin: 0.25rem 0 0;
-    font-size: 0.9rem;
-    opacity: 0.8;
+    font-size: 0.88rem;
+    opacity: 0.85;
     max-width: 42rem;
   }
   
@@ -138,14 +218,14 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.6rem;
-    margin-top: 0.6rem;
+    margin-top: 0.4rem;
   }
   
-  /* header toggle shown only in mobile mode */
+  /* Header toggle button: mobile only */
   .header-toggle-btn {
     display: none;
     margin-left: auto;
-    margin-top: 0.6rem;
+    margin-top: 0.3rem;
   }
   
   /* ==========================================================
@@ -153,58 +233,71 @@
      ========================================================== */
   
   .btn {
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     border: 1px solid transparent;
-    padding: 0.45rem 1.1rem;
-    font-size: 0.95rem;
+    padding: 0.4rem 1rem;
+    font-size: 0.9rem;
     cursor: pointer;
-    background: none;
+    background: transparent;
+    line-height: 1.2;
+    min-height: var(--control-min-height);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
     transition:
-      background 0.15s ease,
-      border-color 0.15s ease,
-      color 0.15s ease,
+      background-color 0.16s ease,
+      border-color 0.16s ease,
+      color 0.16s ease,
+      box-shadow 0.16s ease,
       transform 0.05s ease;
   }
   
   .btn.primary {
-    background: var(--accent);
-    color: #022c22;
-    border-color: var(--accent);
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: #0b1220;
+    border-color: transparent;
+    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.45);
   }
   
   .btn.secondary {
     border-color: var(--muted);
+    background: rgba(15, 23, 42, 0.2);
   }
   
   .btn.danger {
-    border-color: #b91c1c;
+    border-color: rgba(248, 113, 113, 0.7);
     color: #fecaca;
+    background: rgba(127, 29, 29, 0.35);
+  }
+  
+  body.theme-light .btn.secondary {
+    background: rgba(148, 163, 184, 0.08);
   }
   
   body.theme-light .btn.danger {
     color: #7f1d1d;
+    background: rgba(248, 113, 113, 0.12);
   }
   
   .btn:hover {
     transform: translateY(-1px);
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.35);
+  }
+  
+  .btn.primary:hover {
+    box-shadow: 0 14px 34px rgba(56, 189, 248, 0.55);
   }
   
   .btn.danger:hover {
-    background: rgba(239, 68, 68, 0.14);
+    background: var(--danger-soft);
   }
   
-  body.theme-dark .btn {
-    color: var(--text-main-dark);
-  }
-  
-  body.theme-light .btn {
-    color: var(--text-main-light);
-  }
-  
-  /* Tiny buttons (team editor presets) */
+  /* Extra small buttons (used in team editor presets, etc.) */
   .btn.btn-xs {
-    padding: 0.18rem 0.5rem;
-    font-size: 0.76rem;
+    padding: 0.18rem 0.6rem;
+    font-size: 0.78rem;
+    min-height: 30px;
   }
   
   /* ==========================================================
@@ -215,11 +308,17 @@
   input[type="number"],
   input[type="text"] {
     font-size: 0.9rem;
-    border-radius: 999px;
-    padding: 0.35rem 0.8rem;
+    border-radius: var(--radius-pill);
+    padding: 0.45rem 0.9rem;
     border: 1px solid;
-    background: transparent;
-    min-width: 4rem;
+    background: rgba(15, 23, 42, 0.45);
+    min-width: 4.2rem;
+    min-height: var(--control-min-height);
+    outline: none;
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease,
+      box-shadow 0.16s ease;
   }
   
   body.theme-dark select,
@@ -233,7 +332,15 @@
   body.theme-light input[type="number"],
   body.theme-light input[type="text"] {
     border-color: var(--border-subtle-light);
+    background: rgba(255, 255, 255, 0.9);
     color: var(--text-main-light);
+  }
+  
+  select:focus,
+  input[type="number"]:focus,
+  input[type="text"]:focus {
+    border-color: var(--accent-strong);
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.65);
   }
   
   /* Label + control pair */
@@ -241,83 +348,93 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    font-size: 0.9rem;
+    font-size: 0.86rem;
   }
   
   .control-group span {
-    opacity: 0.85;
+    opacity: 0.9;
+    white-space: nowrap;
+  }
+  
+  .checkbox-group {
+    gap: 0.35rem;
+  }
+  
+  .checkbox-group input[type="checkbox"] {
+    min-height: auto;
   }
   
   /* ==========================================================
-     Layout
+     Schedule Filters
      ========================================================== */
   
-  .layout {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1.25rem 1.75rem 2rem;
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  .schedule-section,
-  .results-section {
-    border-radius: 1rem;
-    border: 1px solid;
-    padding: 1.2rem 1.4rem 1.7rem;
-    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.45);
-    width: 100%;
-  }
-  
-  .schedule-section h2,
-  .results-section h2,
-  .results-section h3 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-  }
-  
-  .section-note {
-    margin: 0 0 0.75rem;
-    font-size: 0.9rem;
-    opacity: 0.85;
-  }
-  
-  /* Filters row under schedule header */
   .schedule-filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.75rem;
     margin-top: 0.5rem;
   }
   
   /* ==========================================================
-     Schedule / weeks
+     Progress
+     ========================================================== */
+  
+  .progress-bar-bg {
+    position: relative;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 0.35rem 0 0.25rem;
+  }
+  
+  body.theme-dark .progress-bar-bg {
+    background: rgba(15, 23, 42, 0.9);
+  }
+  
+  body.theme-light .progress-bar-bg {
+    background: #e2e8f0;
+  }
+  
+  .progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--success));
+    transition: width 0.24s ease-out;
+  }
+  
+  .progress-label {
+    font-size: 0.78rem;
+    opacity: 0.8;
+  }
+  
+  /* ==========================================================
+     Schedule / Week / Games
      ========================================================== */
   
   .schedule-container {
     display: flex;
     flex-direction: column;
-    gap: 0.7rem;
-    padding-right: 0.25rem;
+    gap: 0.75rem;
     width: 100%;
+    padding-right: 0.15rem;
   }
   
   .week-block {
-    border-radius: 0.9rem;
-    border: 1px dashed;
+    border-radius: var(--radius-md);
+    border: 1px solid;
     padding: 0.8rem 1rem 0.9rem;
     width: 100%;
   }
   
   body.theme-dark .week-block {
     border-color: var(--border-subtle-dark);
-    background: rgba(15, 23, 42, 0.75);
+    background: radial-gradient(circle at 0% 0%, #0b1120 0, #020617 80%);
   }
   
   body.theme-light .week-block {
     border-color: var(--border-subtle-light);
-    background: rgba(255, 255, 255, 0.9);
+    background: linear-gradient(135deg, #ffffff, #eef2ff);
   }
   
   .week-header {
@@ -329,11 +446,13 @@
   
   .week-header h3 {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: 1.02rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
   
   .week-header span {
-    font-size: 0.9rem;
+    font-size: 0.86rem;
     opacity: 0.75;
   }
   
@@ -345,7 +464,7 @@
   }
   
   /* ==========================================================
-     Game cards
+     Game Cards
      ========================================================== */
   
   .game-card {
@@ -353,24 +472,24 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     row-gap: 0.22rem;
-    padding: 0.45rem 0.9rem;
-    border-radius: 0.85rem;
-    border: 1px solid rgba(148, 163, 184, 0.45);
+    padding: 0.55rem 0.95rem;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.4);
     align-items: center;
     font-size: 0.98rem;
     overflow: hidden;
     width: 100%;
-    min-height: 48px;
+    min-height: 56px;
   }
   
   /* Gradient heat: away → neutral → home */
   body.theme-dark .game-card {
     background: linear-gradient(
       90deg,
-      var(--away-color-main, #111827) 0%,
-      rgba(15, 23, 42, 0.98) 45%,
-      rgba(15, 23, 42, 0.98) 55%,
-      var(--home-color-main, #16a34a) 100%
+      var(--away-color-main, #020617) 0%,
+      #020617 45%,
+      #020617 55%,
+      var(--home-color-main, #0ea5e9) 100%
     );
   }
   
@@ -389,7 +508,7 @@
     width: 4px;
     background: linear-gradient(
       to bottom,
-      var(--home-color-main, #22c55e),
+      var(--home-color-main, var(--accent)),
       var(--away-color-main, #f97316)
     );
   }
@@ -398,14 +517,13 @@
     position: relative;
   }
   
-  /* Top line: Week · Day */
   .game-info-top {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.18em;
     opacity: 0.9;
   }
   
@@ -413,19 +531,19 @@
     content: "NFL";
     font-weight: 700;
     font-size: 0.7rem;
-    padding: 0.1rem 0.4rem;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.8);
+    padding: 0.12rem 0.4rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid rgba(148, 163, 184, 0.85);
   }
   
-  /* Main matchup row */
+  /* Main row */
   .game-info-main {
-    margin-top: 0.1rem;
+    margin-top: 0.14rem;
     display: grid;
     grid-template-columns: 1.25fr auto 1.25fr;
     align-items: center;
     column-gap: 0.75rem;
-    font-size: 1.02rem;
+    font-size: 1rem;
     font-weight: 600;
   }
   
@@ -448,7 +566,7 @@
   
   .team-code {
     font-weight: 800;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   
@@ -456,7 +574,6 @@
     opacity: 0.9;
   }
   
-  /* Center cell: AT + line pill */
   .game-center {
     display: flex;
     flex-direction: row;
@@ -476,30 +593,29 @@
   .game-center-spread {
     font-size: 1.25rem;
     font-weight: 700;
-    letter-spacing: 0.04em;
-    padding: 0.2rem 0.9rem;
-    border-radius: 999px;
-    min-width: 4.2rem;
+    letter-spacing: 0.02em;
+    padding: 0.24rem 0.95rem;
+    border-radius: var(--radius-pill);
+    min-width: 4.4rem;
     text-align: center;
     font-variant-numeric: tabular-nums;
-    background: rgba(15, 23, 42, 0.9);
+    background: rgba(15, 23, 42, 0.95);
     border: 1px solid rgba(148, 163, 184, 0.6);
     color: #f9fafb;
   }
   
   body.theme-light .game-center-spread {
-    background: #111827;
+    background: #0f172a;
     color: #f9fafb;
   }
   
-  /* muted when no line chosen */
   .game-center-spread.is-empty {
     opacity: 0.6;
   }
   
-  /* Meta row: band + probs + expand button */
+  /* Meta Row */
   .game-info-meta {
-    margin-top: 0.3rem;
+    margin-top: 0.35rem;
     display: flex;
     flex-direction: column;
     gap: 0.45rem;
@@ -507,7 +623,7 @@
   }
   
   /* ==========================================================
-     Spread band
+     Spread Band
      ========================================================== */
   
   .spread-band-wrapper {
@@ -524,15 +640,19 @@
   
   .spread-option {
     flex: 0 0 auto;
-    font-size: 0.88rem;
-    padding: 0.32rem 0.75rem;
-    border-radius: 999px;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: var(--radius-pill);
     border: 1px solid transparent;
     cursor: pointer;
     white-space: nowrap;
-    background: transparent;
+    background: rgba(15, 23, 42, 0.8);
+    min-height: var(--control-min-height);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     transition:
-      background 0.12s ease,
+      background-color 0.12s ease,
       border-color 0.12s ease,
       color 0.12s ease,
       transform 0.05s ease;
@@ -544,6 +664,7 @@
   
   body.theme-light .spread-option {
     color: var(--text-soft-light);
+    background: rgba(226, 232, 240, 0.9);
   }
   
   .spread-option.neutral {
@@ -562,15 +683,11 @@
     transform: translateY(-1px);
   }
   
-  /* Selected spread – strong pill */
   .spread-option.selected {
-    background: rgba(15, 23, 42, 0.9);
-    border-color: var(--accent);
-    color: #f9fafb;
-    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.7);
-    font-weight: 600;
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
+    background: var(--accent);
+    border-color: var(--accent-strong);
+    color: #0b1220;
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.8);
   }
   
   /* Hide extra-wide spreads unless expanded */
@@ -586,18 +703,12 @@
   .spread-expand-btn {
     margin-top: 0.25rem;
     align-self: flex-start;
-    font-size: 0.76rem;
-    padding: 0.2rem 0.7rem;
-  }
-  
-  @media (pointer: fine) {
-    .spread-expand-btn {
-      opacity: 0.75;
-    }
+    font-size: 0.78rem;
+    padding: 0.25rem 0.8rem;
   }
   
   /* ==========================================================
-     Probability line
+     Probability Pill
      ========================================================== */
   
   .selected-prob {
@@ -606,17 +717,16 @@
     justify-content: center;
     width: auto;
     max-width: 100%;
-    margin-top: 0.25rem;
-    padding: 0.2rem 0.75rem;
-    border-radius: 999px;
-    font-size: 0.82rem;
+    margin-top: 0.2rem;
+    padding: 0.16rem 0.7rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.8rem;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   
-  /* Theme styling for probability pill */
   body.theme-dark .selected-prob {
     background: rgba(15, 23, 42, 0.96);
     border: 1px solid rgba(148, 163, 184, 0.7);
@@ -630,7 +740,7 @@
   }
   
   /* ==========================================================
-     Results table
+     Results Tables
      ========================================================== */
   
   .results-header-row {
@@ -638,6 +748,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
+  }
+  
+  .results-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
   
   .results-columns-btn {
@@ -655,7 +771,7 @@
   
   body.theme-dark .table-container {
     border-color: var(--border-subtle-dark);
-    background: rgba(15, 23, 42, 0.9);
+    background: rgba(15, 23, 42, 0.96);
   }
   
   body.theme-light .table-container {
@@ -688,14 +804,16 @@
   
   .table th,
   .table td {
-    padding: 0.4rem 0.5rem;
+    padding: 0.4rem 0.55rem;
     text-align: right;
     border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+    font-variant-numeric: tabular-nums;
   }
   
   .table th:first-child,
   .table td:first-child {
     text-align: left;
+    font-variant-numeric: normal;
   }
   
   /* Sortable headers */
@@ -710,10 +828,10 @@
     margin-left: 0.15rem;
   }
   
-  /* Team-color heat rows */
+  /* Row background: subtle team heat, good for "live delta" highlights later */
   .table tbody tr {
-    --team-color-main: #334155;
-    --team-color-alt: #64748b;
+    --team-color-main: #0f172a;
+    --team-color-alt: #1f2937;
     background-image: linear-gradient(
       90deg,
       rgba(15, 23, 42, 0.98) 0%,
@@ -723,6 +841,9 @@
     );
     background-size: 100% 100%;
     background-repeat: no-repeat;
+    transition:
+      background-color 0.14s ease,
+      filter 0.14s ease;
   }
   
   body.theme-light .table tbody tr {
@@ -735,7 +856,7 @@
   }
   
   .table tbody tr:hover {
-    filter: brightness(1.05);
+    filter: brightness(1.06);
     cursor: pointer;
   }
   
@@ -756,7 +877,7 @@
   
   .badge-division {
     font-size: 0.8rem;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 0.05rem 0.45rem;
     border: 1px solid rgba(148, 163, 184, 0.8);
   }
@@ -771,7 +892,7 @@
   }
   
   /* ==========================================================
-     Column picker
+     Column Picker
      ========================================================== */
   
   .column-picker {
@@ -784,12 +905,12 @@
   
   body.theme-dark .column-picker {
     border-color: var(--border-subtle-dark);
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(15, 23, 42, 0.96);
   }
   
   body.theme-light .column-picker {
     border-color: var(--border-subtle-light);
-    background: rgba(249, 250, 251, 0.95);
+    background: rgba(249, 250, 251, 0.96);
   }
   
   .column-picker-grid {
@@ -810,7 +931,7 @@
   }
   
   /* ==========================================================
-     Division summary cards
+     Division Summary Cards
      ========================================================== */
   
   .division-summary-container {
@@ -821,7 +942,7 @@
   }
   
   .division-card {
-    border-radius: 1rem;
+    border-radius: var(--radius-lg);
     border: 1px solid;
     padding: 0.8rem 1rem 0.9rem;
     font-size: 0.9rem;
@@ -855,10 +976,9 @@
     opacity: 0.75;
   }
   
-  /* Team rows inside division cards */
   .team-row-heat {
-    --team-color-main: #4b5563;
-    --team-color-alt: #9ca3af;
+    --team-color-main: #1d4ed8;
+    --team-color-alt: #38bdf8;
     position: relative;
     display: flex;
     justify-content: space-between;
@@ -887,8 +1007,8 @@
   body.theme-light .team-row-heat::before {
     background: linear-gradient(
       90deg,
-      rgba(243, 244, 246, 0.7) 0%,
-      var(--team-color-main) 18%,
+      rgba(239, 246, 255, 0.9) 0%,
+      var(--team-color-main) 24%,
       var(--team-color-alt) 55%,
       transparent 100%
     );
@@ -917,18 +1037,23 @@
   }
   
   /* ==========================================================
-     Team detail overlay / mini editor
+     Detail Overlays / Modals
      ========================================================== */
   
   .team-detail-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(8px);
+    background: var(--bg-overlay-dark);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 50;
+  }
+  
+  body.theme-light .team-detail-overlay {
+    background: var(--bg-overlay-light);
   }
   
   .team-detail-overlay.hidden {
@@ -939,9 +1064,9 @@
     width: min(560px, 96vw);
     max-height: 90vh;
     overflow: auto;
-    border-radius: 0.9rem;
+    border-radius: var(--radius-lg);
     border: 1px solid;
-    padding: 0.8rem 0.9rem 1rem;
+    padding: 0.9rem 1rem 1.1rem;
   }
   
   .close-btn {
@@ -949,6 +1074,8 @@
     font-size: 1.4rem;
     line-height: 1;
     cursor: pointer;
+    min-height: auto;
+    padding: 0.1rem 0.4rem;
   }
   
   .team-detail-modal h3 {
@@ -1001,12 +1128,13 @@
   }
   
   /* ==========================================================
-     Display mode toggles & responsiveness
+     Display Mode Toggles (Desktop vs Mobile)
      ========================================================== */
   
-  /* Mode: mobile (user toggle) */
+  /* Mobile layout tweaked via body.mode-mobile */
+  
   body.mode-mobile .layout {
-    padding: 0.9rem 0.8rem 1.6rem;
+    padding: 0.9rem 0.9rem 5.2rem;
   }
   
   body.mode-mobile .week-block {
@@ -1023,61 +1151,56 @@
   }
   
   body.mode-mobile .game-card {
-    border-radius: 0.75rem;
-    padding: 0.6rem 0.6rem 0.5rem;
+    border-radius: 0;
+    padding: 0.7rem 0.7rem 0.55rem;
   }
   
   /* Top line */
   body.mode-mobile .game-info-top {
     font-size: 0.78rem;
-    opacity: 0.85;
+    opacity: 0.9;
   }
   
-  /* Main row compacter */
+  /* Main row compact */
   body.mode-mobile .game-info-main {
-    display: grid;
     grid-template-columns: 1fr auto 1fr;
-    gap: 0.25rem;
+    gap: 0.3rem;
     margin-top: 0.25rem;
     align-items: center;
-    font-size: 0.84rem;
+    font-size: 0.92rem;
   }
   
   body.mode-mobile .team-slot {
-    display: flex;
     flex-direction: column;
     gap: 0.05rem;
   }
   
   body.mode-mobile .team-slot .team-code {
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.86rem;
   }
   
   body.mode-mobile .team-slot .team-name {
-    font-size: 0.78rem;
-    opacity: 0.9;
+    font-size: 0.8rem;
+    opacity: 0.95;
   }
   
-  /* Center */
   body.mode-mobile .game-center {
     flex-direction: column;
-    align-items: center;
-    font-size: 0.78rem;
+    font-size: 0.8rem;
   }
   
   body.mode-mobile .game-center-spread {
-    font-weight: 600;
-    margin-top: 0.1rem;
+    margin-top: 0.12rem;
   }
   
-  /* Meta row: column stack */
+  /* Meta row */
   body.mode-mobile .game-info-meta {
-    margin-top: 0.4rem;
-    gap: 0.3rem;
+    margin-top: 0.45rem;
+    gap: 0.35rem;
   }
   
-  /* Spread band scrollable */
+  /* Spread band scrollable on mobile */
   body.mode-mobile .spread-band-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -1092,28 +1215,12 @@
   
   /* Larger tap targets */
   body.mode-mobile .spread-option {
-    min-width: 3rem;
-    padding: 0.35rem 0.4rem;
-    font-size: 0.78rem;
+    min-width: 3.2rem;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.86rem;
   }
   
-  /* Expand button */
-  body.mode-mobile .spread-expand-btn {
-    align-self: flex-start;
-    padding: 0.35rem 0.75rem;
-    font-size: 0.8rem;
-  }
-  
-  /* Probability pill – slightly smaller on mobile + desktop tweak */
-  body.mode-mobile .selected-prob,
-  body.mode-desktop .selected-prob {
-    display: inline-flex;
-    margin-top: 0.05rem;
-    font-size: 0.78rem;
-    padding: 0.14rem 0.6rem;
-  }
-  
-  /* Header in mobile: not sticky, compact, controls collapsible */
+  /* Header in mobile: compact, controls collapsible */
   body.mode-mobile .app-header {
     position: static;
     padding: 0.7rem 0.9rem 0.6rem;
@@ -1127,6 +1234,7 @@
   
   body.mode-mobile .app-title p {
     font-size: 0.86rem;
+    max-width: 26rem;
   }
   
   /* Show the toggle button in mobile */
@@ -1134,9 +1242,7 @@
     display: inline-flex;
   }
   
-  /* Collapsible controls in mobile:
-     - default: collapsed
-     - when .header-controls has .is-open (toggled in JS): expanded */
+  /* Collapsible controls in mobile */
   body.mode-mobile .header-controls {
     width: 100%;
     margin-top: 0.5rem;
@@ -1155,16 +1261,16 @@
   }
   
   body.mode-mobile .header-controls.is-open {
-    max-height: 500px;
+    max-height: 520px;
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);
   }
   
-  /* Fallback responsive behavior if user never touches mode toggle */
+  /* Fallback responsive behavior if user never switches modes */
   @media (max-width: 960px) {
     .layout {
-      padding: 0.9rem 1rem 1.6rem;
+      padding-inline: 1rem;
     }
   
     .game-card {
@@ -1190,10 +1296,9 @@
   }
   
   /* ==========================================================
-     Mobile-first bottom tab bar + fan layout tweaks
+     Bottom Navigation – Always On (Mobile-first)
      ========================================================== */
   
-  /* Bottom nav base – always visible */
   .bottom-nav {
     position: fixed;
     inset-inline: 0;
@@ -1202,6 +1307,7 @@
     padding: 0 0.75rem;
     border-top: 1px solid rgba(148, 163, 184, 0.5);
     backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     display: flex;
     align-items: center;
     justify-content: space-around;
@@ -1219,19 +1325,19 @@
     border-color: rgba(148, 163, 184, 0.8);
   }
   
-  /* Tab buttons */
   .bottom-nav-item {
     flex: 1;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     border: none;
     background: transparent;
     padding: 0.35rem 0.6rem;
     font-size: 0.78rem;
     font-weight: 500;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     cursor: pointer;
     opacity: 0.8;
+    min-height: 40px;
   }
   
   body.theme-dark .bottom-nav-item {
@@ -1244,12 +1350,12 @@
   
   .bottom-nav-item.is-active {
     opacity: 1;
-    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.6);
+    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.8);
   }
   
   body.theme-dark .bottom-nav-item.is-active {
-    background: radial-gradient(circle at top, #0f172a, #020617);
-    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.8);
+    background: radial-gradient(circle at top, #1e293b, #020617);
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.9);
   }
   
   body.theme-light .bottom-nav-item.is-active {
@@ -1257,29 +1363,36 @@
     box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.9);
   }
   
-  /* Give the content room above the nav on both desktop and mobile */
-  main.layout {
-    padding-bottom: 5.25rem;
+  /* ==========================================================
+     Small "live delta" helper classes (for future JS)
+     ========================================================== */
+  
+  .cell-delta-up {
+    position: relative;
+    color: var(--success);
   }
   
-  /* Lighten header a bit in mobile mode (keep your existing tweaks) */
-  body.mode-mobile .app-header {
-    padding-block: 0.7rem;
+  .cell-delta-down {
+    position: relative;
+    color: var(--danger);
   }
   
-  body.mode-mobile .app-title p {
-    font-size: 0.9rem;
-    max-width: 26rem;
+  .cell-delta-up::after,
+  .cell-delta-down::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 2px;
+    border-radius: 999px;
+    opacity: 0.4;
   }
   
-  /* Make schedule filters feel like horizontal chips on mobile */
-  body.mode-mobile .schedule-filters {
-    overflow-x: auto;
-    padding-bottom: 0.25rem;
-    margin-bottom: 0.25rem;
+  .cell-delta-up::after {
+    background: linear-gradient(90deg, transparent, var(--success), transparent);
   }
   
-  body.mode-mobile .schedule-filters .control-group {
-    min-width: 140px;
+  .cell-delta-down::after {
+    background: linear-gradient(90deg, transparent, var(--danger), transparent);
   }
   
