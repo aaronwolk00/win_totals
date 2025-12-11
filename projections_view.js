@@ -5,7 +5,7 @@
 // ------------------------------------------------------------
 //
 // Depends on globals defined elsewhere:
-//   - teams, games, teamPalettes, QUICK_SPREAD_PRESETS
+//   - teams, games, teamPalettes, QUICK_SPREAD_PRESETS, NEUTRAL_SPREAD
 //   - state, teamIds, TABLE_HEADERS
 //   - resultHasAnyPickedGame (helper from shared.js)
 //   - formatNumber, formatPercent
@@ -19,538 +19,657 @@
 
 // Compute distribution P(exactly k wins), k = 0..4, via 2^4 combinations
 function computeExactDistribution(probs) {
-    const result = [0, 0, 0, 0, 0]; // k=0..4
-    const n = 4;
-  
-    for (let mask = 0; mask < 1 << n; mask++) {
-      let prob = 1;
-      let wins = 0;
-      for (let i = 0; i < n; i++) {
-        const p = probs[i];
-        if (mask & (1 << i)) {
-          prob *= p;
-          wins++;
-        } else {
-          prob *= 1 - p;
-        }
+  const result = [0, 0, 0, 0, 0]; // k=0..4
+  const n = 4;
+
+  for (let mask = 0; mask < 1 << n; mask++) {
+    let prob = 1;
+    let wins = 0;
+    for (let i = 0; i < n; i++) {
+      const p = probs[i];
+      if (mask & (1 << i)) {
+        prob *= p;
+        wins++;
+      } else {
+        prob *= 1 - p;
       }
-      result[wins] += prob;
     }
-  
-    return result;
+    result[wins] += prob;
   }
-  
-  // Convert exact[] into cumulative[] = P(≥k wins)
-  function computeCumulative(exact) {
-    // exact[0..4]
-    const cumulative = [1, 0, 0, 0, 0]; // atLeast0,1,2,3,4
-    cumulative[4] = exact[4];
-    cumulative[3] = exact[3] + cumulative[4];
-    cumulative[2] = exact[2] + cumulative[3];
-    cumulative[1] = exact[1] + cumulative[2];
-    return cumulative;
+
+  return result;
+}
+
+// Convert exact[] into cumulative[] = P(≥k wins)
+function computeCumulative(exact) {
+  // exact[0..4]
+  const cumulative = [1, 0, 0, 0, 0]; // atLeast0,1,2,3,4
+  cumulative[4] = exact[4];
+  cumulative[3] = exact[3] + cumulative[4];
+  cumulative[2] = exact[2] + cumulative[3];
+  cumulative[1] = exact[1] + cumulative[2];
+  return cumulative;
+}
+
+// ---------------------------
+// Strength of Schedule (SoS)
+// ---------------------------
+//
+// Uses user spreads to derive a per-team "rating" and then
+// computes SoS per team as:
+//
+//   SoS(team) = - average( opponentRating )
+//
+// so that positive SoS = easier schedule, negative = harder.
+function computeStrengthOfSchedule(results) {
+  // 1) Build per-team rating from game edges (win prob – 0.5)
+  const ratingSums = {};
+  const ratingCounts = {};
+
+  for (const teamId of teamIds) {
+    ratingSums[teamId] = 0;
+    ratingCounts[teamId] = 0;
   }
-  
-  // Compute per-team probabilities and projections, then re-render
-  function computeAndRenderResults() {
-    const precision = state.precision;
-  
-    const teamGameProbs = {};
-    for (const teamId of teamIds) {
-      teamGameProbs[teamId] = [];
-    }
-  
-    const touchedTeams = new Set();
-  
-    for (const game of games) {
-      const key = String(game.id);
-      let homeProb = 0.5;
-  
-      if (Object.prototype.hasOwnProperty.call(state.spreads, key)) {
-        const spreadVal = state.spreads[key];
-        if (typeof spreadVal === "number") {
-          homeProb = homeWinProbFromSpread(spreadVal);
-          touchedTeams.add(game.home);
-          touchedTeams.add(game.away);
-        }
-      }
-  
-      const awayProb = 1 - homeProb;
-      teamGameProbs[game.home].push(homeProb);
-      teamGameProbs[game.away].push(awayProb);
-    }
-  
-    // Pad to 4 games (safety)
-    for (const teamId of teamIds) {
-      const arr = teamGameProbs[teamId];
-      while (arr.length < 4) {
-        arr.push(0.5);
-      }
-    }
-  
-    const results = [];
-  
-    for (const teamId of teamIds) {
-      if (!touchedTeams.has(teamId)) {
-        // User has not picked any games for this team yet
-        continue;
-      }
-  
-      const info = teams[teamId];
-      const probs = teamGameProbs[teamId];
-  
-      const expectedAdditionalWins = probs.reduce((sum, p) => sum + p, 0);
-      const projectedWins = info.currentWins + expectedAdditionalWins;
-  
-      const exact = computeExactDistribution(probs); // length 5: P(0..4)
-      const cumulative = computeCumulative(exact);   // length 5: P(≥0..≥4)
-  
-      results.push({
-        teamId,
-        division: info.division,
-        currentWins: info.currentWins,
-        expectedAdditionalWins,
-        projectedWins,
-        exact,
-        cumulative,
-        probs,
-      });
-    }
-  
-    state.results = results;
-    renderTeamTable();
-    renderDivisionSummary();
-    saveStateToStorage();
-    updateProgressUI();
-  
-    // Notify betting view (if loaded) that projections changed
-    if (window.refreshBettingFromStorage) {
-      window.refreshBettingFromStorage();
+
+  for (const g of games) {
+    const key = String(g.id);
+    const spread = state.spreads[key];
+    if (typeof spread !== "number" || !Number.isFinite(spread)) continue;
+
+    const homeProb = homeWinProbFromSpread(spread);
+    const awayProb = 1 - homeProb;
+
+    const homeEdge = homeProb - 0.5;
+    const awayEdge = awayProb - 0.5; // = -homeEdge
+
+    ratingSums[g.home] += homeEdge;
+    ratingCounts[g.home] += 1;
+
+    ratingSums[g.away] += awayEdge;
+    ratingCounts[g.away] += 1;
+  }
+
+  const teamRating = {};
+  for (const teamId of teamIds) {
+    const count = ratingCounts[teamId];
+    if (count > 0) {
+      teamRating[teamId] = ratingSums[teamId] / count;
+    } else {
+      // No custom spreads for this team: treat as league-average (0)
+      teamRating[teamId] = 0;
     }
   }
-  
-  // ---------------------------
-  // Main projections table
-  // ---------------------------
-  
-  function renderTeamTable() {
-    const container = document.getElementById("teamTableContainer");
-    if (!container) return;
-  
-    container.innerHTML = "";
-  
-    const resultsCopy = [...state.results];
-    const { key, direction } = state.currentSort;
-    const dir = direction === "asc" ? 1 : -1;
-  
-    const valueForKey = (r) => {
-      switch (key) {
-        case "team":
-          return r.teamId;
-        case "division":
-          return r.division;
-        case "projected":
-          return r.projectedWins;
-        case "current":
-          return r.currentWins;
-        default:
-          return r.projectedWins;
+
+  // 2) For each team, average opponent ratings across schedule
+  const sosSums = {};
+  const sosCounts = {};
+  for (const teamId of teamIds) {
+    sosSums[teamId] = 0;
+    sosCounts[teamId] = 0;
+  }
+
+  for (const g of games) {
+    const homeId = g.home;
+    const awayId = g.away;
+
+    const oppForHome = teamRating[awayId] ?? 0;
+    const oppForAway = teamRating[homeId] ?? 0;
+
+    sosSums[homeId] += oppForHome;
+    sosCounts[homeId] += 1;
+
+    sosSums[awayId] += oppForAway;
+    sosCounts[awayId] += 1;
+  }
+
+  // 3) Attach SoS to result objects (only for teams with results)
+  const resultByTeam = {};
+  for (const r of results) {
+    resultByTeam[r.teamId] = r;
+  }
+
+  for (const teamId of teamIds) {
+    const r = resultByTeam[teamId];
+    if (!r) continue;
+
+    const count = sosCounts[teamId];
+    if (!count) {
+      r.sos = 0;
+      continue;
+    }
+
+    const avgOppRating = sosSums[teamId] / count;
+
+    // Flip sign so easier opponents (negative rating) => positive SoS
+    r.sos = -avgOppRating;
+  }
+}
+
+// ---------------------------
+// Compute and render everything
+// ---------------------------
+
+function computeAndRenderResults() {
+  const precision = state.precision;
+
+  const teamGameProbs = {};
+  for (const teamId of teamIds) {
+    teamGameProbs[teamId] = [];
+  }
+
+  const touchedTeams = new Set();
+
+  for (const game of games) {
+    const key = String(game.id);
+    let homeProb = 0.5;
+
+    if (Object.prototype.hasOwnProperty.call(state.spreads, key)) {
+      const spreadVal = state.spreads[key];
+      if (typeof spreadVal === "number") {
+        homeProb = homeWinProbFromSpread(spreadVal);
+        touchedTeams.add(game.home);
+        touchedTeams.add(game.away);
       }
-    };
-  
-    resultsCopy.sort((a, b) => {
-      const va = valueForKey(a);
-      const vb = valueForKey(b);
-      if (va < vb) return -1 * dir;
-      if (va > vb) return 1 * dir;
-      return 0;
+    }
+
+    const awayProb = 1 - homeProb;
+    teamGameProbs[game.home].push(homeProb);
+    teamGameProbs[game.away].push(awayProb);
+  }
+
+  // Pad to 4 games (safety)
+  for (const teamId of teamIds) {
+    const arr = teamGameProbs[teamId];
+    while (arr.length < 4) {
+      arr.push(0.5);
+    }
+  }
+
+  const results = [];
+
+  for (const teamId of teamIds) {
+    if (!touchedTeams.has(teamId)) {
+      // User has not picked any games for this team yet
+      continue;
+    }
+
+    const info = teams[teamId];
+    const probs = teamGameProbs[teamId];
+
+    const expectedAdditionalWins = probs.reduce((sum, p) => sum + p, 0);
+    const projectedWins = info.currentWins + expectedAdditionalWins;
+
+    const exact = computeExactDistribution(probs); // length 5: P(0..4)
+    const cumulative = computeCumulative(exact);   // length 5: P(≥0..≥4)
+
+    results.push({
+      teamId,
+      division: info.division,
+      currentWins: info.currentWins,
+      expectedAdditionalWins,
+      projectedWins,
+      exact,
+      cumulative,
+      probs,
+      // sos will be added by computeStrengthOfSchedule
     });
-  
-    const precision = state.precision;
-    const table = document.createElement("table");
-    table.className = "table";
-  
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
-  
-    for (const h of TABLE_HEADERS) {
-      if (!state.visibleColumns[h.key]) continue;
-  
-      const th = document.createElement("th");
-      th.textContent = h.label;
-  
-      if (["team", "division", "projected", "current"].includes(h.key)) {
-        th.classList.add("sortable");
-        const span = document.createElement("span");
-        span.className = "sort-indicator";
-        span.textContent =
-          state.currentSort.key === h.key
-            ? state.currentSort.direction === "asc"
-              ? "▲"
-              : "▼"
-            : "◆";
-        th.appendChild(span);
-  
-        th.addEventListener("click", () => {
-          if (state.currentSort.key === h.key) {
-            state.currentSort.direction =
-              state.currentSort.direction === "asc" ? "desc" : "asc";
-          } else {
-            state.currentSort.key = h.key;
-            state.currentSort.direction =
-              h.key === "team" || h.key === "division" ? "asc" : "desc";
-          }
-          renderTeamTable();
-        });
-      }
-  
-      headerRow.appendChild(th);
-    }
-  
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-  
-    const tbody = document.createElement("tbody");
-  
-    for (const r of resultsCopy) {
-      if (!resultHasAnyPickedGame(r)) {
-        continue;
-      }
-  
-      const tr = document.createElement("tr");
-      tr.dataset.teamId = r.teamId;
-  
-      const palette = teamPalettes[r.teamId] || {};
-      tr.style.setProperty("--team-color-main", palette.primary || "#334155");
-      tr.style.setProperty("--team-color-alt", palette.secondary || "#64748b");
-  
-      tr.addEventListener("click", () => {
-        showTeamDetail(r.teamId);
-      });
-  
-      for (const h of TABLE_HEADERS) {
-        if (!state.visibleColumns[h.key]) continue;
-  
-        const td = document.createElement("td");
-  
-        switch (h.key) {
-          case "team":
-            td.className = "team-cell";
-            td.textContent = r.teamId;
-            break;
-          case "division":
-            td.innerHTML = `<span class="badge-division">${r.division}</span>`;
-            break;
-          case "current":
-            td.textContent = r.currentWins.toString();
-            break;
-          case "expected":
-            td.textContent = formatNumber(r.expectedAdditionalWins, precision);
-            break;
-          case "projected":
-            td.textContent = formatNumber(r.projectedWins, precision);
-            break;
-          case "P0":
-          case "P1":
-          case "P2":
-          case "P3":
-          case "P4": {
-            const k = Number(h.key.slice(1));
-            td.textContent = formatPercent(r.exact[k], precision);
-            break;
-          }
-          case "PA1":
-          case "PA2":
-          case "PA3":
-          case "PA4": {
-            const k = Number(h.key.slice(2));
-            td.textContent = formatPercent(r.cumulative[k], precision);
-            break;
-          }
-          default:
-            break;
-        }
-  
-        tr.appendChild(td);
-      }
-  
-      tbody.appendChild(tr);
-    }
-  
-    table.appendChild(tbody);
-    container.appendChild(table);
   }
-  
-  // ---------------------------
-  // Column picker
-  // ---------------------------
-  
-  function renderColumnPicker() {
-    const picker = document.getElementById("columnPicker");
-    if (!picker) return;
-  
-    picker.innerHTML = "";
-  
-    const grid = document.createElement("div");
-    grid.className = "column-picker-grid";
-  
-    TABLE_HEADERS.forEach((h) => {
-      const wrap = document.createElement("label");
-      wrap.className = "column-toggle";
-  
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.checked = state.visibleColumns[h.key] !== false;
-  
-      input.addEventListener("change", () => {
-        state.visibleColumns[h.key] = input.checked;
-        saveStateToStorage();
+
+  // Compute strength-of-schedule and attach to each result
+  computeStrengthOfSchedule(results);
+
+  state.results = results;
+  renderTeamTable();
+  renderDivisionSummary();
+  saveStateToStorage();
+  updateProgressUI();
+
+  // Notify betting view (if loaded) that projections changed
+  if (window.refreshBettingFromStorage) {
+    window.refreshBettingFromStorage();
+  }
+}
+
+// ---------------------------
+// Main projections table
+// ---------------------------
+
+function renderTeamTable() {
+  const container = document.getElementById("teamTableContainer");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  const resultsCopy = [...state.results];
+  const { key, direction } = state.currentSort;
+  const dir = direction === "asc" ? 1 : -1;
+
+  const valueForKey = (r) => {
+    switch (key) {
+      case "team":
+        return r.teamId;
+      case "division":
+        return r.division;
+      case "projected":
+        return r.projectedWins;
+      case "current":
+        return r.currentWins;
+      case "sos":
+        return r.sos ?? 0;
+      default:
+        return r.projectedWins;
+    }
+  };
+
+  resultsCopy.sort((a, b) => {
+    const va = valueForKey(a);
+    const vb = valueForKey(b);
+    if (va < vb) return -1 * dir;
+    if (va > vb) return 1 * dir;
+    return 0;
+  });
+
+  const precision = state.precision;
+  const table = document.createElement("table");
+  table.className = "table";
+
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+
+  for (const h of TABLE_HEADERS) {
+    if (!state.visibleColumns[h.key]) continue;
+
+    const th = document.createElement("th");
+    th.textContent = h.label;
+
+    if (["team", "division", "projected", "current", "sos"].includes(h.key)) {
+      th.classList.add("sortable");
+      const span = document.createElement("span");
+      span.className = "sort-indicator";
+      span.textContent =
+        state.currentSort.key === h.key
+          ? state.currentSort.direction === "asc"
+            ? "▲"
+            : "▼"
+          : "◆";
+      th.appendChild(span);
+
+      th.addEventListener("click", () => {
+        if (state.currentSort.key === h.key) {
+          state.currentSort.direction =
+            state.currentSort.direction === "asc" ? "desc" : "asc";
+        } else {
+          state.currentSort.key = h.key;
+          state.currentSort.direction =
+            h.key === "team" || h.key === "division" ? "asc" : "desc";
+        }
         renderTeamTable();
       });
-  
-      const span = document.createElement("span");
-      span.textContent = h.label;
-  
-      wrap.appendChild(input);
-      wrap.appendChild(span);
-      grid.appendChild(wrap);
-    });
-  
-    picker.appendChild(grid);
-  }
-  
-  // ---------------------------
-  // Division summaries + note
-  // ---------------------------
-  
-  function renderDivisionSummary() {
-    const container = document.getElementById("divisionSummaryContainer");
-    if (!container) return;
-  
-    container.innerHTML = "";
-  
-    const resultsByDiv = {};
-    for (const r of state.results) {
-      if (!resultHasAnyPickedGame(r)) continue;
-  
-      if (!resultsByDiv[r.division]) resultsByDiv[r.division] = [];
-      resultsByDiv[r.division].push(r);
     }
-  
-    const divisionNote = document.getElementById("divisionNote");
-    if (divisionNote) divisionNote.textContent = "";
-  
-    const divisionCodes = Object.keys(resultsByDiv).sort();
-    for (const division of divisionCodes) {
-      const arr = resultsByDiv[division].slice();
-      arr.sort((a, b) => b.projectedWins - a.projectedWins);
-  
-      let hasTie = false;
-      for (let i = 1; i < arr.length; i++) {
-        if (Math.abs(arr[i].projectedWins - arr[i - 1].projectedWins) < 1e-4) {
-          hasTie = true;
+
+    headerRow.appendChild(th);
+  }
+
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+
+  for (const r of resultsCopy) {
+    if (!resultHasAnyPickedGame(r)) {
+      continue;
+    }
+
+    const tr = document.createElement("tr");
+    tr.dataset.teamId = r.teamId;
+
+    const palette = teamPalettes[r.teamId] || {};
+    tr.style.setProperty("--team-color-main", palette.primary || "#334155");
+    tr.style.setProperty("--team-color-alt", palette.secondary || "#64748b");
+
+    tr.addEventListener("click", () => {
+      showTeamDetail(r.teamId);
+    });
+
+    for (const h of TABLE_HEADERS) {
+      if (!state.visibleColumns[h.key]) continue;
+
+      const td = document.createElement("td");
+
+      switch (h.key) {
+        case "team":
+          td.className = "team-cell";
+          td.textContent = r.teamId;
+          break;
+
+        case "division":
+          td.innerHTML = `<span class="badge-division">${r.division}</span>`;
+          break;
+
+        case "current":
+          td.textContent = r.currentWins.toString();
+          break;
+
+        case "expected":
+          td.textContent = formatNumber(r.expectedAdditionalWins, precision);
+          break;
+
+        case "projected":
+          td.textContent = formatNumber(r.projectedWins, precision);
+          break;
+
+        case "sos":
+          td.classList.add("numeric-cell");
+          if (r.sos == null) {
+            td.textContent = "—";
+          } else {
+            td.textContent = r.sos.toFixed(3);
+          }
+          break;
+
+        case "P0":
+        case "P1":
+        case "P2":
+        case "P3":
+        case "P4": {
+          const k = Number(h.key.slice(1));
+          td.textContent = formatPercent(r.exact[k], precision);
           break;
         }
+
+        case "PA1":
+        case "PA2":
+        case "PA3":
+        case "PA4": {
+          const k = Number(h.key.slice(2));
+          td.textContent = formatPercent(r.cumulative[k], precision);
+          break;
+        }
+
+        default:
+          break;
       }
-  
-      if (hasTie && divisionNote && !divisionNote.textContent) {
-        divisionNote.textContent =
-          "Note: One or more divisions have projected win ties; tiebreakers are not implemented, so rankings there are approximate.";
-      }
-  
-      const card = document.createElement("div");
-      card.className = "division-card";
-  
-      const header = document.createElement("div");
-      header.className = "division-card-header";
-      const title = document.createElement("strong");
-      title.textContent = division;
-      const subt = document.createElement("span");
-      subt.textContent = hasTie ? "tie detected" : "ordering by projected wins";
-      header.appendChild(title);
-      header.appendChild(subt);
-      card.appendChild(header);
-  
-      arr.forEach((r, idx) => {
-        const row = document.createElement("div");
-        row.className = "division-team-row team-row-heat";
-  
-        const palette = teamPalettes[r.teamId] || {};
-        row.style.setProperty(
-          "--team-color-main",
-          palette.primary || "#4b5563"
-        );
-        row.style.setProperty(
-          "--team-color-alt",
-          palette.secondary || "#9ca3af"
-        );
-  
-        const left = document.createElement("div");
-        left.innerHTML = `<span class="division-rank">${idx + 1}.</span> <span class="division-team-code">${r.teamId}</span>`;
-        const right = document.createElement("div");
-        right.className = "division-team-proj";
-        right.textContent = formatNumber(r.projectedWins, state.precision);
-        row.appendChild(left);
-        row.appendChild(right);
-        card.appendChild(row);
-      });
-  
-      container.appendChild(card);
+
+      tr.appendChild(td);
     }
+
+    tbody.appendChild(tr);
   }
-  
-  // ---------------------------
-  // Team detail overlay + chart
-  // ---------------------------
-  
-  // Render bar chart for a team's win distribution inside the detail modal.
-  // mode: "exact" (P(exactly k wins)) or "atLeast" (P(≥k wins)).
-  function renderTeamChart(teamId, mode) {
-    const barsContainer = document.getElementById("teamChartBars");
-    if (!barsContainer) return;
-  
-    const result = state.results.find((r) => r.teamId === teamId);
-    if (!result) return;
-  
-    const palette = teamPalettes[teamId] || {};
-    const barColor = palette.primary || "#22c55e";
-    const barColorAlt = palette.secondary || "#16a34a";
-  
-    const exact = result.exact; // [P(0), P(1), P(2), P(3), P(4)]
-    const cumulative = result.cumulative; // [P(≥0), P(≥1), P(≥2), P(≥3), P(≥4)]
-  
-    let values;
-    if (mode === "atLeast") {
-      // Show P(≥k wins) for k = 0..4
-      values = [0, 1, 2, 3, 4].map((k) => cumulative[k]);
-    } else {
-      // Default "exact" mode
-      values = exact.slice();
-    }
-  
-    const maxVal = Math.max(...values, 0.0001); // avoid divide-by-zero
-    barsContainer.innerHTML = "";
-  
-    values.forEach((prob, k) => {
-      const barWrapper = document.createElement("div");
-      barWrapper.className = "team-detail-chart-bar";
-  
-      const valueLabel = document.createElement("div");
-      valueLabel.className = "team-detail-chart-bar-value";
-      valueLabel.textContent = formatPercent(prob, 1);
-  
-      const track = document.createElement("div");
-      track.className = "team-detail-chart-bar-track";
-  
-      const fill = document.createElement("div");
-      fill.className = "team-detail-chart-bar-fill";
-      fill.style.height = `${(prob / maxVal) * 100}%`;
-      fill.style.background = `linear-gradient(to top, ${barColor}, ${barColorAlt})`;
-  
-      track.appendChild(fill);
-  
-      const xLabel = document.createElement("div");
-      xLabel.className = "team-detail-chart-bar-label";
-      xLabel.textContent = mode === "atLeast" ? `≥${k}` : String(k);
-  
-      barWrapper.appendChild(valueLabel);
-      barWrapper.appendChild(track);
-      barWrapper.appendChild(xLabel);
-  
-      barsContainer.appendChild(barWrapper);
+
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
+
+// ---------------------------
+// Column picker
+// ---------------------------
+
+function renderColumnPicker() {
+  const picker = document.getElementById("columnPicker");
+  if (!picker) return;
+
+  picker.innerHTML = "";
+
+  const grid = document.createElement("div");
+  grid.className = "column-picker-grid";
+
+  TABLE_HEADERS.forEach((h) => {
+    const wrap = document.createElement("label");
+    wrap.className = "column-toggle";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = state.visibleColumns[h.key] !== false;
+
+    input.addEventListener("change", () => {
+      state.visibleColumns[h.key] = input.checked;
+      saveStateToStorage();
+      renderTeamTable();
     });
+
+    const span = document.createElement("span");
+    span.textContent = h.label;
+
+    wrap.appendChild(input);
+    wrap.appendChild(span);
+    grid.appendChild(wrap);
+  });
+
+  picker.appendChild(grid);
+}
+
+// ---------------------------
+// Division summaries + note
+// ---------------------------
+
+function renderDivisionSummary() {
+  const container = document.getElementById("divisionSummaryContainer");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  const resultsByDiv = {};
+  for (const r of state.results) {
+    if (!resultHasAnyPickedGame(r)) continue;
+
+    if (!resultsByDiv[r.division]) resultsByDiv[r.division] = [];
+    resultsByDiv[r.division].push(r);
   }
-  
-  // Narrative block inside team detail
-  function buildTeamNarrative(teamInfo, result) {
-    const current = teamInfo.currentWins;
-    const projected = result.projectedWins;
-  
-    // Most likely additional wins
-    let bestK = 0;
-    let bestProb = 0;
-    for (let k = 0; k <= 4; k++) {
-      if (result.exact[k] > bestProb) {
-        bestProb = result.exact[k];
-        bestK = k;
+
+  const divisionNote = document.getElementById("divisionNote");
+  if (divisionNote) divisionNote.textContent = "";
+
+  const divisionCodes = Object.keys(resultsByDiv).sort();
+  for (const division of divisionCodes) {
+    const arr = resultsByDiv[division].slice();
+    arr.sort((a, b) => b.projectedWins - a.projectedWins);
+
+    let hasTie = false;
+    for (let i = 1; i < arr.length; i++) {
+      if (Math.abs(arr[i].projectedWins - arr[i - 1].projectedWins) < 1e-4) {
+        hasTie = true;
+        break;
       }
     }
-  
-    const mostLikelyTotal = current + bestK;
-    const p3Plus = result.cumulative[3]; // ≥3 of 4
-    const p0or1 = result.exact[0] + result.exact[1];
-  
-    let html = `<div class="team-detail-narrative"><ul>`;
-  
-    html += `<li>Most likely outcome: <strong>${bestK} additional wins</strong> (${mostLikelyTotal} total).</li>`;
-    html += `<li>Chance to win <strong>3 or more</strong> of the remaining 4: <strong>${formatPercent(
-      p3Plus,
-      1
-    )}</strong>.</li>`;
-    html += `<li>They finish with <strong>0–1 more wins</strong> only <strong>${formatPercent(
-      p0or1,
-      1
-    )}</strong> of the time.</li>`;
-    html += `<li>Your model’s average projection: <strong>${formatNumber(
-      projected,
-      2
-    )}</strong> total wins.</li>`;
-  
-    html += `</ul></div>`;
-    return html;
-  }
-  
-  // Open the team detail modal
-  function showTeamDetail(teamId) {
-    const overlay = document.getElementById("teamDetailOverlay");
-    const content = document.getElementById("teamDetailContent");
-    const teamInfo = teams[teamId];
-    const result = state.results.find((r) => r.teamId === teamId);
-    if (!teamInfo || !result || !overlay || !content) return;
-  
-    // Collect this team's games
-    const teamGames = [];
-    for (const game of games) {
-      if (game.home === teamId || game.away === teamId) {
-        const key = String(game.id);
-        const spread =
-          typeof state.spreads[key] === "number"
-            ? state.spreads[key]
-            : NEUTRAL_SPREAD; // default if not set
-  
-        const homeProb = homeWinProbFromSpread(spread);
-        const teamProb = game.home === teamId ? homeProb : 1 - homeProb;
-  
-        teamGames.push({
-          game,
-          spread,
-          teamProb,
-          isHome: game.home === teamId,
-        });
-      }
+
+    if (hasTie && divisionNote && !divisionNote.textContent) {
+      divisionNote.textContent =
+        "Note: One or more divisions have projected win ties; tiebreakers are not implemented, so rankings there are approximate.";
     }
-  
-    teamGames.sort((a, b) => a.game.week - b.game.week);
-    const precision = state.precision;
-  
-    // Header + high-level summary
-    let html = "";
-    html += `<h3 id="teamDetailTitle">${teamId} · ${teamInfo.name}</h3>`;
-    html += `<p>Current wins: <strong>${
-      teamInfo.currentWins
-    }</strong> · Expected additional wins: <strong>${formatNumber(
-      result.expectedAdditionalWins,
-      precision
-    )}</strong> · Projected wins: <strong>${formatNumber(
-      result.projectedWins,
-      precision
-    )}</strong></p>`;
-  
-    // Narrative
-    html += buildTeamNarrative(teamInfo, result);
-  
-    // Chart + toggle
-    html += `
+
+    const card = document.createElement("div");
+    card.className = "division-card";
+
+    const header = document.createElement("div");
+    header.className = "division-card-header";
+    const title = document.createElement("strong");
+    title.textContent = division;
+    const subt = document.createElement("span");
+    subt.textContent = hasTie ? "tie detected" : "ordering by projected wins";
+    header.appendChild(title);
+    header.appendChild(subt);
+    card.appendChild(header);
+
+    arr.forEach((r, idx) => {
+      const row = document.createElement("div");
+      row.className = "division-team-row team-row-heat";
+
+      const palette = teamPalettes[r.teamId] || {};
+      row.style.setProperty(
+        "--team-color-main",
+        palette.primary || "#4b5563"
+      );
+      row.style.setProperty(
+        "--team-color-alt",
+        palette.secondary || "#9ca3af"
+      );
+
+      const left = document.createElement("div");
+      left.innerHTML = `<span class="division-rank">${idx + 1}.</span> <span class="division-team-code">${r.teamId}</span>`;
+      const right = document.createElement("div");
+      right.className = "division-team-proj";
+      right.textContent = formatNumber(r.projectedWins, state.precision);
+      row.appendChild(left);
+      row.appendChild(right);
+      card.appendChild(row);
+    });
+
+    container.appendChild(card);
+  }
+}
+
+// ---------------------------
+// Team detail overlay + chart
+// ---------------------------
+
+// Render bar chart for a team's win distribution inside the detail modal.
+// mode: "exact" (P(exactly k wins)) or "atLeast" (P(≥k wins)).
+function renderTeamChart(teamId, mode) {
+  const barsContainer = document.getElementById("teamChartBars");
+  if (!barsContainer) return;
+
+  const result = state.results.find((r) => r.teamId === teamId);
+  if (!result) return;
+
+  const palette = teamPalettes[teamId] || {};
+  const barColor = palette.primary || "#22c55e";
+  const barColorAlt = palette.secondary || "#16a34a";
+
+  const exact = result.exact; // [P(0), P(1), P(2), P(3), P(4)]
+  const cumulative = result.cumulative; // [P(≥0), P(≥1), P(≥2), P(≥3), P(≥4)]
+
+  let values;
+  if (mode === "atLeast") {
+    // Show P(≥k wins) for k = 0..4
+    values = [0, 1, 2, 3, 4].map((k) => cumulative[k]);
+  } else {
+    // Default "exact" mode
+    values = exact.slice();
+  }
+
+  const maxVal = Math.max(...values, 0.0001); // avoid divide-by-zero
+  barsContainer.innerHTML = "";
+
+  values.forEach((prob, k) => {
+    const barWrapper = document.createElement("div");
+    barWrapper.className = "team-detail-chart-bar";
+
+    const valueLabel = document.createElement("div");
+    valueLabel.className = "team-detail-chart-bar-value";
+    valueLabel.textContent = formatPercent(prob, 1);
+
+    const track = document.createElement("div");
+    track.className = "team-detail-chart-bar-track";
+
+    const fill = document.createElement("div");
+    fill.className = "team-detail-chart-bar-fill";
+    fill.style.height = `${(prob / maxVal) * 100}%`;
+    fill.style.background = `linear-gradient(to top, ${barColor}, ${barColorAlt})`;
+
+    track.appendChild(fill);
+
+    const xLabel = document.createElement("div");
+    xLabel.className = "team-detail-chart-bar-label";
+    xLabel.textContent = mode === "atLeast" ? `≥${k}` : String(k);
+
+    barWrapper.appendChild(valueLabel);
+    barWrapper.appendChild(track);
+    barWrapper.appendChild(xLabel);
+
+    barsContainer.appendChild(barWrapper);
+  });
+}
+
+// Narrative block inside team detail
+function buildTeamNarrative(teamInfo, result) {
+  const current = teamInfo.currentWins;
+  const projected = result.projectedWins;
+
+  // Most likely additional wins
+  let bestK = 0;
+  let bestProb = 0;
+  for (let k = 0; k <= 4; k++) {
+    if (result.exact[k] > bestProb) {
+      bestProb = result.exact[k];
+      bestK = k;
+    }
+  }
+
+  const mostLikelyTotal = current + bestK;
+  const p3Plus = result.cumulative[3]; // ≥3 of 4
+  const p0or1 = result.exact[0] + result.exact[1];
+
+  let html = `<div class="team-detail-narrative"><ul>`;
+
+  html += `<li>Most likely outcome: <strong>${bestK} additional wins</strong> (${mostLikelyTotal} total).</li>`;
+  html += `<li>Chance to win <strong>3 or more</strong> of the remaining 4: <strong>${formatPercent(
+    p3Plus,
+    1
+  )}</strong>.</li>`;
+  html += `<li>They finish with <strong>0–1 more wins</strong> only <strong>${formatPercent(
+    p0or1,
+    1
+  )}</strong> of the time.</li>`;
+  html += `<li>Your model’s average projection: <strong>${formatNumber(
+    projected,
+    2
+  )}</strong> total wins.</li>`;
+
+  html += `</ul></div>`;
+  return html;
+}
+
+// Open the team detail modal
+function showTeamDetail(teamId) {
+  const overlay = document.getElementById("teamDetailOverlay");
+  const content = document.getElementById("teamDetailContent");
+  const teamInfo = teams[teamId];
+  const result = state.results.find((r) => r.teamId === teamId);
+  if (!teamInfo || !result || !overlay || !content) return;
+
+  // Collect this team's games
+  const teamGames = [];
+  for (const game of games) {
+    if (game.home === teamId || game.away === teamId) {
+      const key = String(game.id);
+      const spread =
+        typeof state.spreads[key] === "number"
+          ? state.spreads[key]
+          : NEUTRAL_SPREAD; // default if not set
+
+      const homeProb = homeWinProbFromSpread(spread);
+      const teamProb = game.home === teamId ? homeProb : 1 - homeProb;
+
+      teamGames.push({
+        game,
+        spread,
+        teamProb,
+        isHome: game.home === teamId,
+      });
+    }
+  }
+
+  teamGames.sort((a, b) => a.game.week - b.game.week);
+  const precision = state.precision;
+
+  // Header + high-level summary
+  let html = "";
+  html += `<h3 id="teamDetailTitle">${teamId} · ${teamInfo.name}</h3>`;
+  html += `<p>Current wins: <strong>${
+    teamInfo.currentWins
+  }</strong> · Expected additional wins: <strong>${formatNumber(
+    result.expectedAdditionalWins,
+    precision
+  )}</strong> · Projected wins: <strong>${formatNumber(
+    result.projectedWins,
+    precision
+  )}</strong></p>`;
+
+  // Narrative
+  html += buildTeamNarrative(teamInfo, result);
+
+  // Chart + toggle
+  html += `
       <h4>Win distribution (remaining 4 games)</h4>
       <div class="team-detail-chart" data-team-id="${teamId}">
         <div class="team-detail-chart-header">
@@ -575,200 +694,228 @@ function computeExactDistribution(probs) {
         <div class="team-detail-chart-bars" id="teamChartBars"></div>
       </div>
     `;
-  
-    // Numeric list
-    html += `<ul class="team-detail-dist">`;
-    for (let k = 0; k <= 4; k++) {
-      html += `<li>${k} wins: <strong>${formatPercent(
-        result.exact[k],
-        precision
-      )}</strong> &nbsp;|&nbsp; ≥${k} wins: <strong>${formatPercent(
-        result.cumulative[k],
-        precision
-      )}</strong></li>`;
-    }
-    html += `</ul>`;
-  
-    // Game editor
-    html += `<h4>Edit remaining games</h4>`;
-    html += `<p class="team-detail-note">Click a preset to set the spread for this game. Changes immediately update projections and the betting view.</p>`;
-  
-    html += `<table class="team-detail-games"><thead><tr>`;
-    html += `<th>Week</th><th>Matchup</th><th>Side</th><th>Spread</th><th>Presets</th><th>P(win)</th>`;
-    html += `</tr></thead><tbody>`;
-  
-    for (const tg of teamGames) {
-      const g = tg.game;
-      const opponentId = tg.isHome ? g.away : g.home;
-      const sideLabel = tg.isHome ? "Home" : "Away";
-  
-      const spreadLabel =
-        (tg.spread > 0 ? "+" : tg.spread < 0 ? "" : "") +
-        tg.spread.toFixed(1).replace(/\.0$/, ".0");
-  
-      html += `<tr data-game-id="${g.id}">
+
+  // Numeric list
+  html += `<ul class="team-detail-dist">`;
+  for (let k = 0; k <= 4; k++) {
+    html += `<li>${k} wins: <strong>${formatPercent(
+      result.exact[k],
+      precision
+    )}</strong> &nbsp;|&nbsp; ≥${k} wins: <strong>${formatPercent(
+      result.cumulative[k],
+      precision
+    )}</strong></li>`;
+  }
+  html += `</ul>`;
+
+  // Game editor
+  html += `<h4>Edit remaining games</h4>`;
+  html += `<p class="team-detail-note">Click a preset to set the spread for this game. Changes immediately update projections and the betting view.</p>`;
+
+  html += `<table class="team-detail-games"><thead><tr>`;
+  html += `<th>Week</th><th>Matchup</th><th>Side</th><th>Spread</th><th>Presets</th><th>P(win)</th>`;
+  html += `</tr></thead><tbody>`;
+
+  for (const tg of teamGames) {
+    const g = tg.game;
+    const opponentId = tg.isHome ? g.away : g.home;
+    const sideLabel = tg.isHome ? "Home" : "Away";
+
+    const spreadLabel =
+      (tg.spread > 0 ? "+" : tg.spread < 0 ? "" : "") +
+      tg.spread.toFixed(1).replace(/\.0$/, ".0");
+
+    html += `<tr data-game-id="${g.id}">
         <td>${g.week}</td>
         <td>${opponentId} (${teams[opponentId].name})</td>
         <td>${sideLabel}</td>
         <td class="team-detail-spread">${spreadLabel}</td>
         <td class="team-detail-presets">`;
-  
-      for (const val of QUICK_SPREAD_PRESETS) {
-        const label =
-          (val > 0 ? "+" : "") + val.toFixed(1).replace(/\.0$/, ".0");
-        html += `<button
+
+    for (const val of QUICK_SPREAD_PRESETS) {
+      const label =
+        (val > 0 ? "+" : "") + val.toFixed(1).replace(/\.0$/, ".0");
+      html += `<button
           type="button"
           class="btn btn-xs preset-btn"
           data-game-id="${g.id}"
           data-value="${val}"
         >${label}</button>`;
-      }
-  
-      html += `</td>
+    }
+
+    html += `</td>
         <td>${formatPercent(tg.teamProb, precision)}</td>
       </tr>`;
-    }
-  
-    html += `</tbody></table>`;
-  
-    content.innerHTML = html;
-    overlay.classList.remove("hidden");
-  
-    // Initial chart render (exact mode)
-    renderTeamChart(teamId, "exact");
-  
-    // Wire up chart mode toggle
-    const toggleWrap = content.querySelector(".team-detail-chart-toggle");
-    if (toggleWrap) {
-      const modeButtons = toggleWrap.querySelectorAll(".chart-mode-btn");
-      modeButtons.forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const mode = btn.dataset.mode === "atLeast" ? "atLeast" : "exact";
-          modeButtons.forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          renderTeamChart(teamId, mode);
-        });
-      });
-    }
-  
-    // Wire up preset buttons
-    content.querySelectorAll(".preset-btn").forEach((btn) => {
+  }
+
+  html += `</tbody></table>`;
+
+  content.innerHTML = html;
+  overlay.classList.remove("hidden");
+
+  // Initial chart render (exact mode)
+  renderTeamChart(teamId, "exact");
+
+  // Wire up chart mode toggle
+  const toggleWrap = content.querySelector(".team-detail-chart-toggle");
+  if (toggleWrap) {
+    const modeButtons = toggleWrap.querySelectorAll(".chart-mode-btn");
+    modeButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
-        const gameId = Number(btn.dataset.gameId);
-        const value = parseFloat(btn.dataset.value);
-        setSpreadForGame(gameId, value);
-  
-        const row = content.querySelector(`tr[data-game-id="${gameId}"]`);
-        if (!row) return;
-  
-        const spreadCell = row.querySelector(".team-detail-spread");
-        if (spreadCell) {
-          const lbl =
-            (value > 0 ? "+" : value < 0 ? "" : "") +
-            value.toFixed(1).replace(/\.0$/, ".0");
-          spreadCell.textContent = lbl;
-        }
-  
-        const updatedResult = state.results.find((r) => r.teamId === teamId);
-        if (!updatedResult) return;
-  
-        // Update numeric distribution list
-        const distLis = content.querySelectorAll(".team-detail-dist li");
-        for (let k = 0; k <= 4; k++) {
-          const li = distLis[k];
-          if (!li) continue;
-          li.innerHTML = `${k} wins: <strong>${formatPercent(
-            updatedResult.exact[k],
-            precision
-          )}</strong> &nbsp;|&nbsp; ≥${k} wins: <strong>${formatPercent(
-            updatedResult.cumulative[k],
-            precision
-          )}</strong>`;
-        }
-  
-        // Update per-row P(win)
-        const g = games.find((gg) => gg.id === gameId);
-        if (!g) return;
-        const spread =
-          typeof state.spreads[String(gameId)] === "number"
-            ? state.spreads[String(gameId)]
-            : NEUTRAL_SPREAD;
-        const homeProb = homeWinProbFromSpread(spread);
-        const teamProb = g.home === teamId ? homeProb : 1 - homeProb;
-        row.lastElementChild.textContent = formatPercent(teamProb, precision);
-  
-        // Re-render chart in whatever mode is currently active
-        const activeBtn = content.querySelector(".chart-mode-btn.active");
-        const currentMode =
-          activeBtn && activeBtn.dataset.mode === "atLeast"
-            ? "atLeast"
-            : "exact";
-        renderTeamChart(teamId, currentMode);
-  
-        state.lastFocusedGameId = gameId;
-        saveStateToStorage();
+        const mode = btn.dataset.mode === "atLeast" ? "atLeast" : "exact";
+        modeButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderTeamChart(teamId, mode);
       });
     });
   }
-  
-  // ---------------------------
-  // CSV export
-  // ---------------------------
-  
-  function exportCsv() {
-    const rows = [];
-    const headerRow = TABLE_HEADERS.map((h) => {
-      return h.label.replace(/\s+/g, "");
+
+  // Wire up preset buttons
+  content.querySelectorAll(".preset-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const gameId = Number(btn.dataset.gameId);
+      const value = parseFloat(btn.dataset.value);
+      setSpreadForGame(gameId, value);
+
+      const row = content.querySelector(`tr[data-game-id="${gameId}"]`);
+      if (!row) return;
+
+      const spreadCell = row.querySelector(".team-detail-spread");
+      if (spreadCell) {
+        const lbl =
+          (value > 0 ? "+" : value < 0 ? "" : "") +
+          value.toFixed(1).replace(/\.0$/, ".0");
+        spreadCell.textContent = lbl;
+      }
+
+      const updatedResult = state.results.find((r) => r.teamId === teamId);
+      if (!updatedResult) return;
+
+      // Update numeric distribution list
+      const distLis = content.querySelectorAll(".team-detail-dist li");
+      for (let k = 0; k <= 4; k++) {
+        const li = distLis[k];
+        if (!li) continue;
+        li.innerHTML = `${k} wins: <strong>${formatPercent(
+          updatedResult.exact[k],
+          precision
+        )}</strong> &nbsp;|&nbsp; ≥${k} wins: <strong>${formatPercent(
+          updatedResult.cumulative[k],
+          precision
+        )}</strong>`;
+      }
+
+      // Update per-row P(win)
+      const g = games.find((gg) => gg.id === gameId);
+      if (!g) return;
+      const spread =
+        typeof state.spreads[String(gameId)] === "number"
+          ? state.spreads[String(gameId)]
+          : NEUTRAL_SPREAD;
+      const homeProb = homeWinProbFromSpread(spread);
+      const teamProb = g.home === teamId ? homeProb : 1 - homeProb;
+      row.lastElementChild.textContent = formatPercent(teamProb, precision);
+
+      // Re-render chart in whatever mode is currently active
+      const activeBtn = content.querySelector(".chart-mode-btn.active");
+      const currentMode =
+        activeBtn && activeBtn.dataset.mode === "atLeast"
+          ? "atLeast"
+          : "exact";
+      renderTeamChart(teamId, currentMode);
+
+      state.lastFocusedGameId = gameId;
+      saveStateToStorage();
     });
-    rows.push(headerRow);
-  
-    for (const r of state.results) {
-      if (!resultHasAnyPickedGame(r)) continue;
-  
-      rows.push([
-        r.teamId,
-        r.division,
-        r.currentWins,
-        r.expectedAdditionalWins,
-        r.projectedWins,
-        r.exact[0],
-        r.exact[1],
-        r.exact[2],
-        r.exact[3],
-        r.exact[4],
-        r.cumulative[1],
-        r.cumulative[2],
-        r.cumulative[3],
-        r.cumulative[4],
-      ]);
-    }
-  
-    const csv = rows
-      .map((row) =>
-        row
-          .map((cell) => {
-            if (typeof cell === "number") {
-              return cell.toString();
-            }
-            const s = String(cell);
-            if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-              return '"' + s.replace(/"/g, '""') + '"';
-            }
-            return s;
-          })
-          .join(",")
-      )
-      .join("\n");
-  
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "nfl_projections.csv";
-    document.body.appendChild(a);
-  
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  });
+}
+
+// ---------------------------
+// CSV export
+// ---------------------------
+
+function exportCsv() {
+  const rows = [];
+
+  // Header row based on TABLE_HEADERS
+  const headerRow = TABLE_HEADERS.map((h) =>
+    h.label.replace(/\s+/g, "")
+  );
+  rows.push(headerRow);
+
+  for (const r of state.results) {
+    if (!resultHasAnyPickedGame(r)) continue;
+
+    const line = TABLE_HEADERS.map((h) => {
+      switch (h.key) {
+        case "team":
+          return r.teamId;
+        case "division":
+          return r.division;
+        case "current":
+          return r.currentWins;
+        case "expected":
+          return r.expectedAdditionalWins != null
+            ? r.expectedAdditionalWins.toFixed(4)
+            : "";
+        case "projected":
+          return r.projectedWins != null ? r.projectedWins.toFixed(4) : "";
+        case "sos":
+          return r.sos != null ? r.sos.toFixed(4) : "";
+        case "P0":
+        case "P1":
+        case "P2":
+        case "P3":
+        case "P4": {
+          if (!r.exact) return "";
+          const k = Number(h.key.slice(1));
+          return typeof r.exact[k] === "number"
+            ? r.exact[k].toFixed(6)
+            : "";
+        }
+        case "PA1":
+        case "PA2":
+        case "PA3":
+        case "PA4": {
+          if (!r.cumulative) return "";
+          const k = Number(h.key.slice(2));
+          return typeof r.cumulative[k] === "number"
+            ? r.cumulative[k].toFixed(6)
+            : "";
+        }
+        default:
+          return "";
+      }
+    });
+
+    rows.push(line);
   }
-  
+
+  const csv = rows
+    .map((row) =>
+      row
+        .map((cell) => {
+          if (typeof cell === "number") {
+            return cell.toString();
+          }
+          const s = String(cell);
+          if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+            return '"' + s.replace(/"/g, '""') + '"';
+          }
+          return s;
+        })
+        .join(",")
+    )
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "nfl_projections.csv";
+  document.body.appendChild(a);
+
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

@@ -16,6 +16,7 @@ const TABLE_HEADERS = [
     { key: "current",   label: "Current W" },
     { key: "expected",  label: "Exp. addl W" },
     { key: "projected", label: "Proj. W" },
+    { key: "sos",       label: "SoS (easier +)" },
     { key: "P0",        label: "P(0 W)" },
     { key: "P1",        label: "P(1 W)" },
     { key: "P2",        label: "P(2 W)" },
@@ -26,6 +27,7 @@ const TABLE_HEADERS = [
     { key: "PA3",       label: "P(≥3 W)" },
     { key: "PA4",       label: "P(≥4 W)" },
   ];
+  
   
 const QUICK_SPREAD_PRESETS = [-10.5, -7.5, -3.5, -0.5, +0.5, +3.5, +7.5, +10.5];
 
