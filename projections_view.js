@@ -32,13 +32,17 @@ function findHeaderKey(candidates) {
 }
 
 function getSOSHeaderKey() {
-  // likely "sos" in your config, but we support a few variants just in case
-  return findHeaderKey(["sos", "oppWins", "oppWinsVsOthers", "opp_wins"]);
+  if (!Array.isArray(TABLE_HEADERS)) return null;
+  const keys = ["sos", "oppWins", "oppWinsVsOthers", "opp_wins"];
+  const found = TABLE_HEADERS.find(h => keys.includes(h.key));
+  return found ? found.key : null;
 }
 
 function getSchedLuckHeaderKey() {
-  // likely "schedLuck" in your config
-  return findHeaderKey(["schedLuck", "scheduleLuck", "schedLuckWins"]);
+  if (!Array.isArray(TABLE_HEADERS)) return null;
+  const keys = ["schedLuck", "scheduleLuck", "schedLuckWins", "schedLuckW"];
+  const found = TABLE_HEADERS.find(h => keys.includes(h.key));
+  return found ? found.key : null;
 }
 
 // ---------------------------
@@ -1137,10 +1141,12 @@ function exportCsv() {
 
     const line = TABLE_HEADERS.map((h) => {
       // Dynamic metric columns first
-      if (h.key === SOS_HEADER_KEY) {
+      const sosKey = getSOSHeaderKey
+      const schedKey = getSchedLuckHeaderKey
+      if (h.key === sosKey) {
         return r.sosOppWinsAvg != null ? r.sosOppWinsAvg.toFixed(4) : "";
       }
-      if (h.key === SCHED_LUCK_HEADER_KEY) {
+      if (h.key === schedKey) {
         return r.scheduleLuckWinsSeason != null
           ? r.scheduleLuckWinsSeason.toFixed(4)
           : "";
