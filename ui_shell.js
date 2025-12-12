@@ -98,12 +98,18 @@ function setActiveTab(tab) {
   // Hide the More menu whenever we switch main tabs
   closeMoreMenu();
 
-  // Update bottom-nav active state for main tabs only
-  document.querySelectorAll(".bottom-nav-item").forEach((btn) => {
-    const btnTab = btn.dataset.tab;
-    if (!btnTab || btnTab === "more") return;
-    btn.classList.toggle("is-active", btnTab === tab);
-  });
+  // Update active state on BOTH navs (top + bottom),
+  // but never mark "more" as active.
+  document
+    .querySelectorAll(".bottom-nav-item, .top-nav-item")
+    .forEach((btn) => {
+      const btnTab = btn.dataset.tab;
+      if (!btnTab || btnTab === "more") {
+        btn.classList.toggle("is-active", false);
+        return;
+      }
+      btn.classList.toggle("is-active", btnTab === tab);
+    });
 
   // Hide all sections
   if (scheduleSection)   scheduleSection.classList.add("hidden");
@@ -115,7 +121,7 @@ function setActiveTab(tab) {
   if (tab === "games") {
     state.view = "schedule";
     saveStateToStorage();
-    applyViewMode();
+    applyViewMode(); // uses state.view to toggle schedule vs projections
   } else if (tab === "teams") {
     state.view = "projections";
     saveStateToStorage();
@@ -125,6 +131,7 @@ function setActiveTab(tab) {
     if (rawMarketsSection) rawMarketsSection.classList.remove("hidden");
   }
 }
+
 
 // ---------------------------
 // Odds toggle + full reset
@@ -196,6 +203,21 @@ function handlePrecisionChange(value) {
 // ---------------------------
 // Event wiring
 // ---------------------------
+
+// Wire up click handlers for any tab strip (top or bottom)
+function wireNavContainer(containerSelector, itemSelector) {
+  const container = document.querySelector(containerSelector);
+  if (!container) return;
+
+  container.querySelectorAll(itemSelector).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      if (!tab) return;
+      setActiveTab(tab);
+    });
+  });
+}
+
 
 function attachShellEventListeners() {
   // "More" menu controls
@@ -312,22 +334,9 @@ function attachShellEventListeners() {
     });
   }
 
-  // Bottom tab bar wiring (Games / Teams / Betting / More)
-  const bottomNav = document.querySelector(".bottom-nav");
-  if (bottomNav) {
-    bottomNav.querySelectorAll(".bottom-nav-item").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const tab = btn.dataset.tab;
-        if (!tab) return;
-
-        if (tab === "more") {
-          toggleMoreMenu();
-        } else {
-          setActiveTab(tab);
-        }
-      });
-    });
-  }
+  // Tab bars (top on desktop, bottom on mobile)
+  wireNavContainer(".bottom-nav", ".bottom-nav-item");
+  wireNavContainer(".top-nav", ".top-nav-item");
 }
 
 // ---------------------------
