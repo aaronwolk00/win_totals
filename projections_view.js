@@ -52,98 +52,91 @@ function computeCumulative(exact) {
 }
 
 // ---------------------------
-// Strength of Schedule (SoS)
+// Strength of Schedule (SoS) – opponent wins view
 // ---------------------------
 //
-// Step 1: derive a crude rating per team from user spreads
-//         (average win-probability "edge" vs 0.5 across all games).
-// Step 2: for each team, average opponent ratings across its schedule.
-// Step 3: attach SoS = -avgOppRating so that:
-//           > 0  → easier slate
-//           < 0  → tougher slate
+// For each team T:
+//   For each remaining game vs opponent O:
+//     - Let OppProj = projected wins for O (full season).
+//     - Let OppPWinVsT = P(O wins this game).
+//     - Define OppProjExclThisGame = OppProj - OppPWinVsT.
+//   SoS(T) = average of OppProjExclThisGame across all T's opponents.
 //
-function computeStrengthOfSchedule(results) {
-  // 1) Build per-team rating from game edges (win prob – 0.5)
-  const ratingSums = {};
-  const ratingCounts = {};
-
-  for (const teamId of teamIds) {
-    ratingSums[teamId] = 0;
-    ratingCounts[teamId] = 0;
-  }
-
-  for (const g of games) {
-    const key = String(g.id);
-    const spread = state.spreads[key];
-    if (typeof spread !== "number" || !Number.isFinite(spread)) continue;
-
-    const homeProb = homeWinProbFromSpread(spread);
-    const awayProb = 1 - homeProb;
-
-    const homeEdge = homeProb - 0.5;
-    const awayEdge = awayProb - 0.5; // = -homeEdge
-
-    ratingSums[g.home] += homeEdge;
-    ratingCounts[g.home] += 1;
-
-    ratingSums[g.away] += awayEdge;
-    ratingCounts[g.away] += 1;
-  }
-
-  const teamRating = {};
-  for (const teamId of teamIds) {
-    const count = ratingCounts[teamId];
-    if (count > 0) {
-      teamRating[teamId] = ratingSums[teamId] / count;
-    } else {
-      // No custom spreads for this team: treat as league-average (0)
-      teamRating[teamId] = 0;
-    }
-  }
-
-  // 2) For each team, average opponent ratings across schedule
-  const sosSums = {};
-  const sosCounts = {};
-  for (const teamId of teamIds) {
-    sosSums[teamId] = 0;
-    sosCounts[teamId] = 0;
-  }
-
-  for (const g of games) {
-    const homeId = g.home;
-    const awayId = g.away;
-
-    const oppForHome = teamRating[awayId] ?? 0;
-    const oppForAway = teamRating[homeId] ?? 0;
-
-    sosSums[homeId] += oppForHome;
-    sosCounts[homeId] += 1;
-
-    sosSums[awayId] += oppForAway;
-    sosCounts[awayId] += 1;
-  }
-
-  // 3) Attach SoS to result objects (only for teams with results)
+// Exposes:
+//   - r.sosOppWinsAvg: average opponents' wins excluding this game
+//   - r.sos          : alias for sosOppWinsAvg (for the "sos" column)
+//   - r.sosLeagueAvg : league-average projected wins (for context)
+function attachStrengthOfSchedule(results, gameWinProbs) {
   const resultByTeam = {};
   for (const r of results) {
     resultByTeam[r.teamId] = r;
   }
 
-  for (const teamId of teamIds) {
-    const r = resultByTeam[teamId];
-    if (!r) continue;
+  // League-average projected wins across teams we have results for
+  let leagueProjSum = 0;
+  let leagueProjCount = 0;
+  for (const r of results) {
+    if (typeof r.projectedWins === "number") {
+      leagueProjSum += r.projectedWins;
+      leagueProjCount++;
+    }
+  }
+  const leagueProjAvg = leagueProjCount ? leagueProjSum / leagueProjCount : 8.5;
 
-    const count = sosCounts[teamId];
-    if (!count) {
-      r.sos = 0;
+  for (const teamId of teamIds) {
+    const rTeam = resultByTeam[teamId];
+    if (!rTeam) {
+      // No projections for this team (no games picked)
       continue;
     }
 
-    const avgOppRating = sosSums[teamId] / count;
+    let oppWinsSum = 0;
+    let oppCount = 0;
 
-    // Flip sign so easier opponents (negative rating) => positive SoS
-    r.sos = -avgOppRating;
-    r.sosGames = count; // number of remaining games used in this SoS
+    for (const g of games) {
+      let oppId = null;
+      let oppPWinThisGame = null;
+
+      if (g.home === teamId) {
+        oppId = g.away;
+        const probs = gameWinProbs[g.id];
+        if (!probs) continue;
+        oppPWinThisGame = probs.awayProb;
+      } else if (g.away === teamId) {
+        oppId = g.home;
+        const probs = gameWinProbs[g.id];
+        if (!probs) continue;
+        oppPWinThisGame = probs.homeProb;
+      } else {
+        continue;
+      }
+
+      const oppResult = resultByTeam[oppId];
+      // Baseline: use opponent's projected wins; fall back to league average
+      let oppProj = oppResult ? oppResult.projectedWins : leagueProjAvg;
+
+      if (oppResult) {
+        // Remove the expected contribution from THIS game vs teamId
+        // so we're only counting opponent's wins vs everybody else.
+        oppProj = oppProj - oppPWinThisGame;
+      }
+
+      oppWinsSum += oppProj;
+      oppCount += 1;
+    }
+
+    if (oppCount > 0) {
+      const avgOppWins = oppWinsSum / oppCount;
+      rTeam.sosOppWinsAvg = avgOppWins;
+      rTeam.sosOppCount = oppCount;
+      rTeam.sos = avgOppWins; // keep "sos" as this metric for the table
+      rTeam.sosLeagueAvg = leagueProjAvg;
+    } else {
+      rTeam.sosOppWinsAvg = null;
+      rTeam.sosOppCount = 0;
+      rTeam.sos = null;
+      rTeam.sosLeagueAvg = leagueProjAvg;
+    }
   }
 }
 
@@ -160,6 +153,7 @@ function computeAndRenderResults() {
   }
 
   const touchedTeams = new Set();
+  const gameWinProbs = {}; // gameId -> { homeProb, awayProb }
 
   for (const game of games) {
     const key = String(game.id);
@@ -175,12 +169,14 @@ function computeAndRenderResults() {
     }
 
     const awayProb = 1 - homeProb;
+    gameWinProbs[game.id] = { homeProb, awayProb };
+
     teamGameProbs[game.home].push(homeProb);
     teamGameProbs[game.away].push(awayProb);
   }
 
-  // Pad to 4 games (safety / fixed horizon).
-  // Padding with 0.5 does NOT affect scheduleWins, since (0.5 - 0.5) = 0.
+  // Pad to 4 games (fixed horizon). Padding with 0.5 doesn't
+  // affect scheduleWins because (0.5 - 0.5) = 0.
   for (const teamId of teamIds) {
     const arr = teamGameProbs[teamId];
     while (arr.length < 4) {
@@ -205,8 +201,8 @@ function computeAndRenderResults() {
     const exact = computeExactDistribution(probs); // length 5: P(0..4)
     const cumulative = computeCumulative(exact);   // length 5: P(≥0..≥4)
 
-    // "Wins from schedule" vs a neutral 50/50 slate
-    // Sum over remaining games: p(win) - 0.5
+    // "Wins from schedule" vs a neutral 50/50 slate:
+    // sum over remaining games of (p(win) - 0.5)
     const scheduleWins = probs.reduce((sum, p) => sum + (p - 0.5), 0);
 
     results.push({
@@ -218,13 +214,13 @@ function computeAndRenderResults() {
       exact,
       cumulative,
       probs,
-      scheduleWins, // total wins attributed to schedule softness/hardness vs neutral
-      // sos / sosGames will be added by computeStrengthOfSchedule
+      scheduleWins, // schedule-generated wins above/below neutral
+      // SoS fields added below
     });
   }
 
-  // Compute strength-of-schedule rating and attach to each result
-  computeStrengthOfSchedule(results);
+  // Compute SoS based on opponents' expected wins
+  attachStrengthOfSchedule(results, gameWinProbs);
 
   state.results = results;
   renderTeamTable();
@@ -263,7 +259,8 @@ function renderTeamTable() {
       case "current":
         return r.currentWins;
       case "sos":
-        return r.sos ?? 0;
+        // Sort by SoS (avg opp wins) if present
+        return r.sos != null ? r.sos : 0;
       default:
         return r.projectedWins;
     }
@@ -366,14 +363,16 @@ function renderTeamTable() {
           td.textContent = formatNumber(r.projectedWins, precision);
           break;
 
-        case "sos":
+        case "sos": {
           td.classList.add("numeric-cell");
-          if (r.sos == null) {
+          if (r.sosOppWinsAvg == null) {
             td.textContent = "—";
           } else {
-            td.textContent = r.sos.toFixed(3);
+            // SoS column shows avg opponent wins (excluding this game)
+            td.textContent = formatNumber(r.sosOppWinsAvg, 2);
           }
           break;
+        }
 
         case "P0":
         case "P1":
@@ -493,11 +492,10 @@ function renderDivisionSummary() {
     const title = document.createElement("strong");
     title.textContent = division;
 
-    // Division subtitle: simple explanation
     const subt = document.createElement("span");
     subt.textContent = hasTie
       ? "tie detected · ordering by projected wins"
-      : "ordering by projected wins and schedule context";
+      : "ordering by projected wins + opponent strength";
     header.appendChild(title);
     header.appendChild(subt);
     card.appendChild(header);
@@ -522,27 +520,18 @@ function renderDivisionSummary() {
       const right = document.createElement("div");
       right.className = "division-team-proj";
 
-      const sched = r.scheduleWins ?? 0;
-      const schedSign = sched > 0 ? "+" : sched < 0 ? "−" : "±";
-      const schedAbs = Math.abs(sched);
-
-      // Example: "10.3 wins · +0.8 from schedule"
-      let schedPart;
-      if (schedAbs < 0.05) {
-        schedPart = "≈0.0 from schedule";
+      const sosAvg = r.sosOppWinsAvg;
+      let sosPart;
+      if (sosAvg == null) {
+        sosPart = "opp avg — wins";
       } else {
-        const numeric = formatNumber(schedAbs, 1);
-        // Use plain minus sign in the text, we already show sign via schedSign
-        schedPart =
-          schedSign === "±"
-            ? `${numeric} from schedule`
-            : `${schedSign}${numeric} from schedule`;
+        sosPart = `opp avg ${formatNumber(sosAvg, 1)} wins`;
       }
 
       right.textContent = `${formatNumber(
         r.projectedWins,
         state.precision
-      )} wins · ${schedPart}`;
+      )} wins · ${sosPart}`;
 
       row.appendChild(left);
       row.appendChild(right);
@@ -637,20 +626,56 @@ function buildTeamNarrative(teamInfo, result) {
   const sched = result.scheduleWins ?? 0;
   const schedAbs = Math.abs(sched);
 
+  const oppAvg = result.sosOppWinsAvg;
+  const leagueAvg = result.sosLeagueAvg;
+
   let scheduleLine;
+
+  // Describe "wins from schedule" as extra wins vs neutral 50/50 slate
   if (schedAbs < 0.05) {
     scheduleLine =
-      "Your lines treat their closing schedule as roughly neutral (no big edge either way compared to a 50/50 slate).";
+      "Relative to a neutral 50/50 slate, your lines treat their closing schedule as basically break-even (no real edge).";
   } else if (sched > 0) {
-    scheduleLine = `Your lines give them about <strong>${formatNumber(
+    scheduleLine = `Relative to a neutral 50/50 slate, your lines give them about <strong>${formatNumber(
       sched,
       1
-    )}</strong> extra wins from an easier closing schedule compared to a neutral 50/50 slate.`;
+    )}</strong> extra wins purely from how soft the schedule is.`;
   } else {
-    scheduleLine = `Your lines suggest the schedule is costing them about <strong>${formatNumber(
+    scheduleLine = `Relative to a neutral 50/50 slate, your lines suggest the schedule is costing them about <strong>${formatNumber(
       -sched,
       1
-    )}</strong> wins compared to a neutral 50/50 slate.`;
+    )}</strong> wins.`;
+  }
+
+  let sosLine;
+  if (oppAvg == null || leagueAvg == null) {
+    sosLine = "Opponent-strength context isn’t fully available yet.";
+  } else {
+    const diff = oppAvg - leagueAvg;
+    const diffAbs = Math.abs(diff);
+
+    if (diffAbs < 0.1) {
+      sosLine = `Their opponents over the full season average about <strong>${formatNumber(
+        oppAvg,
+        1
+      )}</strong> wins (excluding this matchup), which is essentially league-average.`;
+    } else if (diff > 0) {
+      sosLine = `Their opponents over the full season average about <strong>${formatNumber(
+        oppAvg,
+        1
+      )}</strong> wins (excluding this matchup), which is a <strong>tougher</strong> slate than the league average of roughly <strong>${formatNumber(
+        leagueAvg,
+        1
+      )}</strong> wins.`;
+    } else {
+      sosLine = `Their opponents over the full season average about <strong>${formatNumber(
+        oppAvg,
+        1
+      )}</strong> wins (excluding this matchup), which is a <strong>softer</strong> slate than the league average of roughly <strong>${formatNumber(
+        leagueAvg,
+        1
+      )}</strong> wins.`;
+    }
   }
 
   let html = `<div class="team-detail-narrative"><ul>`;
@@ -668,6 +693,7 @@ function buildTeamNarrative(teamInfo, result) {
     projected,
     2
   )}</strong> total wins.</li>`;
+  html += `<li>${sosLine}</li>`;
   html += `<li>${scheduleLine}</li>`;
 
   html += `</ul></div>`;
@@ -874,7 +900,7 @@ function showTeamDetail(teamId) {
         )}</strong>`;
       }
 
-      // Update narrative (including schedule-wins line)
+      // Update narrative (including new SoS + scheduleWins text)
       const narrativeDiv = content.querySelector(".team-detail-narrative");
       if (narrativeDiv) {
         narrativeDiv.outerHTML = buildTeamNarrative(teamInfo, updatedResult);
@@ -936,7 +962,8 @@ function exportCsv() {
         case "projected":
           return r.projectedWins != null ? r.projectedWins.toFixed(4) : "";
         case "sos":
-          return r.sos != null ? r.sos.toFixed(4) : "";
+          // Export SoS as avg opponent wins
+          return r.sosOppWinsAvg != null ? r.sosOppWinsAvg.toFixed(4) : "";
         case "P0":
         case "P1":
         case "P2":
