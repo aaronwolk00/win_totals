@@ -83,14 +83,18 @@ const TEAM_NAME_TO_ID = (() => {
 
 // Current wins per team, derived purely from COMPLETED_RESULTS_2025
 function computeCurrentWinsFromCompletedResults() {
+  // If the completed-results file isn't present or is malformed,
+  // don't override anything – let teams[*].currentWins stand.
+  if (
+    typeof COMPLETED_RESULTS_2025 === "undefined" ||
+    !Array.isArray(COMPLETED_RESULTS_2025)
+  ) {
+    return null;
+  }
+
   const wins = {};
   for (const teamId of teamIds) {
     wins[teamId] = 0;
-  }
-
-  if (typeof COMPLETED_RESULTS_2025 === "undefined" ||
-      !Array.isArray(COMPLETED_RESULTS_2025)) {
-    return wins;
   }
 
   for (const g of COMPLETED_RESULTS_2025) {
@@ -107,7 +111,7 @@ function computeCurrentWinsFromCompletedResults() {
     } else if (vs > hs) {
       wins[awayId] += 1;
     } else {
-      // If ties ever exist: half win each
+      // If ties ever appear: half a win each.
       wins[homeId] += 0.5;
       wins[awayId] += 0.5;
     }
@@ -115,6 +119,7 @@ function computeCurrentWinsFromCompletedResults() {
 
   return wins;
 }
+
 
 // Build game list from completed real results (Weeks 1+)
 function buildGameListFromCompletedResults() {
@@ -191,12 +196,25 @@ function buildFullSeasonGameList() {
 function computeAndRenderResults() {
   const precision = state.precision;
 
-  // 1) Current wins from completed results
+  // 1) Current wins from completed results (if available)
   const currentWinsByTeam = computeCurrentWinsFromCompletedResults();
-  // Optionally keep teams[*].currentWins in sync for other views
+
+  // Keep teams[*].currentWins in sync for other views,
+  // but only override when we actually have a value.
   for (const teamId of teamIds) {
-    if (!teams[teamId]) continue;
-    teams[teamId].currentWins = currentWinsByTeam[teamId] ?? 0;
+    const info = teams[teamId];
+    if (!info) continue;
+
+    let currentWins = info.currentWins ?? 0;
+    if (
+      currentWinsByTeam &&
+      Object.prototype.hasOwnProperty.call(currentWinsByTeam, teamId) &&
+      typeof currentWinsByTeam[teamId] === "number"
+    ) {
+      currentWins = currentWinsByTeam[teamId];
+    }
+
+    info.currentWins = currentWins;
   }
 
   // 2) Build remaining 4-game probabilities from spreads
@@ -206,7 +224,6 @@ function computeAndRenderResults() {
   }
 
   const touchedTeams = new Set();
-  const gameWinProbs = {}; // gameId -> { homeProb, awayProb }
 
   for (const game of games) {
     const key = String(game.id);
@@ -222,8 +239,6 @@ function computeAndRenderResults() {
     }
 
     const awayProb = 1 - homeProb;
-    gameWinProbs[game.id] = { homeProb, awayProb };
-
     teamGameProbs[game.home].push(homeProb);
     teamGameProbs[game.away].push(awayProb);
   }
@@ -246,14 +261,16 @@ function computeAndRenderResults() {
     }
 
     const info = teams[teamId];
+    if (!info) continue;
+
     const probs = teamGameProbs[teamId];
 
-    const currentWins = currentWinsByTeam[teamId] ?? 0;
+    const currentWins = info.currentWins ?? 0;
     const expectedAdditionalWins = probs.reduce((sum, p) => sum + p, 0);
     const projectedWins = currentWins + expectedAdditionalWins;
 
-    const exact = computeExactDistribution(probs); // length 5: P(0..4)
-    const cumulative = computeCumulative(exact);   // length 5: P(≥0..≥4)
+    const exact = computeExactDistribution(probs);     // length 5: P(0..4)
+    const cumulative = computeCumulative(exact);       // length 5: P(≥0..≥4)
 
     // Edge from remaining schedule vs a neutral 50/50 slate:
     // sum over remaining games of (p(win) - 0.5)
@@ -271,6 +288,8 @@ function computeAndRenderResults() {
       exact,
       cumulative,
       probs,
+      // Used in the team-detail narrative as "wins from schedule"
+      scheduleWins: remainingScheduleEdgeWins,
       remainingScheduleEdgeWins,
       // schedule / SoS fields attached below
     });
@@ -290,7 +309,7 @@ function computeAndRenderResults() {
       scheduleFn = window.computeScheduleLuckFromGames;
     }
 
-    if (scheduleFn && fullSeasonGames.length > 0) {
+    if (scheduleFn && Array.isArray(fullSeasonGames) && fullSeasonGames.length > 0) {
       const metricsByTeam = scheduleFn(fullSeasonGames, {
         k: 1.0,
         maxIter: 200,
@@ -333,6 +352,7 @@ function computeAndRenderResults() {
     window.refreshBettingFromStorage();
   }
 }
+
 
 // ---------------------------
 // Main projections table
