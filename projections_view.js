@@ -22,7 +22,7 @@ function computeExactDistribution(probs) {
   const result = [0, 0, 0, 0, 0]; // k=0..4
   const n = 4;
 
-  for (let mask = 0; mask < (1 << n); mask++) {
+  for (let mask = 0; mask < 1 << n; mask++) {
     let prob = 1;
     let wins = 0;
     for (let i = 0; i < n; i++) {
@@ -55,12 +55,13 @@ function computeCumulative(exact) {
 // Strength of Schedule (SoS)
 // ---------------------------
 //
-// Uses user spreads to derive a per-team "rating" and then
-// computes SoS per team as:
+// Step 1: derive a crude rating per team from user spreads
+//         (average win-probability "edge" vs 0.5 across all games).
+// Step 2: for each team, average opponent ratings across its schedule.
+// Step 3: attach SoS = -avgOppRating so that:
+//           > 0  → easier slate
+//           < 0  → tougher slate
 //
-//   SoS(team) = - average( opponentRating )
-//
-// so that positive SoS = easier schedule, negative = harder.
 function computeStrengthOfSchedule(results) {
   // 1) Build per-team rating from game edges (win prob – 0.5)
   const ratingSums = {};
@@ -142,28 +143,8 @@ function computeStrengthOfSchedule(results) {
 
     // Flip sign so easier opponents (negative rating) => positive SoS
     r.sos = -avgOppRating;
+    r.sosGames = count; // number of remaining games used in this SoS
   }
-}
-
-// Simple helpers for turning SoS into something readable
-function formatSosValue(sos, digits = 3) {
-  if (typeof sos !== "number" || !Number.isFinite(sos)) return null;
-  const sign = sos > 0 ? "+" : "";
-  return sign + sos.toFixed(digits);
-}
-
-// Very lightweight categorization so narrative/div cards feel human
-function describeSosCategory(sos) {
-  if (typeof sos !== "number" || !Number.isFinite(sos)) return null;
-
-  // Tunable thresholds; small because SoS is an average edge
-  if (sos >= 0.03) {
-    return "one of the softer remaining schedules";
-  }
-  if (sos <= -0.03) {
-    return "one of the tougher remaining schedules";
-  }
-  return "roughly league-average difficulty";
 }
 
 // ---------------------------
@@ -198,7 +179,8 @@ function computeAndRenderResults() {
     teamGameProbs[game.away].push(awayProb);
   }
 
-  // Pad to 4 games (safety)
+  // Pad to 4 games (safety / fixed horizon).
+  // Padding with 0.5 does NOT affect scheduleWins, since (0.5 - 0.5) = 0.
   for (const teamId of teamIds) {
     const arr = teamGameProbs[teamId];
     while (arr.length < 4) {
@@ -223,6 +205,10 @@ function computeAndRenderResults() {
     const exact = computeExactDistribution(probs); // length 5: P(0..4)
     const cumulative = computeCumulative(exact);   // length 5: P(≥0..≥4)
 
+    // "Wins from schedule" vs a neutral 50/50 slate
+    // Sum over remaining games: p(win) - 0.5
+    const scheduleWins = probs.reduce((sum, p) => sum + (p - 0.5), 0);
+
     results.push({
       teamId,
       division: info.division,
@@ -232,11 +218,12 @@ function computeAndRenderResults() {
       exact,
       cumulative,
       probs,
-      // sos will be added by computeStrengthOfSchedule
+      scheduleWins, // total wins attributed to schedule softness/hardness vs neutral
+      // sos / sosGames will be added by computeStrengthOfSchedule
     });
   }
 
-  // Compute strength-of-schedule and attach to each result
+  // Compute strength-of-schedule rating and attach to each result
   computeStrengthOfSchedule(results);
 
   state.results = results;
@@ -384,7 +371,7 @@ function renderTeamTable() {
           if (r.sos == null) {
             td.textContent = "—";
           } else {
-            td.textContent = formatSosValue(r.sos, 3);
+            td.textContent = r.sos.toFixed(3);
           }
           break;
 
@@ -505,8 +492,12 @@ function renderDivisionSummary() {
     header.className = "division-card-header";
     const title = document.createElement("strong");
     title.textContent = division;
+
+    // Division subtitle: simple explanation
     const subt = document.createElement("span");
-    subt.textContent = hasTie ? "tie detected" : "ordering by projected wins";
+    subt.textContent = hasTie
+      ? "tie detected · ordering by projected wins"
+      : "ordering by projected wins and schedule context";
     header.appendChild(title);
     header.appendChild(subt);
     card.appendChild(header);
@@ -531,16 +522,27 @@ function renderDivisionSummary() {
       const right = document.createElement("div");
       right.className = "division-team-proj";
 
-      const projText = formatNumber(r.projectedWins, state.precision);
+      const sched = r.scheduleWins ?? 0;
+      const schedSign = sched > 0 ? "+" : sched < 0 ? "−" : "±";
+      const schedAbs = Math.abs(sched);
 
-      if (typeof r.sos === "number" && Number.isFinite(r.sos)) {
-        const sosVal = formatSosValue(r.sos, 3);
-        const category = describeSosCategory(r.sos);
-        // Example: "10.3 · SoS +0.042 (softer schedule)"
-        right.textContent = `${projText} · SoS ${sosVal} (${category})`;
+      // Example: "10.3 wins · +0.8 from schedule"
+      let schedPart;
+      if (schedAbs < 0.05) {
+        schedPart = "≈0.0 from schedule";
       } else {
-        right.textContent = projText;
+        const numeric = formatNumber(schedAbs, 1);
+        // Use plain minus sign in the text, we already show sign via schedSign
+        schedPart =
+          schedSign === "±"
+            ? `${numeric} from schedule`
+            : `${schedSign}${numeric} from schedule`;
       }
+
+      right.textContent = `${formatNumber(
+        r.projectedWins,
+        state.precision
+      )} wins · ${schedPart}`;
 
       row.appendChild(left);
       row.appendChild(right);
@@ -632,6 +634,25 @@ function buildTeamNarrative(teamInfo, result) {
   const p3Plus = result.cumulative[3]; // ≥3 of 4
   const p0or1 = result.exact[0] + result.exact[1];
 
+  const sched = result.scheduleWins ?? 0;
+  const schedAbs = Math.abs(sched);
+
+  let scheduleLine;
+  if (schedAbs < 0.05) {
+    scheduleLine =
+      "Your lines treat their closing schedule as roughly neutral (no big edge either way compared to a 50/50 slate).";
+  } else if (sched > 0) {
+    scheduleLine = `Your lines give them about <strong>${formatNumber(
+      sched,
+      1
+    )}</strong> extra wins from an easier closing schedule compared to a neutral 50/50 slate.`;
+  } else {
+    scheduleLine = `Your lines suggest the schedule is costing them about <strong>${formatNumber(
+      -sched,
+      1
+    )}</strong> wins compared to a neutral 50/50 slate.`;
+  }
+
   let html = `<div class="team-detail-narrative"><ul>`;
 
   html += `<li>Most likely outcome: <strong>${bestK} additional wins</strong> (${mostLikelyTotal} total).</li>`;
@@ -647,13 +668,7 @@ function buildTeamNarrative(teamInfo, result) {
     projected,
     2
   )}</strong> total wins.</li>`;
-
-  // SoS narrative line
-  if (typeof result.sos === "number" && Number.isFinite(result.sos)) {
-    const sosVal = formatSosValue(result.sos, 3);
-    const category = describeSosCategory(result.sos);
-    html += `<li>Based on your lines, their remaining schedule looks <strong>${category}</strong>, with a schedule rating of <strong>${sosVal}</strong> (positive = easier, negative = tougher).</li>`;
-  }
+  html += `<li>${scheduleLine}</li>`;
 
   html += `</ul></div>`;
   return html;
@@ -695,7 +710,7 @@ function showTeamDetail(teamId) {
   // Header + high-level summary
   let html = "";
   html += `<h3 id="teamDetailTitle">${teamId} · ${teamInfo.name}</h3>`;
-  html += `<p>Current wins: <strong>${
+  html += `<p id="teamDetailSummary">Current wins: <strong>${
     teamInfo.currentWins
   }</strong> · Expected additional wins: <strong>${formatNumber(
     result.expectedAdditionalWins,
@@ -705,7 +720,7 @@ function showTeamDetail(teamId) {
     precision
   )}</strong></p>`;
 
-  // Narrative (now includes SoS)
+  // Narrative
   html += buildTeamNarrative(teamInfo, result);
 
   // Chart + toggle
@@ -843,6 +858,26 @@ function showTeamDetail(teamId) {
           updatedResult.cumulative[k],
           precision
         )}</strong>`;
+      }
+
+      // Update summary line (current / expected / projected)
+      const summaryP = content.querySelector("#teamDetailSummary");
+      if (summaryP) {
+        summaryP.innerHTML = `Current wins: <strong>${
+          teamInfo.currentWins
+        }</strong> · Expected additional wins: <strong>${formatNumber(
+          updatedResult.expectedAdditionalWins,
+          precision
+        )}</strong> · Projected wins: <strong>${formatNumber(
+          updatedResult.projectedWins,
+          precision
+        )}</strong>`;
+      }
+
+      // Update narrative (including schedule-wins line)
+      const narrativeDiv = content.querySelector(".team-detail-narrative");
+      if (narrativeDiv) {
+        narrativeDiv.outerHTML = buildTeamNarrative(teamInfo, updatedResult);
       }
 
       // Update per-row P(win)
