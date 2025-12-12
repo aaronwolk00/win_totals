@@ -7,10 +7,12 @@
 // Depends on globals defined elsewhere:
 //   - teams, games, teamPalettes, QUICK_SPREAD_PRESETS, NEUTRAL_SPREAD
 //   - state, teamIds, TABLE_HEADERS
+//   - COMPLETED_RESULTS_2025 (from completed_results_2025.js)
 //   - resultHasAnyPickedGame (helper from shared.js)
 //   - formatNumber, formatPercent
 //   - saveStateToStorage, updateProgressUI
 //   - homeWinProbFromSpread
+//   - window.computeScheduleLuckFromGames (from schedule_luck.js)
 //   - window.refreshBettingFromStorage (optional)
 
 // ---------------------------
@@ -22,7 +24,7 @@ function computeExactDistribution(probs) {
   const result = [0, 0, 0, 0, 0]; // k=0..4
   const n = 4;
 
-  for (let mask = 0; mask < 1 << n; mask++) {
+  for (let mask = 0; mask < (1 << n); mask++) {
     let prob = 1;
     let wins = 0;
     for (let i = 0; i < n; i++) {
@@ -52,92 +54,84 @@ function computeCumulative(exact) {
 }
 
 // ---------------------------
-// Strength of Schedule (SoS) – opponent wins view
+// Helpers for schedule luck / SoS
 // ---------------------------
-//
-// For each team T:
-//   For each remaining game vs opponent O:
-//     - Let OppProj = projected wins for O (full season).
-//     - Let OppPWinVsT = P(O wins this game).
-//     - Define OppProjExclThisGame = OppProj - OppPWinVsT.
-//   SoS(T) = average of OppProjExclThisGame across all T's opponents.
-//
-// Exposes:
-//   - r.sosOppWinsAvg: average opponents' wins excluding this game
-//   - r.sos          : alias for sosOppWinsAvg (for the "sos" column)
-//   - r.sosLeagueAvg : league-average projected wins (for context)
-function attachStrengthOfSchedule(results, gameWinProbs) {
-  const resultByTeam = {};
-  for (const r of results) {
-    resultByTeam[r.teamId] = r;
-  }
 
-  // League-average projected wins across teams we have results for
-  let leagueProjSum = 0;
-  let leagueProjCount = 0;
-  for (const r of results) {
-    if (typeof r.projectedWins === "number") {
-      leagueProjSum += r.projectedWins;
-      leagueProjCount++;
+// Map full team names (from COMPLETED_RESULTS_2025) to teamIds used in `teams`
+const TEAM_NAME_TO_ID = (() => {
+  const map = {};
+  for (const teamId of teamIds) {
+    const info = teams[teamId];
+    if (info && info.name) {
+      map[info.name] = teamId;
     }
   }
-  const leagueProjAvg = leagueProjCount ? leagueProjSum / leagueProjCount : 8.5;
+  return map;
+})();
 
-  for (const teamId of teamIds) {
-    const rTeam = resultByTeam[teamId];
-    if (!rTeam) {
-      // No projections for this team (no games picked)
+// Build game list from completed real results (Weeks 1+)
+function buildGameListFromCompletedResults() {
+  const list = [];
+  if (!Array.isArray(window.COMPLETED_RESULTS_2025)) return list;
+
+  for (const g of window.COMPLETED_RESULTS_2025) {
+    const homeId = TEAM_NAME_TO_ID[g.homeName];
+    const awayId = TEAM_NAME_TO_ID[g.visitorName];
+    if (!homeId || !awayId) {
+      // If there’s a name mismatch, just skip that row.
       continue;
     }
 
-    let oppWinsSum = 0;
-    let oppCount = 0;
+    let homeProb = 0.5;
+    const hs = g.homeScore;
+    const vs = g.visitorScore;
 
-    for (const g of games) {
-      let oppId = null;
-      let oppPWinThisGame = null;
-
-      if (g.home === teamId) {
-        oppId = g.away;
-        const probs = gameWinProbs[g.id];
-        if (!probs) continue;
-        oppPWinThisGame = probs.awayProb;
-      } else if (g.away === teamId) {
-        oppId = g.home;
-        const probs = gameWinProbs[g.id];
-        if (!probs) continue;
-        oppPWinThisGame = probs.homeProb;
-      } else {
-        continue;
-      }
-
-      const oppResult = resultByTeam[oppId];
-      // Baseline: use opponent's projected wins; fall back to league average
-      let oppProj = oppResult ? oppResult.projectedWins : leagueProjAvg;
-
-      if (oppResult) {
-        // Remove the expected contribution from THIS game vs teamId
-        // so we're only counting opponent's wins vs everybody else.
-        oppProj = oppProj - oppPWinThisGame;
-      }
-
-      oppWinsSum += oppProj;
-      oppCount += 1;
+    if (Number.isFinite(hs) && Number.isFinite(vs)) {
+      if (hs > vs) homeProb = 1;
+      else if (hs < vs) homeProb = 0;
+      else homeProb = 0.5; // ties if they ever appear
     }
 
-    if (oppCount > 0) {
-      const avgOppWins = oppWinsSum / oppCount;
-      rTeam.sosOppWinsAvg = avgOppWins;
-      rTeam.sosOppCount = oppCount;
-      rTeam.sos = avgOppWins; // keep "sos" as this metric for the table
-      rTeam.sosLeagueAvg = leagueProjAvg;
-    } else {
-      rTeam.sosOppWinsAvg = null;
-      rTeam.sosOppCount = 0;
-      rTeam.sos = null;
-      rTeam.sosLeagueAvg = leagueProjAvg;
-    }
+    list.push({
+      home: homeId,
+      away: awayId,
+      homeWinProb: homeProb
+    });
   }
+
+  return list;
+}
+
+// Build game list from remaining schedule + current spreads
+function buildGameListFromSpreads() {
+  const list = [];
+
+  for (const g of games) {
+    const key = String(g.id);
+    let homeProb = 0.5;
+
+    if (Object.prototype.hasOwnProperty.call(state.spreads, key)) {
+      const s = state.spreads[key];
+      if (typeof s === "number" && Number.isFinite(s)) {
+        homeProb = homeWinProbFromSpread(s);
+      }
+    }
+
+    list.push({
+      home: g.home,
+      away: g.away,
+      homeWinProb: homeProb
+    });
+  }
+
+  return list;
+}
+
+// Full-season view = completed games + remaining games
+function buildFullSeasonGameList() {
+  const completed = buildGameListFromCompletedResults();
+  const remaining = buildGameListFromSpreads();
+  return completed.concat(remaining);
 }
 
 // ---------------------------
@@ -155,6 +149,7 @@ function computeAndRenderResults() {
   const touchedTeams = new Set();
   const gameWinProbs = {}; // gameId -> { homeProb, awayProb }
 
+  // Remaining four-game slate (Weeks 15–18) from spreads
   for (const game of games) {
     const key = String(game.id);
     let homeProb = 0.5;
@@ -176,7 +171,7 @@ function computeAndRenderResults() {
   }
 
   // Pad to 4 games (fixed horizon). Padding with 0.5 doesn't
-  // affect scheduleWins because (0.5 - 0.5) = 0.
+  // affect "edge vs neutral" because (0.5 - 0.5) = 0.
   for (const teamId of teamIds) {
     const arr = teamGameProbs[teamId];
     while (arr.length < 4) {
@@ -188,7 +183,7 @@ function computeAndRenderResults() {
 
   for (const teamId of teamIds) {
     if (!touchedTeams.has(teamId)) {
-      // User has not picked any games for this team yet
+      // User has not picked any spreads for this team yet
       continue;
     }
 
@@ -201,9 +196,12 @@ function computeAndRenderResults() {
     const exact = computeExactDistribution(probs); // length 5: P(0..4)
     const cumulative = computeCumulative(exact);   // length 5: P(≥0..≥4)
 
-    // "Wins from schedule" vs a neutral 50/50 slate:
+    // "Edge from remaining schedule" vs a neutral 50/50 slate:
     // sum over remaining games of (p(win) - 0.5)
-    const scheduleWins = probs.reduce((sum, p) => sum + (p - 0.5), 0);
+    const remainingScheduleEdgeWins = probs.reduce(
+      (sum, p) => sum + (p - 0.5),
+      0
+    );
 
     results.push({
       teamId,
@@ -214,13 +212,53 @@ function computeAndRenderResults() {
       exact,
       cumulative,
       probs,
-      scheduleWins, // schedule-generated wins above/below neutral
-      // SoS fields added below
+      remainingScheduleEdgeWins,
+      // schedule / SoS fields attached below
     });
   }
 
-  // Compute SoS based on opponents' expected wins
-  attachStrengthOfSchedule(results, gameWinProbs);
+  // ---------------------------
+  // Full-season schedule luck + SoS from completed results + spreads
+  // ---------------------------
+  try {
+    const fullSeasonGames = buildFullSeasonGameList();
+    if (typeof window.computeScheduleLuckFromGames === "function") {
+      const metricsByTeam = window.computeScheduleLuckFromGames(
+        fullSeasonGames,
+        {
+          k: 1.0,
+          maxIter: 200,
+          tol: 1e-6
+        }
+      );
+
+      for (const r of results) {
+        const m = metricsByTeam[r.teamId];
+        if (!m) continue;
+
+        // Full-season neutral strength / wins
+        r.neutralWinPctSeason = m.neutralWinPct;
+        r.neutralWinsSeason = m.neutralWins;
+
+        // Full-season schedule luck in wins
+        r.scheduleLuckWinPctSeason = m.scheduleLuckWinPct;
+        r.scheduleLuckWinsSeason = m.scheduleLuckWins;
+
+        // "If they faced a league-average schedule, they'd project to X wins"
+        r.scheduleAdjustedProjectedWinsSeason = m.neutralWins;
+
+        // Strength-of-schedule: opponents’ avg wins vs others
+        r.sosOppWinsAvg = m.oppAvgWinsVsOthers;
+        r.sosOppWinPctAvg = m.oppAvgWinPctVsOthers;
+        r.sosLeagueAvgOppWins = m.leagueAvgOppWinsVsOthers;
+
+        // Alias used by table sorting
+        r.sos = r.sosOppWinsAvg;
+      }
+    }
+  } catch (err) {
+    console.warn("Schedule luck / SoS computation failed:", err);
+  }
 
   state.results = results;
   renderTeamTable();
@@ -259,7 +297,7 @@ function renderTeamTable() {
       case "current":
         return r.currentWins;
       case "sos":
-        // Sort by SoS (avg opp wins) if present
+        // Sort by SoS (avg opp wins vs others) if present
         return r.sos != null ? r.sos : 0;
       default:
         return r.projectedWins;
@@ -368,7 +406,7 @@ function renderTeamTable() {
           if (r.sosOppWinsAvg == null) {
             td.textContent = "—";
           } else {
-            // SoS column shows avg opponent wins (excluding this game)
+            // SoS column shows avg opponent wins (vs others)
             td.textContent = formatNumber(r.sosOppWinsAvg, 2);
           }
           break;
@@ -523,9 +561,12 @@ function renderDivisionSummary() {
       const sosAvg = r.sosOppWinsAvg;
       let sosPart;
       if (sosAvg == null) {
-        sosPart = "opp avg — wins";
+        sosPart = "opp avg — wins vs others";
       } else {
-        sosPart = `opp avg ${formatNumber(sosAvg, 1)} wins`;
+        sosPart = `opp avg ${formatNumber(
+          sosAvg,
+          1
+        )} wins vs others`;
       }
 
       right.textContent = `${formatNumber(
@@ -623,29 +664,13 @@ function buildTeamNarrative(teamInfo, result) {
   const p3Plus = result.cumulative[3]; // ≥3 of 4
   const p0or1 = result.exact[0] + result.exact[1];
 
-  const sched = result.scheduleWins ?? 0;
-  const schedAbs = Math.abs(sched);
+  // Full-season schedule luck in wins
+  const schedLuck = result.scheduleLuckWinsSeason ?? 0;
+  const schedLuckAbs = Math.abs(schedLuck);
 
+  // Opponents’ avg wins vs others
   const oppAvg = result.sosOppWinsAvg;
-  const leagueAvg = result.sosLeagueAvg;
-
-  let scheduleLine;
-
-  // Describe "wins from schedule" as extra wins vs neutral 50/50 slate
-  if (schedAbs < 0.05) {
-    scheduleLine =
-      "Relative to a neutral 50/50 slate, your lines treat their closing schedule as basically break-even (no real edge).";
-  } else if (sched > 0) {
-    scheduleLine = `Relative to a neutral 50/50 slate, your lines give them about <strong>${formatNumber(
-      sched,
-      1
-    )}</strong> extra wins purely from how soft the schedule is.`;
-  } else {
-    scheduleLine = `Relative to a neutral 50/50 slate, your lines suggest the schedule is costing them about <strong>${formatNumber(
-      -sched,
-      1
-    )}</strong> wins.`;
-  }
+  const leagueAvg = result.sosLeagueAvgOppWins;
 
   let sosLine;
   if (oppAvg == null || leagueAvg == null) {
@@ -655,27 +680,62 @@ function buildTeamNarrative(teamInfo, result) {
     const diffAbs = Math.abs(diff);
 
     if (diffAbs < 0.1) {
-      sosLine = `Their opponents over the full season average about <strong>${formatNumber(
+      sosLine = `Across the full season, their opponents (excluding this team in each matchup) average about <strong>${formatNumber(
         oppAvg,
         1
-      )}</strong> wins (excluding this matchup), which is essentially league-average.`;
+      )}</strong> wins, essentially dead-on league-average.`;
     } else if (diff > 0) {
-      sosLine = `Their opponents over the full season average about <strong>${formatNumber(
+      sosLine = `Across the full season, their opponents (excluding this team in each matchup) average about <strong>${formatNumber(
         oppAvg,
         1
-      )}</strong> wins (excluding this matchup), which is a <strong>tougher</strong> slate than the league average of roughly <strong>${formatNumber(
+      )}</strong> wins, which is a <strong>tougher</strong> slate than the league-wide baseline of roughly <strong>${formatNumber(
         leagueAvg,
         1
       )}</strong> wins.`;
     } else {
-      sosLine = `Their opponents over the full season average about <strong>${formatNumber(
+      sosLine = `Across the full season, their opponents (excluding this team in each matchup) average about <strong>${formatNumber(
         oppAvg,
         1
-      )}</strong> wins (excluding this matchup), which is a <strong>softer</strong> slate than the league average of roughly <strong>${formatNumber(
+      )}</strong> wins, which is a <strong>softer</strong> slate than the league-wide baseline of roughly <strong>${formatNumber(
         leagueAvg,
         1
       )}</strong> wins.`;
     }
+  }
+
+  let schedLuckLine;
+  if (schedLuckAbs < 0.05) {
+    schedLuckLine =
+      "Your full-season model treats their schedule as effectively neutral — almost no net wins gained or lost purely from who they play.";
+  } else if (schedLuck > 0) {
+    schedLuckLine = `Relative to a league-average schedule, your full-season model credits them with about <strong>${formatNumber(
+      schedLuck,
+      2
+    )}</strong> extra wins that can be attributed purely to an easier slate.`;
+  } else {
+    schedLuckLine = `Relative to a league-average schedule, your full-season model penalizes them by about <strong>${formatNumber(
+      -schedLuck,
+      2
+    )}</strong> wins due purely to a tougher slate.`;
+  }
+
+  // Edge from remaining 4 games vs neutral
+  const remEdge = result.remainingScheduleEdgeWins ?? 0;
+  const remEdgeAbs = Math.abs(remEdge);
+  let remScheduleLine;
+  if (remEdgeAbs < 0.05) {
+    remScheduleLine =
+      "Over the final four games, your spreads treat their closing run as basically neutral versus a generic 50/50 schedule.";
+  } else if (remEdge > 0) {
+    remScheduleLine = `Over just the final four games, their remaining schedule is worth about <strong>${formatNumber(
+      remEdge,
+      2
+    )}</strong> extra wins versus a neutral 50/50 slate based on your spreads.`;
+  } else {
+    remScheduleLine = `Over just the final four games, their remaining schedule is costing them about <strong>${formatNumber(
+      -remEdge,
+      2
+    )}</strong> wins versus a neutral 50/50 slate based on your spreads.`;
   }
 
   let html = `<div class="team-detail-narrative"><ul>`;
@@ -689,12 +749,13 @@ function buildTeamNarrative(teamInfo, result) {
     p0or1,
     1
   )}</strong> of the time.</li>`;
-  html += `<li>Your model’s average projection: <strong>${formatNumber(
+  html += `<li>Your model’s average full-season projection (actual so far + these four games): <strong>${formatNumber(
     projected,
     2
-  )}</strong> total wins.</li>`;
+  )}</strong> wins.</li>`;
   html += `<li>${sosLine}</li>`;
-  html += `<li>${scheduleLine}</li>`;
+  html += `<li>${schedLuckLine}</li>`;
+  html += `<li>${remScheduleLine}</li>`;
 
   html += `</ul></div>`;
   return html;
@@ -708,7 +769,7 @@ function showTeamDetail(teamId) {
   const result = state.results.find((r) => r.teamId === teamId);
   if (!teamInfo || !result || !overlay || !content) return;
 
-  // Collect this team's games
+  // Collect this team's remaining games (Weeks 15–18)
   const teamGames = [];
   for (const game of games) {
     if (game.home === teamId || game.away === teamId) {
@@ -725,7 +786,7 @@ function showTeamDetail(teamId) {
         game,
         spread,
         teamProb,
-        isHome: game.home === teamId,
+        isHome: game.home === teamId
       });
     }
   }
@@ -738,10 +799,10 @@ function showTeamDetail(teamId) {
   html += `<h3 id="teamDetailTitle">${teamId} · ${teamInfo.name}</h3>`;
   html += `<p id="teamDetailSummary">Current wins: <strong>${
     teamInfo.currentWins
-  }</strong> · Expected additional wins: <strong>${formatNumber(
+  }</strong> · Expected additional wins (Weeks 15–18): <strong>${formatNumber(
     result.expectedAdditionalWins,
     precision
-  )}</strong> · Projected wins: <strong>${formatNumber(
+  )}</strong> · Full-season projection: <strong>${formatNumber(
     result.projectedWins,
     precision
   )}</strong></p>`;
@@ -791,7 +852,7 @@ function showTeamDetail(teamId) {
 
   // Game editor
   html += `<h4>Edit remaining games</h4>`;
-  html += `<p class="team-detail-note">Click a preset to set the spread for this game. Changes immediately update projections and the betting view.</p>`;
+  html += `<p class="team-detail-note">Click a preset to set the spread for this game. Changes immediately update projections, schedule metrics, and the betting view.</p>`;
 
   html += `<table class="team-detail-games"><thead><tr>`;
   html += `<th>Week</th><th>Matchup</th><th>Side</th><th>Spread</th><th>Presets</th><th>P(win)</th>`;
@@ -861,6 +922,7 @@ function showTeamDetail(teamId) {
       const row = content.querySelector(`tr[data-game-id="${gameId}"]`);
       if (!row) return;
 
+      // Update spread cell display
       const spreadCell = row.querySelector(".team-detail-spread");
       if (spreadCell) {
         const lbl =
@@ -869,8 +931,13 @@ function showTeamDetail(teamId) {
         spreadCell.textContent = lbl;
       }
 
+      // Recompute global results (this will re-run schedule luck / SoS)
+      computeAndRenderResults();
+
       const updatedResult = state.results.find((r) => r.teamId === teamId);
       if (!updatedResult) return;
+
+      const precisionLocal = state.precision;
 
       // Update numeric distribution list
       const distLis = content.querySelectorAll(".team-detail-dist li");
@@ -879,10 +946,10 @@ function showTeamDetail(teamId) {
         if (!li) continue;
         li.innerHTML = `${k} wins: <strong>${formatPercent(
           updatedResult.exact[k],
-          precision
+          precisionLocal
         )}</strong> &nbsp;|&nbsp; ≥${k} wins: <strong>${formatPercent(
           updatedResult.cumulative[k],
-          precision
+          precisionLocal
         )}</strong>`;
       }
 
@@ -891,16 +958,16 @@ function showTeamDetail(teamId) {
       if (summaryP) {
         summaryP.innerHTML = `Current wins: <strong>${
           teamInfo.currentWins
-        }</strong> · Expected additional wins: <strong>${formatNumber(
+        }</strong> · Expected additional wins (Weeks 15–18): <strong>${formatNumber(
           updatedResult.expectedAdditionalWins,
-          precision
-        )}</strong> · Projected wins: <strong>${formatNumber(
+          precisionLocal
+        )}</strong> · Full-season projection: <strong>${formatNumber(
           updatedResult.projectedWins,
-          precision
+          precisionLocal
         )}</strong>`;
       }
 
-      // Update narrative (including new SoS + scheduleWins text)
+      // Update narrative (including new SoS + schedule luck text)
       const narrativeDiv = content.querySelector(".team-detail-narrative");
       if (narrativeDiv) {
         narrativeDiv.outerHTML = buildTeamNarrative(teamInfo, updatedResult);
@@ -915,7 +982,10 @@ function showTeamDetail(teamId) {
           : NEUTRAL_SPREAD;
       const homeProb = homeWinProbFromSpread(spread);
       const teamProb = g.home === teamId ? homeProb : 1 - homeProb;
-      row.lastElementChild.textContent = formatPercent(teamProb, precision);
+      row.lastElementChild.textContent = formatPercent(
+        teamProb,
+        precisionLocal
+      );
 
       // Re-render chart in whatever mode is currently active
       const activeBtn = content.querySelector(".chart-mode-btn.active");
@@ -962,7 +1032,7 @@ function exportCsv() {
         case "projected":
           return r.projectedWins != null ? r.projectedWins.toFixed(4) : "";
         case "sos":
-          // Export SoS as avg opponent wins
+          // Export SoS as avg opponent wins vs others
           return r.sosOppWinsAvg != null ? r.sosOppWinsAvg.toFixed(4) : "";
         case "P0":
         case "P1":

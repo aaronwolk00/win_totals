@@ -14,9 +14,13 @@ const TABLE_HEADERS = [
     { key: "team",      label: "Team" },
     { key: "division",  label: "Div" },
     { key: "current",   label: "Current W" },
-    { key: "expected",  label: "Exp. addl W" },
+
     { key: "projected", label: "Proj. W" },
-    { key: "sos",       label: "SoS (easier +)" },
+    
+      // schedule influence
+    { key: "sosOppAvgWins",     label: "Opp Wins (vs others)" },
+    { key: "scheduleLuckWins",  label: "Sched Luck (W)" },
+
     { key: "P0",        label: "P(0 W)" },
     { key: "P1",        label: "P(1 W)" },
     { key: "P2",        label: "P(2 W)" },
@@ -26,6 +30,7 @@ const TABLE_HEADERS = [
     { key: "PA2",       label: "P(≥2 W)" },
     { key: "PA3",       label: "P(≥3 W)" },
     { key: "PA4",       label: "P(≥4 W)" },
+    { key: "expected",  label: "Exp. addl W" },
   ];
   
   
@@ -110,24 +115,24 @@ const BET_WIN_TOTALS = [
       teamId: "ARI",
       teamName: "Arizona Cardinals",
       markets: [
-        { total: 3.5, over: -330, under: 270 },
-        { total: 4.5, over: 175, under: -210 },
-        { total: 5.5, over: 800, under: -1300 }
+        { total: 3.5, over: -320, under: 260 },
+        { total: 4.5, over: 190, under: -230 },
+        { total: 5.5, over: 750, under: -1400 }
       ]
     },
     {
       teamId: "ATL",
       teamName: "Atlanta Falcons",
       markets: [
-        { total: 5.5, over: -130, under: 110 },
-        { total: 6.5, over: 380, under: -490 }
+        { total: 5.5, over: -600, under: 450 },
+        { total: 6.5, over: 135, under: -160 }
       ]
     },
     {
       teamId: "BAL",
       teamName: "Baltimore Ravens",
       markets: [
-        { total: 7.5, over: -270, under: 220 },
+        { total: 7.5, over: -250, under: 210 },
         { total: 8.5, over: 155, under: -180 }
       ]
     },
@@ -135,24 +140,24 @@ const BET_WIN_TOTALS = [
       teamId: "BUF",
       teamName: "Buffalo Bills",
       markets: [
-        { total: 11.5, over: -180, under: 155 },
-        { total: 12.5, over: 320, under: -400 }
+        { total: 11.5, over: -175, under: 150 },
+        { total: 12.5, over: 310, under: -400 }
       ]
     },
     {
       teamId: "CAR",
       teamName: "Carolina Panthers",
       markets: [
-        { total: 7.5, over: -550, under: 420 },
-        { total: 8.5, over: 100, under: -120 },
-        { total: 9.5, over: 410, under: -550 }
+        { total: 7.5, over: -700, under: 500 },
+        { total: 8.5, over: -120, under: 100 },
+        { total: 9.5, over: 350, under: -450 }
       ]
     },
     {
       teamId: "CHI",
       teamName: "Chicago Bears",
       markets: [
-        { total: 9.5, over: -1900, under: 950 },
+        { total: 9.5, over: -1900, under: 900 },
         { total: 10.5, over: -240, under: 200 },
         { total: 11.5, over: 190, under: -230 }
       ]
@@ -163,7 +168,7 @@ const BET_WIN_TOTALS = [
       markets: [
         { total: 5.5, over: -550, under: 420 },
         { total: 6.5, over: -120, under: 100 },
-        { total: 7.5, over: 450, under: -600 }
+        { total: 7.5, over: 460, under: -600 }
       ]
     },
     {
@@ -171,8 +176,8 @@ const BET_WIN_TOTALS = [
       teamName: "Cleveland Browns",
       markets: [
         { total: 3.5, over: -230, under: 190 },
-        { total: 4.5, over: 240, under: -290 },
-        { total: 5.5, over: 850, under: -1600 }
+        { total: 4.5, over: 230, under: -280 },
+        { total: 5.5, over: 800, under: -1600 }
       ]
     },
     {
@@ -189,25 +194,25 @@ const BET_WIN_TOTALS = [
       teamName: "Denver Broncos",
       markets: [
         { total: 12.5, over: -210, under: 175 },
-        { total: 13.5, over: 175, under: -220 }
+        { total: 13.5, over: 190, under: -230 }
       ]
     },
     {
       teamId: "DET",
       teamName: "Detroit Lions",
       markets: [
-        { total: 9.5, over: -430, under: 340 },
-        { total: 10.5, over: 115, under: -135 },
-        { total: 11.5, over: 650, under: -950 }
+        { total: 9.5, over: -450, under: 350 },
+        { total: 10.5, over: 120, under: -140 },
+        { total: 11.5, over: 700, under: -1150 }
       ]
     },
     {
       teamId: "GB",
       teamName: "Green Bay Packers",
       markets: [
-        { total: 10.5, over: -550, under: 420 },
+        { total: 10.5, over: -600, under: 450 },
         { total: 11.5, over: -125, under: 105 },
-        { total: 12.5, over: 400, under: -550 }
+        { total: 12.5, over: 380, under: -550 }
       ]
     },
     {
@@ -223,24 +228,24 @@ const BET_WIN_TOTALS = [
       teamName: "Indianapolis Colts",
       markets: [
         { total: 8.5, over: -230, under: 190 },
-        { total: 9.5, over: 230, under: -280 }
+        { total: 9.5, over: 240, under: -290 }
       ]
     },
     {
       teamId: "JAX",
       teamName: "Jacksonville Jaguars",
       markets: [
-        { total: 10.5, over: -1250, under: 750 },
-        { total: 11.5, over: -190, under: 160 },
-        { total: 12.5, over: 330, under: -410 }
+        { total: 10.5, over: -1300, under: 800 },
+        { total: 11.5, over: -195, under: 165 },
+        { total: 12.5, over: 320, under: -400 }
       ]
     },
     {
       teamId: "KC",
       teamName: "Kansas City Chiefs",
       markets: [
-        { total: 8.5, over: -250, under: 210 },
-        { total: 9.5, over: 220, under: -270 }
+        { total: 8.5, over: -270, under: 220 },
+        { total: 9.5, over: 210, under: -250 }
       ]
     },
     {
@@ -248,7 +253,7 @@ const BET_WIN_TOTALS = [
       teamName: "Las Vegas Raiders",
       markets: [
         { total: 2.5, over: -210, under: 175 },
-        { total: 3.5, over: 280, under: -340 }
+        { total: 3.5, over: 290, under: -360 }
       ]
     },
     {
@@ -256,8 +261,8 @@ const BET_WIN_TOTALS = [
       teamName: "Los Angeles Chargers",
       markets: [
         { total: 9.5, over: -750, under: 550 },
-        { total: 10.5, over: -135, under: 115 },
-        { total: 11.5, over: 320, under: -400 }
+        { total: 10.5, over: -130, under: 110 },
+        { total: 11.5, over: 330, under: -410 }
       ]
     },
     {
@@ -265,16 +270,16 @@ const BET_WIN_TOTALS = [
       teamName: "Los Angeles Rams",
       markets: [
         { total: 12.5, over: -240, under: 200 },
-        { total: 13.5, over: 260, under: -320 }
+        { total: 13.5, over: 250, under: -300 }
       ]
     },
     {
       teamId: "MIA",
       teamName: "Miami Dolphins",
       markets: [
-        { total: 6.5, over: -600, under: 460 },
+        { total: 6.5, over: -600, under: 450 },
         { total: 7.5, over: -110, under: -110 },
-        { total: 8.5, over: 380, under: -490 }
+        { total: 8.5, over: 360, under: -490 }
       ]
     },
     {
@@ -290,8 +295,8 @@ const BET_WIN_TOTALS = [
       teamId: "NE",
       teamName: "New England Patriots",
       markets: [
-        { total: 12.5, over: -450, under: 360 },
-        { total: 13.5, over: 110, under: -130 },
+        { total: 12.5, over: -490, under: 380 },
+        { total: 13.5, over: 105, under: -125 },
         { total: 14.5, over: 550, under: -750 }
       ]
     },
@@ -300,14 +305,14 @@ const BET_WIN_TOTALS = [
       teamName: "New Orleans Saints",
       markets: [
         { total: 4.5, over: -165, under: 140 },
-        { total: 5.5, over: 250, under: -300 }
+        { total: 5.5, over: 250, under: -310 }
       ]
     },
     {
       teamId: "NYG",
       teamName: "New York Giants",
       markets: [
-        { total: 3.5, over: -230, under: 190 },
+        { total: 3.5, over: -220, under: 180 },
         { total: 4.5, over: 175, under: -210 }
       ]
     },
@@ -315,15 +320,15 @@ const BET_WIN_TOTALS = [
       teamId: "NYJ",
       teamName: "New York Jets",
       markets: [
-        { total: 3.5, over: -210, under: 175 },
-        { total: 4.5, over: 300, under: -390 }
+        { total: 3.5, over: -200, under: 170 },
+        { total: 4.5, over: 320, under: -400 }
       ]
     },
     {
       teamId: "PHI",
       teamName: "Philadelphia Eagles",
       markets: [
-        { total: 9.5, over: -1150, under: 650 },
+        { total: 9.5, over: -1150, under: 700 },
         { total: 10.5, over: -200, under: 170 },
         { total: 11.5, over: 300, under: -370 }
       ]
@@ -341,26 +346,25 @@ const BET_WIN_TOTALS = [
       teamName: "San Francisco 49ers",
       markets: [
         { total: 10.5, over: -700, under: 500 },
-        { total: 11.5, over: -130, under: 110 },
-        { total: 12.5, over: 440, under: -600 }
+        { total: 11.5, over: -130, under: 105 },
+        { total: 12.5, over: 450, under: -600 }
       ]
     },
     {
       teamId: "SEA",
       teamName: "Seattle Seahawks",
       markets: [
-        { total: 11.5, over: -1050, under: 650 },
-        { total: 12.5, over: -165, under: 140 },
-        { total: 13.5, over: 350, under: -450 }
+        { total: 11.5, over: -1050, under: 700 },
+        { total: 12.5, over: -160, under: 135 },
+        { total: 13.5, over: 360, under: -450 }
       ]
     },
     {
       teamId: "TB",
       teamName: "Tampa Bay Buccaneers",
       markets: [
-        { total: 8.5, over: -550, under: 400 },
-        { total: 9.5, over: -120, under: 100 },
-        { total: 10.5, over: 410, under: -550 }
+        { total: 8.5, over: -180, under: 155 },
+        { total: 9.5, over: 300, under: -370 }
       ]
     },
     {
@@ -375,8 +379,8 @@ const BET_WIN_TOTALS = [
       teamId: "WAS",
       teamName: "Washington Commanders",
       markets: [
-        { total: 3.5, over: -400, under: 320 },
-        { total: 4.5, over: 135, under: -160 },
+        { total: 3.5, over: -410, under: 330 },
+        { total: 4.5, over: 125, under: -150 },
         { total: 5.5, over: 550, under: -750 }
       ]
     }
