@@ -386,14 +386,6 @@ const BET_WIN_TOTALS = [
 const games = [
     // WEEK 15
     {
-      id: 1,
-      week: 15,
-      day: "Thu",
-      away: "ATL",
-      home: "TB",
-      description: "Atlanta Falcons at Tampa Bay Buccaneers"
-    },
-    {
       id: 2,
       week: 15,
       day: "Sun",
@@ -945,7 +937,7 @@ const teams = {
   
     TB: { name: "Tampa Bay Buccaneers", division: "NS", currentWins: 7 },
     CAR: { name: "Carolina Panthers", division: "NS", currentWins: 7 },
-    ATL: { name: "Atlanta Falcons", division: "NS", currentWins: 4 },
+    ATL: { name: "Atlanta Falcons", division: "NS", currentWins: 5 },
     NO: { name: "New Orleans Saints", division: "NS", currentWins: 3 }
   };
 
