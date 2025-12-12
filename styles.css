@@ -1346,6 +1346,105 @@ body.mode-mobile .schedule-filters .control-group {
   min-width: 140px;
 }
 
+/* Team detail modal layout improvements */
+
+#teamDetailContent.team-detail-wide {
+  max-width: 760px;
+  width: min(80vw, 760px);
+  padding: 1.75rem 2rem 2rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.team-detail-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.team-detail-header {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.team-detail-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.team-detail-summary {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-soft, #9ca3af);
+}
+
+.team-detail-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.team-detail-section h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.team-detail-narrative ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+}
+
+.team-detail-narrative li + li {
+  margin-top: 0.25rem;
+}
+
+.team-detail-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.team-detail-dist {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+}
+
+.team-detail-dist li + li {
+  margin-top: 0.15rem;
+}
+
+.team-detail-games {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.team-detail-games th,
+.team-detail-games td {
+  padding: 0.35rem 0.4rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(30, 64, 175, 0.3);
+}
+
+.team-detail-games th {
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.team-detail-presets .btn.btn-xs {
+  margin: 0 0.1rem 0.1rem 0;
+}
+
+
 /* ==========================================================
    More menu
    ========================================================== */

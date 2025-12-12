@@ -170,20 +170,23 @@ function buildGameListFromCompletedResults() {
 }
 
 // Build game list from remaining schedule + current spreads (Weeks 15–18)
+// but ONLY for games where you’ve actually set a spread.
 function buildGameListFromSpreads() {
   const list = [];
 
   for (const g of games) {
     const key = String(g.id);
-    let homeProb = 0.5;
-
-    if (Object.prototype.hasOwnProperty.call(state.spreads, key)) {
-      const s = state.spreads[key];
-      if (typeof s === "number" && Number.isFinite(s)) {
-        homeProb = homeWinProbFromSpread(s);
-      }
+    if (!Object.prototype.hasOwnProperty.call(state.spreads, key)) {
+      // No user entry → treat as “not picked yet” for schedule luck / SoS
+      continue;
     }
 
+    const spreadVal = state.spreads[key];
+    if (typeof spreadVal !== "number" || !Number.isFinite(spreadVal)) {
+      continue;
+    }
+
+    const homeProb = homeWinProbFromSpread(spreadVal);
     list.push({
       home: g.home,
       away: g.away,
@@ -193,6 +196,7 @@ function buildGameListFromSpreads() {
 
   return list;
 }
+
 
 // Full-season view = completed games + remaining games
 function buildFullSeasonGameList() {
@@ -659,11 +663,15 @@ function renderDivisionSummary() {
       row.style.setProperty("--team-color-alt", palette.secondary || "#9ca3af");
 
       const left = document.createElement("div");
-      left.innerHTML = `<span class="division-rank">${idx + 1}.</span> <span class="division-team-code">${r.teamId}</span>`;
+      left.innerHTML = `
+        <span class="division-rank">${idx + 1}.</span>
+        <span class="division-team-code">${r.teamId}</span>
+      `;
 
       const right = document.createElement("div");
       right.className = "division-team-proj";
 
+      // Keep this simple: just projected wins
       right.textContent = `${formatNumber(
         r.projectedWins,
         state.precision
@@ -677,6 +685,7 @@ function renderDivisionSummary() {
     container.appendChild(card);
   }
 }
+
 
 // ---------------------------
 // Team detail overlay + chart
@@ -736,6 +745,286 @@ function renderTeamChart(teamId, mode) {
     barsContainer.appendChild(barWrapper);
   });
 }
+
+// Open the team detail modal
+function showTeamDetail(teamId) {
+  const overlay = document.getElementById("teamDetailOverlay");
+  const content = document.getElementById("teamDetailContent");
+  const teamInfo = teams[teamId];
+  const result = state.results.find((r) => r.teamId === teamId);
+  if (!teamInfo || !result || !overlay || !content) return;
+
+  // Make the panel a bit wider & better padded via CSS hook
+  content.classList.add("team-detail-wide");
+
+  // Collect this team's remaining games (Weeks 15–18)
+  const teamGames = [];
+  for (const game of games) {
+    if (game.home === teamId || game.away === teamId) {
+      const key = String(game.id);
+      const spread =
+        typeof state.spreads[key] === "number"
+          ? state.spreads[key]
+          : NEUTRAL_SPREAD;
+
+      const homeProb = homeWinProbFromSpread(spread);
+      const teamProb = game.home === teamId ? homeProb : 1 - homeProb;
+
+      teamGames.push({
+        game,
+        spread,
+        teamProb,
+        isHome: game.home === teamId,
+      });
+    }
+  }
+
+  teamGames.sort((a, b) => a.game.week - b.game.week);
+  const precision = state.precision;
+
+  // Header + high-level summary
+  let html = "";
+  html += `
+    <div class="team-detail-inner">
+      <div class="team-detail-header">
+        <h3 id="teamDetailTitle" class="team-detail-title">
+          ${teamId} · ${teamInfo.name}
+        </h3>
+        <p id="teamDetailSummary" class="team-detail-summary">
+          Current wins: <strong>${result.currentWins}</strong>
+          &nbsp;·&nbsp;
+          Expected additional wins (Weeks 15–18):
+          <strong>${formatNumber(result.expectedAdditionalWins, precision)}</strong>
+          &nbsp;·&nbsp;
+          Full-season projection:
+          <strong>${formatNumber(result.projectedWins, precision)}</strong>
+        </p>
+      </div>
+
+      <div class="team-detail-sections">
+        <section class="team-detail-section team-detail-section-narrative">
+          ${buildTeamNarrative(teamInfo, result)}
+        </section>
+
+        <section class="team-detail-section team-detail-section-chart">
+          <div class="team-detail-chart" data-team-id="${teamId}">
+            <div class="team-detail-chart-header">
+              <span>Win distribution (remaining 4 games)</span>
+              <div class="team-detail-chart-toggle">
+                <button
+                  type="button"
+                  class="btn btn-xs chart-mode-btn active"
+                  data-mode="exact"
+                >
+                  Exact
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-xs chart-mode-btn"
+                  data-mode="atLeast"
+                >
+                  At least
+                </button>
+              </div>
+            </div>
+            <div class="team-detail-chart-bars" id="teamChartBars"></div>
+          </div>
+
+          <ul class="team-detail-dist">
+            ${[0, 1, 2, 3, 4]
+              .map(
+                (k) => `
+              <li>
+                ${k} wins:
+                <strong>${formatPercent(result.exact[k], precision)}</strong>
+                &nbsp;|&nbsp;
+                ≥${k} wins:
+                <strong>${formatPercent(result.cumulative[k], precision)}</strong>
+              </li>
+            `
+              )
+              .join("")}
+          </ul>
+        </section>
+
+        <section class="team-detail-section team-detail-section-games">
+          <h4>Edit remaining games</h4>
+          <p class="team-detail-note">
+            Click a preset to set the spread for this game. Changes immediately update
+            projections, schedule metrics, and the betting view.
+          </p>
+
+          <table class="team-detail-games">
+            <thead>
+              <tr>
+                <th>Week</th>
+                <th>Matchup</th>
+                <th>Side</th>
+                <th>Spread</th>
+                <th>Presets</th>
+                <th>P(win)</th>
+              </tr>
+            </thead>
+            <tbody>
+  `;
+
+  for (const tg of teamGames) {
+    const g = tg.game;
+    const opponentId = tg.isHome ? g.away : g.home;
+    const sideLabel = tg.isHome ? "Home" : "Away";
+
+    const spreadLabel =
+      (tg.spread > 0 ? "+" : tg.spread < 0 ? "" : "") +
+      tg.spread.toFixed(1).replace(/\.0$/, ".0");
+
+    html += `
+      <tr data-game-id="${g.id}">
+        <td>${g.week}</td>
+        <td>${opponentId} (${teams[opponentId].name})</td>
+        <td>${sideLabel}</td>
+        <td class="team-detail-spread">${spreadLabel}</td>
+        <td class="team-detail-presets">
+    `;
+
+    for (const val of QUICK_SPREAD_PRESETS) {
+      const label =
+        (val > 0 ? "+" : "") + val.toFixed(1).replace(/\.0$/, ".0");
+      html += `
+        <button
+          type="button"
+          class="btn btn-xs preset-btn"
+          data-game-id="${g.id}"
+          data-value="${val}"
+        >
+          ${label}
+        </button>
+      `;
+    }
+
+    html += `
+        </td>
+        <td>${formatPercent(tg.teamProb, precision)}</td>
+      </tr>
+    `;
+  }
+
+  html += `
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </div>
+  `;
+
+  content.innerHTML = html;
+  overlay.classList.remove("hidden");
+
+  // Initial chart render (exact mode)
+  renderTeamChart(teamId, "exact");
+
+  // Wire up chart mode toggle
+  const toggleWrap = content.querySelector(".team-detail-chart-toggle");
+  if (toggleWrap) {
+    const modeButtons = toggleWrap.querySelectorAll(".chart-mode-btn");
+    modeButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const mode = btn.dataset.mode === "atLeast" ? "atLeast" : "exact";
+        modeButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderTeamChart(teamId, mode);
+      });
+    });
+  }
+
+  // Wire up preset buttons
+  content.querySelectorAll(".preset-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const gameId = Number(btn.dataset.gameId);
+      const value = parseFloat(btn.dataset.value);
+      setSpreadForGame(gameId, value);
+
+      const row = content.querySelector(`tr[data-game-id="${gameId}"]`);
+      if (!row) return;
+
+      // Update spread cell
+      const spreadCell = row.querySelector(".team-detail-spread");
+      if (spreadCell) {
+        const lbl =
+          (value > 0 ? "+" : value < 0 ? "" : "") +
+          value.toFixed(1).replace(/\.0$/, ".0");
+        spreadCell.textContent = lbl;
+      }
+
+      // Recompute global results (re-runs schedule luck / SoS)
+      computeAndRenderResults();
+
+      const updatedResult = state.results.find((r) => r.teamId === teamId);
+      if (!updatedResult) return;
+
+      const precisionLocal = state.precision;
+
+      // Update numeric distribution list
+      const distLis = content.querySelectorAll(".team-detail-dist li");
+      for (let k = 0; k <= 4; k++) {
+        const li = distLis[k];
+        if (!li) continue;
+        li.innerHTML = `${k} wins: <strong>${formatPercent(
+          updatedResult.exact[k],
+          precisionLocal
+        )}</strong> &nbsp;|&nbsp; ≥${k} wins: <strong>${formatPercent(
+          updatedResult.cumulative[k],
+          precisionLocal
+        )}</strong>`;
+      }
+
+      // Update summary line
+      const summaryP = content.querySelector("#teamDetailSummary");
+      if (summaryP) {
+        summaryP.innerHTML = `Current wins: <strong>${
+          updatedResult.currentWins
+        }</strong> · Expected additional wins (Weeks 15–18): <strong>${formatNumber(
+          updatedResult.expectedAdditionalWins,
+          precisionLocal
+        )}</strong> · Full-season projection: <strong>${formatNumber(
+          updatedResult.projectedWins,
+          precisionLocal
+        )}</strong>`;
+      }
+
+      // Update narrative (new SoS + schedule luck text)
+      const narrativeDiv = content.querySelector(".team-detail-narrative");
+      if (narrativeDiv) {
+        narrativeDiv.outerHTML = buildTeamNarrative(teamInfo, updatedResult);
+      }
+
+      // Update per-row P(win)
+      const g = games.find((gg) => gg.id === gameId);
+      if (!g) return;
+      const spread =
+        typeof state.spreads[String(gameId)] === "number"
+          ? state.spreads[String(gameId)]
+          : NEUTRAL_SPREAD;
+      const homeProb = homeWinProbFromSpread(spread);
+      const teamProb = g.home === teamId ? homeProb : 1 - homeProb;
+      row.lastElementChild.textContent = formatPercent(
+        teamProb,
+        precisionLocal
+      );
+
+      // Re-render chart in current mode
+      const activeBtn = content.querySelector(".chart-mode-btn.active");
+      const currentMode =
+        activeBtn && activeBtn.dataset.mode === "atLeast"
+          ? "atLeast"
+          : "exact";
+      renderTeamChart(teamId, currentMode);
+
+      state.lastFocusedGameId = gameId;
+      saveStateToStorage();
+    });
+  });
+}
+
 
 // Narrative block inside team detail
 function buildTeamNarrative(teamInfo, result) {
@@ -851,246 +1140,6 @@ function buildTeamNarrative(teamInfo, result) {
 
   html += `</ul></div>`;
   return html;
-}
-
-// Open the team detail modal
-function showTeamDetail(teamId) {
-  const overlay = document.getElementById("teamDetailOverlay");
-  const content = document.getElementById("teamDetailContent");
-  const teamInfo = teams[teamId];
-  const result = state.results.find((r) => r.teamId === teamId);
-  if (!teamInfo || !result || !overlay || !content) return;
-
-  // Collect this team's remaining games (Weeks 15–18)
-  const teamGames = [];
-  for (const game of games) {
-    if (game.home === teamId || game.away === teamId) {
-      const key = String(game.id);
-      const spread =
-        typeof state.spreads[key] === "number"
-          ? state.spreads[key]
-          : NEUTRAL_SPREAD;
-
-      const homeProb = homeWinProbFromSpread(spread);
-      const teamProb = game.home === teamId ? homeProb : 1 - homeProb;
-
-      teamGames.push({
-        game,
-        spread,
-        teamProb,
-        isHome: game.home === teamId,
-      });
-    }
-  }
-
-  teamGames.sort((a, b) => a.game.week - b.game.week);
-  const precision = state.precision;
-
-  // Header + high-level summary
-  let html = "";
-  html += `<h3 id="teamDetailTitle">${teamId} · ${teamInfo.name}</h3>`;
-  html += `<p id="teamDetailSummary">Current wins: <strong>${
-    result.currentWins
-  }</strong> · Expected additional wins (Weeks 15–18): <strong>${formatNumber(
-    result.expectedAdditionalWins,
-    precision
-  )}</strong> · Full-season projection: <strong>${formatNumber(
-    result.projectedWins,
-    precision
-  )}</strong></p>`;
-
-  // Narrative
-  html += buildTeamNarrative(teamInfo, result);
-
-  // Chart + toggle
-  html += `
-      <h4>Win distribution (remaining 4 games)</h4>
-      <div class="team-detail-chart" data-team-id="${teamId}">
-        <div class="team-detail-chart-header">
-          <span>Probability by wins</span>
-          <div class="team-detail-chart-toggle">
-            <button
-              type="button"
-              class="btn btn-xs chart-mode-btn active"
-              data-mode="exact"
-            >
-              Exact
-            </button>
-            <button
-              type="button"
-              class="btn btn-xs chart-mode-btn"
-              data-mode="atLeast"
-            >
-              At least
-            </button>
-          </div>
-        </div>
-        <div class="team-detail-chart-bars" id="teamChartBars"></div>
-      </div>
-    `;
-
-  // Numeric list
-  html += `<ul class="team-detail-dist">`;
-  for (let k = 0; k <= 4; k++) {
-    html += `<li>${k} wins: <strong>${formatPercent(
-      result.exact[k],
-      precision
-    )}</strong> &nbsp;|&nbsp; ≥${k} wins: <strong>${formatPercent(
-      result.cumulative[k],
-      precision
-    )}</strong></li>`;
-  }
-  html += `</ul>`;
-
-  // Game editor
-  html += `<h4>Edit remaining games</h4>`;
-  html += `<p class="team-detail-note">Click a preset to set the spread for this game. Changes immediately update projections, schedule metrics, and the betting view.</p>`;
-
-  html += `<table class="team-detail-games"><thead><tr>`;
-  html += `<th>Week</th><th>Matchup</th><th>Side</th><th>Spread</th><th>Presets</th><th>P(win)</th>`;
-  html += `</tr></thead><tbody>`;
-
-  for (const tg of teamGames) {
-    const g = tg.game;
-    const opponentId = tg.isHome ? g.away : g.home;
-    const sideLabel = tg.isHome ? "Home" : "Away";
-
-    const spreadLabel =
-      (tg.spread > 0 ? "+" : tg.spread < 0 ? "" : "") +
-      tg.spread.toFixed(1).replace(/\.0$/, ".0");
-
-    html += `<tr data-game-id="${g.id}">
-        <td>${g.week}</td>
-        <td>${opponentId} (${teams[opponentId].name})</td>
-        <td>${sideLabel}</td>
-        <td class="team-detail-spread">${spreadLabel}</td>
-        <td class="team-detail-presets">`;
-
-    for (const val of QUICK_SPREAD_PRESETS) {
-      const label =
-        (val > 0 ? "+" : "") + val.toFixed(1).replace(/\.0$/, ".0");
-      html += `<button
-          type="button"
-          class="btn btn-xs preset-btn"
-          data-game-id="${g.id}"
-          data-value="${val}"
-        >${label}</button>`;
-    }
-
-    html += `</td>
-        <td>${formatPercent(tg.teamProb, precision)}</td>
-      </tr>`;
-  }
-
-  html += `</tbody></table>`;
-
-  content.innerHTML = html;
-  overlay.classList.remove("hidden");
-
-  // Initial chart render (exact mode)
-  renderTeamChart(teamId, "exact");
-
-  // Wire up chart mode toggle
-  const toggleWrap = content.querySelector(".team-detail-chart-toggle");
-  if (toggleWrap) {
-    const modeButtons = toggleWrap.querySelectorAll(".chart-mode-btn");
-    modeButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const mode = btn.dataset.mode === "atLeast" ? "atLeast" : "exact";
-        modeButtons.forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        renderTeamChart(teamId, mode);
-      });
-    });
-  }
-
-  // Wire up preset buttons
-  content.querySelectorAll(".preset-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const gameId = Number(btn.dataset.gameId);
-      const value = parseFloat(btn.dataset.value);
-      setSpreadForGame(gameId, value);
-
-      const row = content.querySelector(`tr[data-game-id="${gameId}"]`);
-      if (!row) return;
-
-      // Update spread cell
-      const spreadCell = row.querySelector(".team-detail-spread");
-      if (spreadCell) {
-        const lbl =
-          (value > 0 ? "+" : value < 0 ? "" : "") +
-          value.toFixed(1).replace(/\.0$/, ".0");
-        spreadCell.textContent = lbl;
-      }
-
-      // Recompute global results (re-runs schedule luck / SoS)
-      computeAndRenderResults();
-
-      const updatedResult = state.results.find((r) => r.teamId === teamId);
-      if (!updatedResult) return;
-
-      const precisionLocal = state.precision;
-
-      // Update numeric distribution list
-      const distLis = content.querySelectorAll(".team-detail-dist li");
-      for (let k = 0; k <= 4; k++) {
-        const li = distLis[k];
-        if (!li) continue;
-        li.innerHTML = `${k} wins: <strong>${formatPercent(
-          updatedResult.exact[k],
-          precisionLocal
-        )}</strong> &nbsp;|&nbsp; ≥${k} wins: <strong>${formatPercent(
-          updatedResult.cumulative[k],
-          precisionLocal
-        )}</strong>`;
-      }
-
-      // Update summary line
-      const summaryP = content.querySelector("#teamDetailSummary");
-      if (summaryP) {
-        summaryP.innerHTML = `Current wins: <strong>${
-          updatedResult.currentWins
-        }</strong> · Expected additional wins (Weeks 15–18): <strong>${formatNumber(
-          updatedResult.expectedAdditionalWins,
-          precisionLocal
-        )}</strong> · Full-season projection: <strong>${formatNumber(
-          updatedResult.projectedWins,
-          precisionLocal
-        )}</strong>`;
-      }
-
-      // Update narrative (new SoS + schedule luck text)
-      const narrativeDiv = content.querySelector(".team-detail-narrative");
-      if (narrativeDiv) {
-        narrativeDiv.outerHTML = buildTeamNarrative(teamInfo, updatedResult);
-      }
-
-      // Update per-row P(win)
-      const g = games.find((gg) => gg.id === gameId);
-      if (!g) return;
-      const spread =
-        typeof state.spreads[String(gameId)] === "number"
-          ? state.spreads[String(gameId)]
-          : NEUTRAL_SPREAD;
-      const homeProb = homeWinProbFromSpread(spread);
-      const teamProb = g.home === teamId ? homeProb : 1 - homeProb;
-      row.lastElementChild.textContent = formatPercent(
-        teamProb,
-        precisionLocal
-      );
-
-      // Re-render chart in current mode
-      const activeBtn = content.querySelector(".chart-mode-btn.active");
-      const currentMode =
-        activeBtn && activeBtn.dataset.mode === "atLeast"
-          ? "atLeast"
-          : "exact";
-      renderTeamChart(teamId, currentMode);
-
-      state.lastFocusedGameId = gameId;
-      saveStateToStorage();
-    });
-  });
 }
 
 // ---------------------------
