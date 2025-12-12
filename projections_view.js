@@ -22,7 +22,7 @@ function computeExactDistribution(probs) {
   const result = [0, 0, 0, 0, 0]; // k=0..4
   const n = 4;
 
-  for (let mask = 0; mask < 1 << n; mask++) {
+  for (let mask = 0; mask < (1 << n); mask++) {
     let prob = 1;
     let wins = 0;
     for (let i = 0; i < n; i++) {
@@ -143,6 +143,27 @@ function computeStrengthOfSchedule(results) {
     // Flip sign so easier opponents (negative rating) => positive SoS
     r.sos = -avgOppRating;
   }
+}
+
+// Simple helpers for turning SoS into something readable
+function formatSosValue(sos, digits = 3) {
+  if (typeof sos !== "number" || !Number.isFinite(sos)) return null;
+  const sign = sos > 0 ? "+" : "";
+  return sign + sos.toFixed(digits);
+}
+
+// Very lightweight categorization so narrative/div cards feel human
+function describeSosCategory(sos) {
+  if (typeof sos !== "number" || !Number.isFinite(sos)) return null;
+
+  // Tunable thresholds; small because SoS is an average edge
+  if (sos >= 0.03) {
+    return "one of the softer remaining schedules";
+  }
+  if (sos <= -0.03) {
+    return "one of the tougher remaining schedules";
+  }
+  return "roughly league-average difficulty";
 }
 
 // ---------------------------
@@ -363,7 +384,7 @@ function renderTeamTable() {
           if (r.sos == null) {
             td.textContent = "—";
           } else {
-            td.textContent = r.sos.toFixed(3);
+            td.textContent = formatSosValue(r.sos, 3);
           }
           break;
 
@@ -506,9 +527,21 @@ function renderDivisionSummary() {
 
       const left = document.createElement("div");
       left.innerHTML = `<span class="division-rank">${idx + 1}.</span> <span class="division-team-code">${r.teamId}</span>`;
+
       const right = document.createElement("div");
       right.className = "division-team-proj";
-      right.textContent = formatNumber(r.projectedWins, state.precision);
+
+      const projText = formatNumber(r.projectedWins, state.precision);
+
+      if (typeof r.sos === "number" && Number.isFinite(r.sos)) {
+        const sosVal = formatSosValue(r.sos, 3);
+        const category = describeSosCategory(r.sos);
+        // Example: "10.3 · SoS +0.042 (softer schedule)"
+        right.textContent = `${projText} · SoS ${sosVal} (${category})`;
+      } else {
+        right.textContent = projText;
+      }
+
       row.appendChild(left);
       row.appendChild(right);
       card.appendChild(row);
@@ -615,6 +648,13 @@ function buildTeamNarrative(teamInfo, result) {
     2
   )}</strong> total wins.</li>`;
 
+  // SoS narrative line
+  if (typeof result.sos === "number" && Number.isFinite(result.sos)) {
+    const sosVal = formatSosValue(result.sos, 3);
+    const category = describeSosCategory(result.sos);
+    html += `<li>Based on your lines, their remaining schedule looks <strong>${category}</strong>, with a schedule rating of <strong>${sosVal}</strong> (positive = easier, negative = tougher).</li>`;
+  }
+
   html += `</ul></div>`;
   return html;
 }
@@ -665,7 +705,7 @@ function showTeamDetail(teamId) {
     precision
   )}</strong></p>`;
 
-  // Narrative
+  // Narrative (now includes SoS)
   html += buildTeamNarrative(teamInfo, result);
 
   // Chart + toggle
