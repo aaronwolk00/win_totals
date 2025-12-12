@@ -16,6 +16,24 @@
 //   - window.refreshBettingFromStorage (optional)
 
 // ---------------------------
+// Helper: discover header keys for new metrics
+// ---------------------------
+
+const SOS_HEADER_KEY = (() => {
+  if (typeof TABLE_HEADERS === "undefined") return null;
+  const candidates = ["sos", "oppWins", "oppWinsVsOthers", "opp_wins"];
+  const h = TABLE_HEADERS.find((h) => candidates.includes(h.key));
+  return h ? h.key : null;
+})();
+
+const SCHED_LUCK_HEADER_KEY = (() => {
+  if (typeof TABLE_HEADERS === "undefined") return null;
+  const candidates = ["schedLuck", "schedLuckWins", "schedLuckW", "scheduleLuck"];
+  const h = TABLE_HEADERS.find((h) => candidates.includes(h.key));
+  return h ? h.key : null;
+})();
+
+// ---------------------------
 // Core projection math
 // ---------------------------
 
@@ -64,8 +82,8 @@ const TEAM_NAME_TO_ID = (() => {
     if (!info) continue;
 
     const candidates = [];
-    if (info.fullName) candidates.push(info.fullName); // "New England Patriots"
-    if (info.name) candidates.push(info.name);         // "Patriots"
+    if (info.fullName) candidates.push(info.fullName); // e.g. "New England Patriots"
+    if (info.name) candidates.push(info.name);         // e.g. "Patriots"
     if (info.longName) candidates.push(info.longName);
 
     for (const name of candidates) {
@@ -85,7 +103,7 @@ const TEAM_NAME_TO_ID = (() => {
 function computeCurrentWinsFromCompletedResults() {
   const wins = {};
 
-  // Initialize all teams to 0 so we always have a value.
+  // Initialize all teams to 0 so we always have a value
   for (const teamId of teamIds) {
     wins[teamId] = 0;
   }
@@ -146,12 +164,12 @@ function buildGameListFromCompletedResults() {
     const homeId = TEAM_NAME_TO_ID[g.homeName];
     const awayId = TEAM_NAME_TO_ID[g.visitorName];
     if (!homeId || !awayId) {
-      continue;
+      continue; // name mismatch → skip
     }
 
     let homeProb = 0.5;
-    const hs = g.homeScore;
-    const vs = g.visitorScore;
+    const hs = Number(g.homeScore);
+    const vs = Number(g.visitorScore);
 
     if (Number.isFinite(hs) && Number.isFinite(vs)) {
       if (hs > vs) homeProb = 1;
@@ -170,23 +188,20 @@ function buildGameListFromCompletedResults() {
 }
 
 // Build game list from remaining schedule + current spreads (Weeks 15–18)
-// but ONLY for games where you’ve actually set a spread.
 function buildGameListFromSpreads() {
   const list = [];
 
   for (const g of games) {
     const key = String(g.id);
-    if (!Object.prototype.hasOwnProperty.call(state.spreads, key)) {
-      // No user entry → treat as “not picked yet” for schedule luck / SoS
-      continue;
+    let homeProb = 0.5;
+
+    if (Object.prototype.hasOwnProperty.call(state.spreads, key)) {
+      const s = state.spreads[key];
+      if (typeof s === "number" && Number.isFinite(s)) {
+        homeProb = homeWinProbFromSpread(s);
+      }
     }
 
-    const spreadVal = state.spreads[key];
-    if (typeof spreadVal !== "number" || !Number.isFinite(spreadVal)) {
-      continue;
-    }
-
-    const homeProb = homeWinProbFromSpread(spreadVal);
     list.push({
       home: g.home,
       away: g.away,
@@ -196,7 +211,6 @@ function buildGameListFromSpreads() {
 
   return list;
 }
-
 
 // Full-season view = completed games + remaining games
 function buildFullSeasonGameList() {
@@ -212,9 +226,7 @@ function buildFullSeasonGameList() {
 function computeAndRenderResults() {
   const precision = state.precision;
 
-  // -----------------------------
   // 1) Current wins from real games
-  // -----------------------------
   const currentWinsByTeam = computeCurrentWinsFromCompletedResults();
 
   // Keep teams[*].currentWins in sync for any other view that uses it.
@@ -224,9 +236,7 @@ function computeAndRenderResults() {
     }
   }
 
-  // -----------------------------
   // 2) Remaining schedule from spreads
-  // -----------------------------
   const teamGameProbs = {};
   const gameWinProbs = {}; // gameId -> { homeProb, awayProb }
   const touchedTeams = new Set();
@@ -251,8 +261,8 @@ function computeAndRenderResults() {
     const awayProb = 1 - homeProb;
     gameWinProbs[game.id] = { homeProb, awayProb };
 
-    if (teamGameProbs[game.home]) teamGameProbs[game.home].push(homeProb);
-    if (teamGameProbs[game.away]) teamGameProbs[game.away].push(awayProb);
+    teamGameProbs[game.home].push(homeProb);
+    teamGameProbs[game.away].push(awayProb);
   }
 
   // Pad up to 4 remaining games with neutral 50/50 stubs.
@@ -263,14 +273,11 @@ function computeAndRenderResults() {
     }
   }
 
-  // -----------------------------
   // 3) Per-team projections
-  // -----------------------------
   const results = [];
 
   for (const teamId of teamIds) {
-    // Only show teams where the user has picked at least one remaining game.
-    if (!touchedTeams.has(teamId)) continue;
+    if (!touchedTeams.has(teamId)) continue; // only show teams with at least one picked game
 
     const teamInfo = teams[teamId];
     if (!teamInfo) continue;
@@ -304,9 +311,7 @@ function computeAndRenderResults() {
     });
   }
 
-  // -----------------------------
-  // 4) Full-season schedule luck + SoS
-  // -----------------------------
+  // 4) Full-season schedule luck + SoS (using all completed results + spreads)
   try {
     const fullSeasonGames =
       typeof buildFullSeasonGameList === "function"
@@ -347,7 +352,7 @@ function computeAndRenderResults() {
         r.sosOppWinPctAvg = m.oppAvgWinPctVsOthers;
         r.sosLeagueAvgOppWins = m.leagueAvgOppWinsVsOthers;
 
-        // Alias used by the SoS column and sorting
+        // Alias used for generic "sos" sorting if needed
         r.sos = r.sosOppWinsAvg;
       }
     }
@@ -355,9 +360,7 @@ function computeAndRenderResults() {
     console.warn("Schedule luck / SoS computation failed:", err);
   }
 
-  // -----------------------------
   // 5) Save + render
-  // -----------------------------
   state.results = results;
   renderTeamTable();
   renderDivisionSummary();
@@ -384,6 +387,15 @@ function renderTeamTable() {
   const dir = direction === "asc" ? 1 : -1;
 
   const valueForKey = (r) => {
+    // Dynamic metrics first
+    if (key === SOS_HEADER_KEY) {
+      return r.sosOppWinsAvg != null ? r.sosOppWinsAvg : 0;
+    }
+    if (key === SCHED_LUCK_HEADER_KEY) {
+      return r.scheduleLuckWinsSeason != null ? r.scheduleLuckWinsSeason : 0;
+    }
+
+    // Static keys
     switch (key) {
       case "team":
         return r.teamId;
@@ -393,14 +405,6 @@ function renderTeamTable() {
         return r.projectedWins;
       case "current":
         return r.currentWins;
-      case "sos":
-        return r.sos != null ? r.sos : 0;
-      case "schedLuck":
-      case "schedLuckWins":
-      case "schedLuckW":
-        return r.scheduleLuckWinsSeason != null
-          ? r.scheduleLuckWinsSeason
-          : 0;
       default:
         return r.projectedWins;
     }
@@ -422,17 +426,17 @@ function renderTeamTable() {
   const headerRow = document.createElement("tr");
 
   for (const h of TABLE_HEADERS) {
-    const isVisible = state.visibleColumns[h.key] !== false;
-    if (!isVisible) continue;
+    // NEW: only hide when explicitly false; undefined = visible
+    if (state.visibleColumns[h.key] === false) continue;
 
     const th = document.createElement("th");
     th.textContent = h.label;
 
-    if (
-      ["team", "division", "projected", "current", "sos", "schedLuck"].includes(
-        h.key
-      )
-    ) {
+    const sortableKeys = ["team", "division", "projected", "current"];
+    if (SOS_HEADER_KEY) sortableKeys.push(SOS_HEADER_KEY);
+    if (SCHED_LUCK_HEADER_KEY) sortableKeys.push(SCHED_LUCK_HEADER_KEY);
+
+    if (sortableKeys.includes(h.key)) {
       th.classList.add("sortable");
       const span = document.createElement("span");
       span.className = "sort-indicator";
@@ -480,11 +484,34 @@ function renderTeamTable() {
     });
 
     for (const h of TABLE_HEADERS) {
-      const isVisible = state.visibleColumns[h.key] !== false;
-      if (!isVisible) continue;
+      if (state.visibleColumns[h.key] === false) continue;
 
       const td = document.createElement("td");
 
+      // Dynamic metric columns handled first
+      if (h.key === SOS_HEADER_KEY) {
+        td.classList.add("numeric-cell");
+        if (r.sosOppWinsAvg == null) {
+          td.textContent = "—";
+        } else {
+          td.textContent = formatNumber(r.sosOppWinsAvg, 2);
+        }
+        tr.appendChild(td);
+        continue;
+      }
+
+      if (h.key === SCHED_LUCK_HEADER_KEY) {
+        td.classList.add("numeric-cell");
+        if (r.scheduleLuckWinsSeason == null) {
+          td.textContent = "—";
+        } else {
+          td.textContent = formatNumber(r.scheduleLuckWinsSeason, 2);
+        }
+        tr.appendChild(td);
+        continue;
+      }
+
+      // Static columns
       switch (h.key) {
         case "team":
           td.className = "team-cell";
@@ -506,28 +533,6 @@ function renderTeamTable() {
         case "projected":
           td.textContent = formatNumber(r.projectedWins, precision);
           break;
-
-        case "sos": {
-          td.classList.add("numeric-cell");
-          if (r.sosOppWinsAvg == null) {
-            td.textContent = "—";
-          } else {
-            td.textContent = formatNumber(r.sosOppWinsAvg, 2);
-          }
-          break;
-        }
-
-        case "schedLuck":
-        case "schedLuckWins":
-        case "schedLuckW": {
-          td.classList.add("numeric-cell");
-          if (r.scheduleLuckWinsSeason == null) {
-            td.textContent = "—";
-          } else {
-            td.textContent = formatNumber(r.scheduleLuckWinsSeason, 2);
-          }
-          break;
-        }
 
         case "P0":
         case "P1":
@@ -663,15 +668,11 @@ function renderDivisionSummary() {
       row.style.setProperty("--team-color-alt", palette.secondary || "#9ca3af");
 
       const left = document.createElement("div");
-      left.innerHTML = `
-        <span class="division-rank">${idx + 1}.</span>
-        <span class="division-team-code">${r.teamId}</span>
-      `;
+      left.innerHTML = `<span class="division-rank">${idx + 1}.</span> <span class="division-team-code">${r.teamId}</span>`;
 
       const right = document.createElement("div");
       right.className = "division-team-proj";
 
-      // Keep this simple: just projected wins
       right.textContent = `${formatNumber(
         r.projectedWins,
         state.precision
@@ -685,7 +686,6 @@ function renderDivisionSummary() {
     container.appendChild(card);
   }
 }
-
 
 // ---------------------------
 // Team detail overlay + chart
@@ -746,6 +746,122 @@ function renderTeamChart(teamId, mode) {
   });
 }
 
+// Narrative block inside team detail
+function buildTeamNarrative(teamInfo, result) {
+  const current = result.currentWins;
+  const projected = result.projectedWins;
+
+  // Most likely additional wins
+  let bestK = 0;
+  let bestProb = 0;
+  for (let k = 0; k <= 4; k++) {
+    if (result.exact[k] > bestProb) {
+      bestProb = result.exact[k];
+      bestK = k;
+    }
+  }
+
+  const mostLikelyTotal = current + bestK;
+  const p3Plus = result.cumulative[3]; // ≥3 of 4
+  const p0or1 = result.exact[0] + result.exact[1];
+
+  // Full-season schedule luck in wins
+  const schedLuck = result.scheduleLuckWinsSeason ?? 0;
+  const schedLuckAbs = Math.abs(schedLuck);
+
+  // Opponents’ avg wins vs others
+  const oppAvg = result.sosOppWinsAvg;
+  const leagueAvg = result.sosLeagueAvgOppWins;
+
+  let sosLine;
+  if (oppAvg == null || leagueAvg == null) {
+    sosLine = "Opponent-strength context isn’t fully available yet.";
+  } else {
+    const diff = oppAvg - leagueAvg;
+    const diffAbs = Math.abs(diff);
+
+    if (diffAbs < 0.1) {
+      sosLine = `Across the full season, their opponents (excluding this team in each matchup) average about <strong>${formatNumber(
+        oppAvg,
+        1
+      )}</strong> wins — basically league-average.`;
+    } else if (diff > 0) {
+      sosLine = `Across the full season, their opponents (excluding this team in each matchup) average about <strong>${formatNumber(
+        oppAvg,
+        1
+      )}</strong> wins, which is a <strong>tougher</strong> slate than the league-wide baseline of roughly <strong>${formatNumber(
+        leagueAvg,
+        1
+      )}</strong> wins.`;
+    } else {
+      sosLine = `Across the full season, their opponents (excluding this team in each matchup) average about <strong>${formatNumber(
+        oppAvg,
+        1
+      )}</strong> wins, which is a <strong>softer</strong> slate than the league-wide baseline of roughly <strong>${formatNumber(
+        leagueAvg,
+        1
+      )}</strong> wins.`;
+    }
+  }
+
+  let schedLuckLine;
+  if (schedLuckAbs < 0.05) {
+    schedLuckLine =
+      "Your full-season model treats their schedule as effectively neutral — almost no net wins gained or lost purely from who they play.";
+  } else if (schedLuck > 0) {
+    schedLuckLine = `Relative to a league-average schedule, your full-season model credits them with about <strong>${formatNumber(
+      schedLuck,
+      2
+    )}</strong> extra wins that can be attributed purely to an easier slate.`;
+  } else {
+    schedLuckLine = `Relative to a league-average schedule, your full-season model penalizes them by about <strong>${formatNumber(
+      -schedLuck,
+      2
+    )}</strong> wins due purely to a tougher slate.`;
+  }
+
+  // Edge from remaining 4 games vs neutral
+  const remEdge = result.remainingScheduleEdgeWins ?? 0;
+  const remEdgeAbs = Math.abs(remEdge);
+  let remScheduleLine;
+  if (remEdgeAbs < 0.05) {
+    remScheduleLine =
+      "Over the final four games, your spreads treat their closing run as basically neutral versus a generic 50/50 schedule.";
+  } else if (remEdge > 0) {
+    remScheduleLine = `Over just the final four games, their remaining schedule is worth about <strong>${formatNumber(
+      remEdge,
+      2
+    )}</strong> extra wins versus a neutral 50/50 slate based on your spreads.`;
+  } else {
+    remScheduleLine = `Over just the final four games, their remaining schedule is costing them about <strong>${formatNumber(
+      -remEdge,
+      2
+    )}</strong> wins versus a neutral 50/50 slate based on your spreads.`;
+  }
+
+  let html = `<div class="team-detail-narrative"><ul>`;
+
+  html += `<li>Most likely outcome: <strong>${bestK} additional wins</strong> (${mostLikelyTotal} total).</li>`;
+  html += `<li>Chance to win <strong>3 or more</strong> of the remaining 4: <strong>${formatPercent(
+    p3Plus,
+    1
+  )}</strong>.</li>`;
+  html += `<li>They finish with <strong>0–1 more wins</strong> only <strong>${formatPercent(
+    p0or1,
+    1
+  )}</strong> of the time.</li>`;
+  html += `<li>Your model’s average full-season projection (actual so far + these four games): <strong>${formatNumber(
+    projected,
+    2
+  )}</strong> wins.</li>`;
+  html += `<li>${sosLine}</li>`;
+  html += `<li>${schedLuckLine}</li>`;
+  html += `<li>${remScheduleLine}</li>`;
+
+  html += `</ul></div>`;
+  return html;
+}
+
 // Open the team detail modal
 function showTeamDetail(teamId) {
   const overlay = document.getElementById("teamDetailOverlay");
@@ -753,9 +869,6 @@ function showTeamDetail(teamId) {
   const teamInfo = teams[teamId];
   const result = state.results.find((r) => r.teamId === teamId);
   if (!teamInfo || !result || !overlay || !content) return;
-
-  // Make the panel a bit wider & better padded via CSS hook
-  content.classList.add("team-detail-wide");
 
   // Collect this team's remaining games (Weeks 15–18)
   const teamGames = [];
@@ -784,89 +897,67 @@ function showTeamDetail(teamId) {
 
   // Header + high-level summary
   let html = "";
+  html += `<h3 id="teamDetailTitle">${teamId} · ${teamInfo.name}</h3>`;
+  html += `<p id="teamDetailSummary">Current wins: <strong>${
+    result.currentWins
+  }</strong> · Expected additional wins (Weeks 15–18): <strong>${formatNumber(
+    result.expectedAdditionalWins,
+    precision
+  )}</strong> · Full-season projection: <strong>${formatNumber(
+    result.projectedWins,
+    precision
+  )}</strong></p>`;
+
+  // Narrative
+  html += buildTeamNarrative(teamInfo, result);
+
+  // Chart + toggle
   html += `
-    <div class="team-detail-inner">
-      <div class="team-detail-header">
-        <h3 id="teamDetailTitle" class="team-detail-title">
-          ${teamId} · ${teamInfo.name}
-        </h3>
-        <p id="teamDetailSummary" class="team-detail-summary">
-          Current wins: <strong>${result.currentWins}</strong>
-          &nbsp;·&nbsp;
-          Expected additional wins (Weeks 15–18):
-          <strong>${formatNumber(result.expectedAdditionalWins, precision)}</strong>
-          &nbsp;·&nbsp;
-          Full-season projection:
-          <strong>${formatNumber(result.projectedWins, precision)}</strong>
-        </p>
-      </div>
-
-      <div class="team-detail-sections">
-        <section class="team-detail-section team-detail-section-narrative">
-          ${buildTeamNarrative(teamInfo, result)}
-        </section>
-
-        <section class="team-detail-section team-detail-section-chart">
-          <div class="team-detail-chart" data-team-id="${teamId}">
-            <div class="team-detail-chart-header">
-              <span>Win distribution (remaining 4 games)</span>
-              <div class="team-detail-chart-toggle">
-                <button
-                  type="button"
-                  class="btn btn-xs chart-mode-btn active"
-                  data-mode="exact"
-                >
-                  Exact
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-xs chart-mode-btn"
-                  data-mode="atLeast"
-                >
-                  At least
-                </button>
-              </div>
-            </div>
-            <div class="team-detail-chart-bars" id="teamChartBars"></div>
+      <h4>Win distribution (remaining 4 games)</h4>
+      <div class="team-detail-chart" data-team-id="${teamId}">
+        <div class="team-detail-chart-header">
+          <span>Probability by wins</span>
+          <div class="team-detail-chart-toggle">
+            <button
+              type="button"
+              class="btn btn-xs chart-mode-btn active"
+              data-mode="exact"
+            >
+              Exact
+            </button>
+            <button
+              type="button"
+              class="btn btn-xs chart-mode-btn"
+              data-mode="atLeast"
+            >
+              At least
+            </button>
           </div>
+        </div>
+        <div class="team-detail-chart-bars" id="teamChartBars"></div>
+      </div>
+    `;
 
-          <ul class="team-detail-dist">
-            ${[0, 1, 2, 3, 4]
-              .map(
-                (k) => `
-              <li>
-                ${k} wins:
-                <strong>${formatPercent(result.exact[k], precision)}</strong>
-                &nbsp;|&nbsp;
-                ≥${k} wins:
-                <strong>${formatPercent(result.cumulative[k], precision)}</strong>
-              </li>
-            `
-              )
-              .join("")}
-          </ul>
-        </section>
+  // Numeric list
+  html += `<ul class="team-detail-dist">`;
+  for (let k = 0; k <= 4; k++) {
+    html += `<li>${k} wins: <strong>${formatPercent(
+      result.exact[k],
+      precision
+    )}</strong> &nbsp;|&nbsp; ≥${k} wins: <strong>${formatPercent(
+      result.cumulative[k],
+      precision
+    )}</strong></li>`;
+  }
+  html += `</ul>`;
 
-        <section class="team-detail-section team-detail-section-games">
-          <h4>Edit remaining games</h4>
-          <p class="team-detail-note">
-            Click a preset to set the spread for this game. Changes immediately update
-            projections, schedule metrics, and the betting view.
-          </p>
+  // Game editor
+  html += `<h4>Edit remaining games</h4>`;
+  html += `<p class="team-detail-note">Click a preset to set the spread for this game. Changes immediately update projections, schedule metrics, and the betting view.</p>`;
 
-          <table class="team-detail-games">
-            <thead>
-              <tr>
-                <th>Week</th>
-                <th>Matchup</th>
-                <th>Side</th>
-                <th>Spread</th>
-                <th>Presets</th>
-                <th>P(win)</th>
-              </tr>
-            </thead>
-            <tbody>
-  `;
+  html += `<table class="team-detail-games"><thead><tr>`;
+  html += `<th>Week</th><th>Matchup</th><th>Side</th><th>Spread</th><th>Presets</th><th>P(win)</th>`;
+  html += `</tr></thead><tbody>`;
 
   for (const tg of teamGames) {
     const g = tg.game;
@@ -877,44 +968,30 @@ function showTeamDetail(teamId) {
       (tg.spread > 0 ? "+" : tg.spread < 0 ? "" : "") +
       tg.spread.toFixed(1).replace(/\.0$/, ".0");
 
-    html += `
-      <tr data-game-id="${g.id}">
+    html += `<tr data-game-id="${g.id}">
         <td>${g.week}</td>
         <td>${opponentId} (${teams[opponentId].name})</td>
         <td>${sideLabel}</td>
         <td class="team-detail-spread">${spreadLabel}</td>
-        <td class="team-detail-presets">
-    `;
+        <td class="team-detail-presets">`;
 
     for (const val of QUICK_SPREAD_PRESETS) {
       const label =
         (val > 0 ? "+" : "") + val.toFixed(1).replace(/\.0$/, ".0");
-      html += `
-        <button
+      html += `<button
           type="button"
           class="btn btn-xs preset-btn"
           data-game-id="${g.id}"
           data-value="${val}"
-        >
-          ${label}
-        </button>
-      `;
+        >${label}</button>`;
     }
 
-    html += `
-        </td>
+    html += `</td>
         <td>${formatPercent(tg.teamProb, precision)}</td>
-      </tr>
-    `;
+      </tr>`;
   }
 
-  html += `
-            </tbody>
-          </table>
-        </section>
-      </div>
-    </div>
-  `;
+  html += `</tbody></table>`;
 
   content.innerHTML = html;
   overlay.classList.remove("hidden");
@@ -1025,123 +1102,6 @@ function showTeamDetail(teamId) {
   });
 }
 
-
-// Narrative block inside team detail
-function buildTeamNarrative(teamInfo, result) {
-  const current = result.currentWins;
-  const projected = result.projectedWins;
-
-  // Most likely additional wins
-  let bestK = 0;
-  let bestProb = 0;
-  for (let k = 0; k <= 4; k++) {
-    if (result.exact[k] > bestProb) {
-      bestProb = result.exact[k];
-      bestK = k;
-    }
-  }
-
-  const mostLikelyTotal = current + bestK;
-  const p3Plus = result.cumulative[3]; // ≥3 of 4
-  const p0or1 = result.exact[0] + result.exact[1];
-
-  // Full-season schedule luck in wins
-  const schedLuck = result.scheduleLuckWinsSeason ?? 0;
-  const schedLuckAbs = Math.abs(schedLuck);
-
-  // Opponents’ avg wins vs others
-  const oppAvg = result.sosOppWinsAvg;
-  const leagueAvg = result.sosLeagueAvgOppWins;
-
-  let sosLine;
-  if (oppAvg == null || leagueAvg == null) {
-    sosLine = "Opponent-strength context isn’t fully available yet.";
-  } else {
-    const diff = oppAvg - leagueAvg;
-    const diffAbs = Math.abs(diff);
-
-    if (diffAbs < 0.1) {
-      sosLine = `Across the full season, their opponents (excluding this team in each matchup) average about <strong>${formatNumber(
-        oppAvg,
-        1
-      )}</strong> wins, essentially dead-on league-average.`;
-    } else if (diff > 0) {
-      sosLine = `Across the full season, their opponents (excluding this team in each matchup) average about <strong>${formatNumber(
-        oppAvg,
-        1
-      )}</strong> wins, which is a <strong>tougher</strong> slate than the league-wide baseline of roughly <strong>${formatNumber(
-        leagueAvg,
-        1
-      )}</strong> wins.`;
-    } else {
-      sosLine = `Across the full season, their opponents (excluding this team in each matchup) average about <strong>${formatNumber(
-        oppAvg,
-        1
-      )}</strong> wins, which is a <strong>softer</strong> slate than the league-wide baseline of roughly <strong>${formatNumber(
-        leagueAvg,
-        1
-      )}</strong> wins.`;
-    }
-  }
-
-  let schedLuckLine;
-  if (schedLuckAbs < 0.05) {
-    schedLuckLine =
-      "Your full-season model treats their schedule as effectively neutral — almost no net wins gained or lost purely from who they play.";
-  } else if (schedLuck > 0) {
-    schedLuckLine = `Relative to a league-average schedule, your full-season model credits them with about <strong>${formatNumber(
-      schedLuck,
-      2
-    )}</strong> extra wins that can be attributed purely to an easier slate.`;
-  } else {
-    schedLuckLine = `Relative to a league-average schedule, your full-season model penalizes them by about <strong>${formatNumber(
-      -schedLuck,
-      2
-    )}</strong> wins due purely to a tougher slate.`;
-  }
-
-  // Edge from remaining 4 games vs neutral
-  const remEdge = result.remainingScheduleEdgeWins ?? 0;
-  const remEdgeAbs = Math.abs(remEdge);
-  let remScheduleLine;
-  if (remEdgeAbs < 0.05) {
-    remScheduleLine =
-      "Over the final four games, your spreads treat their closing run as basically neutral versus a generic 50/50 schedule.";
-  } else if (remEdge > 0) {
-    remScheduleLine = `Over just the final four games, their remaining schedule is worth about <strong>${formatNumber(
-      remEdge,
-      2
-    )}</strong> extra wins versus a neutral 50/50 slate based on your spreads.`;
-  } else {
-    remScheduleLine = `Over just the final four games, their remaining schedule is costing them about <strong>${formatNumber(
-      -remEdge,
-      2
-    )}</strong> wins versus a neutral 50/50 slate based on your spreads.`;
-  }
-
-  let html = `<div class="team-detail-narrative"><ul>`;
-
-  html += `<li>Most likely outcome: <strong>${bestK} additional wins</strong> (${mostLikelyTotal} total).</li>`;
-  html += `<li>Chance to win <strong>3 or more</strong> of the remaining 4: <strong>${formatPercent(
-    p3Plus,
-    1
-  )}</strong>.</li>`;
-  html += `<li>They finish with <strong>0–1 more wins</strong> only <strong>${formatPercent(
-    p0or1,
-    1
-  )}</strong> of the time.</li>`;
-  html += `<li>Your model’s average full-season projection (actual so far + these four games): <strong>${formatNumber(
-    projected,
-    2
-  )}</strong> wins.</li>`;
-  html += `<li>${sosLine}</li>`;
-  html += `<li>${schedLuckLine}</li>`;
-  html += `<li>${remScheduleLine}</li>`;
-
-  html += `</ul></div>`;
-  return html;
-}
-
 // ---------------------------
 // CSV export
 // ---------------------------
@@ -1149,6 +1109,7 @@ function buildTeamNarrative(teamInfo, result) {
 function exportCsv() {
   const rows = [];
 
+  // Header row based on TABLE_HEADERS
   const headerRow = TABLE_HEADERS.map((h) =>
     h.label.replace(/\s+/g, "")
   );
@@ -1158,6 +1119,16 @@ function exportCsv() {
     if (!resultHasAnyPickedGame(r)) continue;
 
     const line = TABLE_HEADERS.map((h) => {
+      // Dynamic metric columns first
+      if (h.key === SOS_HEADER_KEY) {
+        return r.sosOppWinsAvg != null ? r.sosOppWinsAvg.toFixed(4) : "";
+      }
+      if (h.key === SCHED_LUCK_HEADER_KEY) {
+        return r.scheduleLuckWinsSeason != null
+          ? r.scheduleLuckWinsSeason.toFixed(4)
+          : "";
+      }
+
       switch (h.key) {
         case "team":
           return r.teamId;
@@ -1171,14 +1142,6 @@ function exportCsv() {
             : "";
         case "projected":
           return r.projectedWins != null ? r.projectedWins.toFixed(4) : "";
-        case "sos":
-          return r.sosOppWinsAvg != null ? r.sosOppWinsAvg.toFixed(4) : "";
-        case "schedLuck":
-        case "schedLuckWins":
-        case "schedLuckW":
-          return r.scheduleLuckWinsSeason != null
-            ? r.scheduleLuckWinsSeason.toFixed(4)
-            : "";
         case "P0":
         case "P1":
         case "P2":
