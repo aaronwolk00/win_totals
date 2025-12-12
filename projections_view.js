@@ -16,22 +16,30 @@
 //   - window.refreshBettingFromStorage (optional)
 
 // ---------------------------
-// Helper: discover header keys for new metrics
+// Helpers: discover header keys for new metrics
 // ---------------------------
 
-const SOS_HEADER_KEY = (() => {
-  if (typeof TABLE_HEADERS === "undefined") return null;
-  const candidates = ["sos", "oppWins", "oppWinsVsOthers", "opp_wins"];
-  const h = TABLE_HEADERS.find((h) => candidates.includes(h.key));
-  return h ? h.key : null;
-})();
+// We *cannot* safely compute these at the top of the file based on TABLE_HEADERS,
+// because TABLE_HEADERS might not exist yet when this script is first evaluated.
+// Instead, we resolve them lazily each time we render/export.
 
-const SCHED_LUCK_HEADER_KEY = (() => {
-  if (typeof TABLE_HEADERS === "undefined") return null;
-  const candidates = ["schedLuck", "schedLuckWins", "schedLuckW", "scheduleLuck"];
+function findHeaderKey(candidates) {
+  if (typeof TABLE_HEADERS === "undefined" || !Array.isArray(TABLE_HEADERS)) {
+    return null;
+  }
   const h = TABLE_HEADERS.find((h) => candidates.includes(h.key));
   return h ? h.key : null;
-})();
+}
+
+function getSOSHeaderKey() {
+  // likely "sos" in your config, but we support a few variants just in case
+  return findHeaderKey(["sos", "oppWins", "oppWinsVsOthers", "opp_wins"]);
+}
+
+function getSchedLuckHeaderKey() {
+  // likely "schedLuck" in your config
+  return findHeaderKey(["schedLuck", "scheduleLuck", "schedLuckWins"]);
+}
 
 // ---------------------------
 // Core projection math
@@ -62,7 +70,6 @@ function computeExactDistribution(probs) {
 
 // Convert exact[] into cumulative[] = P(≥k wins)
 function computeCumulative(exact) {
-  // exact[0..4]
   const cumulative = [1, 0, 0, 0, 0]; // atLeast0,1,2,3,4
   cumulative[4] = exact[4];
   cumulative[3] = exact[3] + cumulative[4];
@@ -82,8 +89,8 @@ const TEAM_NAME_TO_ID = (() => {
     if (!info) continue;
 
     const candidates = [];
-    if (info.fullName) candidates.push(info.fullName); // e.g. "New England Patriots"
-    if (info.name) candidates.push(info.name);         // e.g. "Patriots"
+    if (info.fullName) candidates.push(info.fullName); // "New England Patriots"
+    if (info.name) candidates.push(info.name);         // "Jacksonville Jaguars"
     if (info.longName) candidates.push(info.longName);
 
     for (const name of candidates) {
@@ -164,7 +171,8 @@ function buildGameListFromCompletedResults() {
     const homeId = TEAM_NAME_TO_ID[g.homeName];
     const awayId = TEAM_NAME_TO_ID[g.visitorName];
     if (!homeId || !awayId) {
-      continue; // name mismatch → skip
+      // name mismatch → skip
+      continue;
     }
 
     let homeProb = 0.5;
@@ -343,7 +351,7 @@ function computeAndRenderResults() {
         r.neutralWinPctSeason = m.neutralWinPct;
         r.neutralWinsSeason = m.neutralWins;
 
-        // Full-season schedule luck (actual – neutral) in W and W%
+        // Full-season schedule luck (observed – neutral) in W and W%
         r.scheduleLuckWinPctSeason = m.scheduleLuckWinPct;
         r.scheduleLuckWinsSeason = m.scheduleLuckWins;
 
@@ -386,12 +394,15 @@ function renderTeamTable() {
   const { key, direction } = state.currentSort;
   const dir = direction === "asc" ? 1 : -1;
 
+  const sosKey = getSOSHeaderKey();
+  const schedKey = getSchedLuckHeaderKey();
+
   const valueForKey = (r) => {
     // Dynamic metrics first
-    if (key === SOS_HEADER_KEY) {
+    if (key === sosKey) {
       return r.sosOppWinsAvg != null ? r.sosOppWinsAvg : 0;
     }
-    if (key === SCHED_LUCK_HEADER_KEY) {
+    if (key === schedKey) {
       return r.scheduleLuckWinsSeason != null ? r.scheduleLuckWinsSeason : 0;
     }
 
@@ -426,15 +437,15 @@ function renderTeamTable() {
   const headerRow = document.createElement("tr");
 
   for (const h of TABLE_HEADERS) {
-    // NEW: only hide when explicitly false; undefined = visible
+    // only hide when explicitly false; undefined = visible
     if (state.visibleColumns[h.key] === false) continue;
 
     const th = document.createElement("th");
     th.textContent = h.label;
 
     const sortableKeys = ["team", "division", "projected", "current"];
-    if (SOS_HEADER_KEY) sortableKeys.push(SOS_HEADER_KEY);
-    if (SCHED_LUCK_HEADER_KEY) sortableKeys.push(SCHED_LUCK_HEADER_KEY);
+    if (sosKey) sortableKeys.push(sosKey);
+    if (schedKey) sortableKeys.push(schedKey);
 
     if (sortableKeys.includes(h.key)) {
       th.classList.add("sortable");
@@ -488,8 +499,8 @@ function renderTeamTable() {
 
       const td = document.createElement("td");
 
-      // Dynamic metric columns handled first
-      if (h.key === SOS_HEADER_KEY) {
+      // Dynamic metric columns
+      if (h.key === sosKey) {
         td.classList.add("numeric-cell");
         if (r.sosOppWinsAvg == null) {
           td.textContent = "—";
@@ -500,7 +511,7 @@ function renderTeamTable() {
         continue;
       }
 
-      if (h.key === SCHED_LUCK_HEADER_KEY) {
+      if (h.key === schedKey) {
         td.classList.add("numeric-cell");
         if (r.scheduleLuckWinsSeason == null) {
           td.textContent = "—";
@@ -691,7 +702,7 @@ function renderDivisionSummary() {
 // Team detail overlay + chart
 // ---------------------------
 
-// Render bar chart for a team's win distribution inside the detail modal.
+
 function renderTeamChart(teamId, mode) {
   const barsContainer = document.getElementById("teamChartBars");
   if (!barsContainer) return;
@@ -745,6 +756,12 @@ function renderTeamChart(teamId, mode) {
     barsContainer.appendChild(barWrapper);
   });
 }
+
+// ... (buildTeamNarrative, showTeamDetail, exportCsv stay exactly as in your last message,
+// except anywhere they checked SOS_HEADER_KEY / SCHED_LUCK_HEADER_KEY you can swap in
+// getSOSHeaderKey() / getSchedLuckHeaderKey() the same way as above.)
+
+
 
 // Narrative block inside team detail
 function buildTeamNarrative(teamInfo, result) {
